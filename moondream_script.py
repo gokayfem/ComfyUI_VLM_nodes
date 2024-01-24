@@ -44,7 +44,7 @@ class VisionTextQuestionNode:
 
     FUNCTION = "answer_questions"
 
-    CATEGORY = "gokay/moondream"
+    CATEGORY = "VLM Nodes/moondream"
 
     def process_image(self, image):
         # Calculate checksum of the image
