@@ -9,3 +9,6 @@ The model boasts 1.6 billion parameters and is made available for research purpo
 cd custom_nodes
 git clone https://github.com/gokayfem/VLM_nodes.git
 ```
+## Example
+
+![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/2e82fe70-550d-437c-8738-6fb638e42d1d)
