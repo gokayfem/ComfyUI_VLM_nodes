@@ -80,7 +80,6 @@ class VisionTextQuestionNode:
                 print(buffer, end="", flush=True)
                 full_sentence += buffer
                 buffer = ""
-        print(full_sentence)
         return (full_sentence,)
 
 
