@@ -6,18 +6,22 @@ The model boasts 1.6 billion parameters and is made available for research purpo
 
 ## Automatic Prompt Generator Node
 This node is designed to transform textual descriptions into automatically generated image generation prompts. 
-Leveraging the power of OpenAI's GPT-3.5, it simplifies the process of creating vivid and detailed prompts for image generation.
+Leveraging the power of OpenAI's GPT-3.5, it simplifies the process of creating vivid and detailed prompts for image generation. Optionally you can ask to create a random prompt.
 
 ## Usage
 
 ```
 cd custom_nodes
-git clone https://github.com/gokayfem/VLM_nodes.git
+git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 run installer.bat
 ```
 ## Example Visual Question Answering
 ![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/2e82fe70-550d-437c-8738-6fb638e42d1d)
 
-## Example Visual Question Answering
-![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/a2dae1f8-895f-4e01-a7e4-1e65f0549244)
+## Example Prompt Generation
+![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/9be9d796-137a-4710-a97a-87adbf73b0e8)
+
+## Example Connected Usage
+![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/edb60085-2895-49dc-9f81-0aa0bf39b015)
+
 
