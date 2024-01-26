@@ -86,7 +86,7 @@ class PromptGenerateNode:
 
     FUNCTION = "generate_prompt"
 
-    CATEGORY = "VLM Nodes/PromptGeneration"
+    CATEGORY = "VLM Nodes"
 
     def generate_prompt(self, api_key, description, question):
         openai.api_key = api_key
