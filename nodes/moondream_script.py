@@ -44,7 +44,7 @@ class VisionTextQuestionNode:
 
     FUNCTION = "answer_questions"
 
-    CATEGORY = "VLM Nodes"
+    CATEGORY = "Visual Question Answering"
 
     def process_image(self, image):
         # Calculate checksum of the image
