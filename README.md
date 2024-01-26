@@ -5,7 +5,7 @@ This node is designed to work with the Moondream model, a powerful small vision 
 The model boasts 1.6 billion parameters and is made available for research purposes only; commercial use is not allowed.
 
 ## Automatic Prompt Generator Node
-This Node is designed to transform textual descriptions into automatically generated image generation prompts. 
+This node is designed to transform textual descriptions into automatically generated image generation prompts. 
 Leveraging the power of OpenAI's GPT-3.5, it simplifies the process of creating vivid and detailed prompts for image generation.
 
 ## Usage
