@@ -12,7 +12,7 @@ Leveraging the power of OpenAI's GPT-3.5, it simplifies the process of creating 
 
 ```
 cd custom_nodes
-git clone https://github.com/gokayfem/VLM_nodes.git
+git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 run installer.bat
 ```
 ## Example Visual Question Answering
