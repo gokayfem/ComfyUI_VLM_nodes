@@ -18,6 +18,8 @@ run installer.bat
 ## Example Visual Question Answering
 ![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/2e82fe70-550d-437c-8738-6fb638e42d1d)
 
-## Example Visual Question Answering
-![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/a2dae1f8-895f-4e01-a7e4-1e65f0549244)
+
+## Example Connected Usage
+![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/edb60085-2895-49dc-9f81-0aa0bf39b015)
+
 
