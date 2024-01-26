@@ -1,3 +1,18 @@
-from .moondream_script import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
+import importlib
 
-__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
+node_list = [
+    "moondream_script",
+    "description",
+]
+
+NODE_CLASS_MAPPINGS = {}
+NODE_DISPLAY_NAME_MAPPINGS = {}
+
+for module_name in node_list:
+    imported_module = importlib.import_module(f".{module_name}", __name__)
+
+    NODE_CLASS_MAPPINGS = {**NODE_CLASS_MAPPINGS, **imported_module.NODE_CLASS_MAPPINGS}
+    NODE_DISPLAY_NAME_MAPPINGS = {**NODE_DISPLAY_NAME_MAPPINGS, **imported_module.NODE_DISPLAY_NAME_MAPPINGS}
+
+__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
+
