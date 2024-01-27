@@ -1,4 +1,4 @@
-# 👁️ VLM_nodes
+# 👁️ VLM_nodes - Work In Progress
 
 ## Visual Question Answering Node
 This node is designed to work with the Moondream model, a powerful small vision language model built by @vikhyatk using SigLIP, Phi-1.5, and the LLaVa training dataset. 
