@@ -14,6 +14,8 @@ Leveraging the power of OpenAI's GPT-3.5, it simplifies the process of creating 
 cd custom_nodes
 git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ```
+Use ComfyUI Manager for python dependencies.
+
 ## Example Visual Question Answering
 ![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/2e82fe70-550d-437c-8738-6fb638e42d1d)
 
