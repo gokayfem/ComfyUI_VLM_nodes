@@ -1,3 +1,4 @@
+from openai import OpenAI
 import openai
 
 # Define the system message
@@ -89,25 +90,26 @@ class PromptGenerateNode:
     CATEGORY = "VLM Nodes/Prompt Generator"
 
     def generate_prompt(self, api_key, description, question):
-        openai.api_key = api_key
 
         # Define the user message
         user_msg = f"""
         Description: {description}
-	Optional Question: {question}
+	    Optional Question: {question}
 
         Output: prompt
         """
         
-        # Send the request to the API
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_msg}
-            ]
+        client = OpenAI(api_key = api_key)
+
+        completion = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_msg}
+        ]
         )
-        prompt = response.choices[0].message.content          
+
+        prompt = completion.choices[0].message.content       
         return (prompt,)
     
 # A dictionary that contains all nodes you want to export with their names
