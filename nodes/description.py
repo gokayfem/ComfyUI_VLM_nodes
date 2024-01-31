@@ -59,11 +59,18 @@ class PromptGenerateNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
+                "model_name": (
+                    ["ChatGPT-3.5", "ChatGPT-4", "DeepSeek"],
+                    {
+                        "default" : "ChatGPT-3.5"
+                    }
+                )
+                ,        
                 "api_key": (
                     "STRING",
                     {
                         "multiline": True,
-                        "default": "OPENAI API KEY",
+                        "default": "",
                     },
                 ),
                 "description": (
@@ -89,9 +96,18 @@ class PromptGenerateNode:
 
     CATEGORY = "VLM Nodes/Prompt Generator"
 
-    def generate_prompt(self, api_key, description, question):
+    def generate_prompt(self, model_name, api_key, description, question):
 
         # Define the user message
+        if model_name == "DeepSeek":
+            model = "deepseek-chat"
+            base_url = "https://api.deepseek.com/v1"
+        elif model_name == "ChatGPT-3.5":
+            model = "gpt-3.5-turbo"
+            base_url = None
+        elif model_name == "ChatGPT-4":
+            model = "gpt-4"
+            base_url = None
         user_msg = f"""
         Description: {description}
 	    Optional Question: {question}
@@ -99,10 +115,10 @@ class PromptGenerateNode:
         Output: prompt
         """
         
-        client = OpenAI(api_key = api_key)
+        client = OpenAI(api_key = api_key, base_url=base_url)
 
         completion = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model=model,
         messages=[
             {"role": "system", "content": system_msg},
             {"role": "user", "content": user_msg}
