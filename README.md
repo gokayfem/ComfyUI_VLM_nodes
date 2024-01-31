@@ -8,7 +8,10 @@ The model boasts 1.6 billion parameters and is made available for research purpo
 This node is designed to transform textual descriptions into automatically generated image generation prompts. 
 It simplifies the process of creating vivid and detailed prompts for image generation. Optionally you can ask to create a random prompt.
 
-You can use: ChatGPT-4, ChatGPT-3.5 or DeepSeek
+You can use:
+- ChatGPT-4, 
+- ChatGPT-3.5
+- DeepSeek
 https://platform.deepseek.com/ gives 10m free tokens.
 
 ## Usage
