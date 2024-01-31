@@ -21,7 +21,7 @@ output_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "ou
 image_encoder_cache_path = os.path.join(output_directory, "image_encoder_cache")
 class VisionTextQuestionNode:
     def __init__(self):
-        self.model_path = snapshot_download("vikhyatk/moondream1")
+        self.model_path = snapshot_download("vikhyatk/moondream1", revision="5cd8d1ecd7e0d8d95222543e1960d340ddffbfef")
         self.vision_encoder = VisionEncoder(self.model_path)
         self.text_model = TextModel(self.model_path)
 
