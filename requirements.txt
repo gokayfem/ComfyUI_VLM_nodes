@@ -1,4 +1,4 @@
-openai
+openai==0.27.8
 accelerate==0.25.0
 huggingface-hub==0.20.1
 Pillow==10.1.0
