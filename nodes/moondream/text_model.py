@@ -74,14 +74,13 @@ class TextModel:
 
         return self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)
 
-    def answer_question(self, image_embeds, question, **kwargs):
+    def answer_question(self, image_embeds, question):
         prompt = f"<image>\n\nQuestion: {question}\n\nAnswer:"
         answer = self.generate(
             image_embeds,
             prompt,
             eos_text="<END>",
             max_new_tokens=128,
-            **kwargs,
         )[0]
 
         return re.sub("<$", "", re.sub("END$", "", answer)).strip()

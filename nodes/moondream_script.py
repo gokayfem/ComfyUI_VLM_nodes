@@ -65,21 +65,7 @@ class VisionTextQuestionNode:
 
     def answer_questions(self, image, question):
         image_embeds = self.process_image(image)
-        streamer = TextIteratorStreamer(self.text_model.tokenizer, skip_special_tokens=True)
-        generation_kwargs = dict(
-            image_embeds=image_embeds, question=question, streamer=streamer
-        )
-        thread = Thread(target=self.text_model.answer_question, kwargs=generation_kwargs)
-        thread.start()
-
-        buffer = ""
-        full_sentence = ""
-        for new_text in streamer:
-            buffer += new_text
-            if not new_text.endswith("<") and not new_text.endswith("END"):
-                print(buffer, end="", flush=True)
-                full_sentence += buffer
-                buffer = ""
+        full_sentence = self.text_model.answer_question(image_embeds, question)
         return (full_sentence,)
 
 
