@@ -33,6 +33,3 @@ git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 
 ## Example Joytag
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/df9da377-59e8-4b39-a31a-0e3b5071a8cc)
-
-## Example Connected Usage
-![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/edb60085-2895-49dc-9f81-0aa0bf39b015)
