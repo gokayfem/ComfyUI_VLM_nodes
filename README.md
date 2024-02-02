@@ -31,5 +31,8 @@ git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ## Example Prompt Generation
 ![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/9be9d796-137a-4710-a97a-87adbf73b0e8)
 
+## Example SimpleChat
+![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/19a49424-751b-487d-963f-ae598710273d)
+
 ## Example Joytag
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/df9da377-59e8-4b39-a31a-0e3b5071a8cc)
