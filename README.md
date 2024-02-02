@@ -4,9 +4,9 @@
 This node is designed to work with the Moondream model, a powerful small vision language model built by @vikhyatk using SigLIP, Phi-1.5, and the LLaVa training dataset. 
 The model boasts 1.6 billion parameters and is made available for research purposes only; commercial use is not allowed.
 
-## Automatic Prompt Generator Node
+## Automatic Prompt Generator or SimpleChat Node
 This node is designed to transform textual descriptions into automatically generated image generation prompts. 
-It simplifies the process of creating vivid and detailed prompts for image generation. Optionally you can ask to create a random prompt.
+It simplifies the process of creating vivid and detailed prompts for image generation. Optionally you can chat with llms using SimpleChat Node.
 
 You can use:
 - ChatGPT-4
