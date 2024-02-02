@@ -14,13 +14,16 @@ You can use:
 - DeepSeek  
 https://platform.deepseek.com/ gives 10m free tokens.
 
+## JoyTag Node
+@fpgamine's JoyTag is a state of the art AI vision model for tagging images, with a focus on sex positivity and inclusivity.  
+It uses the Danbooru tagging schema, but works across a wide range of images, from hand drawn to photographic.
+
 ## Usage
 
 ```
 cd custom_nodes
 git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ```
-Use ComfyUI Manager for python dependencies.
 
 ## Example Visual Question Answering
 ![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/2e82fe70-550d-437c-8738-6fb638e42d1d)
