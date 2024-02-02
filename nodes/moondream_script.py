@@ -3,11 +3,7 @@ from huggingface_hub import snapshot_download
 import torch
 import os
 import hashlib
-import numpy as np
 from torchvision import transforms
-from threading import Thread
-from transformers import TextIteratorStreamer
-from folder_paths import folder_names_and_paths, models_dir, supported_pt_extensions, add_model_folder_path
 
 if torch.cuda.is_available():
     DEVICE = "cuda"
