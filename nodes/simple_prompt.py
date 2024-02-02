@@ -50,7 +50,7 @@ class SimpleChat:
 
     CATEGORY = "VLM Nodes/Simple Chat"
 
-    def chat(self, model_name, api_key, query, question):
+    def chat(self, model_name, api_key, query_from_other_nodes, optional_question):
 
         # Define the user message
         if model_name == "DeepSeek":
@@ -63,8 +63,8 @@ class SimpleChat:
             model = "gpt-4"
             base_url = None
         user_msg = f"""
-        Optional User Query: {query}
-	    Optional User Question: {question}
+        Optional User Query: {query_from_other_nodes}
+	    Optional User Question: {optional_question}
 
         Output: 
         """
