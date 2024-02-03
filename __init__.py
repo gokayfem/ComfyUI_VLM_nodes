@@ -7,8 +7,7 @@ import importlib.util
 
 node_list = [
     "moondream_script",
-    "description",
-    "simple_prompt",
+    "prompter",
     "joytag",
 ]
 
