@@ -9,6 +9,7 @@ node_list = [
     "moondream_script",
     "prompter",
     "joytag",
+    "simpletext",
 ]
 
 # Define the check_requirements_installed function here or import it
