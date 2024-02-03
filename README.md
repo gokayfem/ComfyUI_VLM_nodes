@@ -28,11 +28,11 @@ git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ## Example Visual Question Answering
 ![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/2e82fe70-550d-437c-8738-6fb638e42d1d)
 
-## Example Prompt Generation
-![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/9be9d796-137a-4710-a97a-87adbf73b0e8)
-
-## Example SimpleChat
-![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/19a49424-751b-487d-963f-ae598710273d)
-
 ## Example Joytag
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/df9da377-59e8-4b39-a31a-0e3b5071a8cc)
+
+## Example Prompt Generation 
+![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/1c557f10-52ee-4e1f-ab8a-20932a07dd3b)
+
+## Example SimpleChat
+![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/057cfc2e-e772-43c0-972f-2916e6aeb03d)
