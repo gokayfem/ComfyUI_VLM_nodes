@@ -74,9 +74,9 @@ class PromptGenerateNode:
             base_url = None
         user_msg = f"""
         Description: {description}
-	    Optional Question: {question}
+	Optional Question: {question}
 
-        Output: prompt
+        Output: 
         """
         
         client = OpenAI(api_key = api_key, base_url=base_url)
