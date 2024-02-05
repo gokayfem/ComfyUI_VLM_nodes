@@ -1,8 +1,8 @@
 # 👁️ VLM_nodes - Work In Progress
 
 ## LLavaLoader, LavaSampler, LLavaClipLoader Nodes
-Utilizes llama-cpp-python for integration of LLaVa models. You can load and use LLaVa models in GGUF format with this nodes.  
-You need to download the clip handler inside this repositories. python=>3.9 is necessary.
+Utilizes ```llama-cpp-python``` for integration of LLaVa models. You can load and use LLaVa models in GGUF format with this nodes.  
+You need to download the clip handler from this repositories. ```python=>3.9``` is necessary. Put all of the files inside ```models/LLavacheckpoints```
 - [Llava 1.5 7B](https://huggingface.co/mys/ggml_llava-v1.5-7b/)
 - [Llava 1.5 13B](https://huggingface.co/mys/ggml_llava-v1.5-13b)
 - [BakLLava](https://huggingface.co/mys/ggml_bakllava-1)
