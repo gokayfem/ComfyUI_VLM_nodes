@@ -48,3 +48,7 @@ git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 
 ## Example SimpleChat
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/057cfc2e-e772-43c0-972f-2916e6aeb03d)
+
+## Example LLava Sampler Advanced
+![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/32210c37-fe7d-479f-b0a6-2eb13ea0aac1)
+
