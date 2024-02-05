@@ -24,6 +24,8 @@ class LLavaLoader:
         return {"required": { 
               "ckpt_name": (folder_paths.get_filename_list("LLavacheckpoints"), ),   
               "max_ctx": ("INT", {"default": 2048, "min": 300, "max": 100000, "step": 64}),
+              "gpu_layers": ("INT", {"default": 27, "min": 0, "max": 100, "step": 1}),
+              "n_threads": ("INT", {"default": 8, "min": 1, "max": 100, "step": 1}),
               "clip": ("CUSTOM", {"default": ""}),
                              }}
                 
@@ -35,7 +37,7 @@ class LLavaLoader:
     CATEGORY = "VLM Nodes/LLava/LLavaLoader"
     def load_llava_checkpoint(self, ckpt_name, max_ctx, clip ):
         ckpt_path = folder_paths.get_full_path("LLavacheckpoints", ckpt_name)
-        llm = Llama(model_path = ckpt_path, n_ctx = max_ctx, chat_handler=clip, logits_all=True, verbose=False) 
+        llm = Llama(model_path = ckpt_path, n_ctx = max_ctx, chat_handler=clip, n_gpu_layers=gpu_layers, n_threads=n_threads, logits_all=True, verbose=False) 
         return (llm, ) 
     
 class LlavaClipLoader:
