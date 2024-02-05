@@ -15,7 +15,7 @@ else:
 
 output_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
 image_encoder_cache_path = os.path.join(output_directory, "image_encoder_cache")
-class VisionTextQuestionNode:
+class MoonDream:
     def __init__(self):
         self.model_path = snapshot_download("vikhyatk/moondream1", revision="5cd8d1ecd7e0d8d95222543e1960d340ddffbfef")
         self.vision_encoder = VisionEncoder(self.model_path)
@@ -40,7 +40,7 @@ class VisionTextQuestionNode:
 
     FUNCTION = "answer_questions"
 
-    CATEGORY = "VLM Nodes/Visual Question Answering"
+    CATEGORY = "VLM Nodes/MoonDream"
 
     def process_image(self, image):
         # Calculate checksum of the image
@@ -66,9 +66,9 @@ class VisionTextQuestionNode:
 
 
 # A dictionary that contains all nodes you want to export with their names
-NODE_CLASS_MAPPINGS = {"VisionTextQuestion": VisionTextQuestionNode}
+NODE_CLASS_MAPPINGS = {"MoonDream": MoonDream}
 
 # A dictionary that contains the friendly/humanly readable titles for the nodes
-NODE_DISPLAY_NAME_MAPPINGS = {"VisionTextQuestion": "VisionQuestionAnswering Node"}
+NODE_DISPLAY_NAME_MAPPINGS = {"MoonDream": "MoonDream Node"}
 
 

@@ -8,3 +8,10 @@ torchvision>=0.15.2
 einops>=0.7.0
 safetensors>=0.4.1
 pillow>=9.4.0
+py-cpuinfo
+gitpython
+moviepy
+opencv-python
+scikit-build
+typing
+diskcache

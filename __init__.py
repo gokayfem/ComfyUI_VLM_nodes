@@ -1,16 +1,9 @@
-import importlib
-import os
-import sys
-import pkg_resources
-import subprocess
 import importlib.util
-
-node_list = [
-    "moondream_script",
-    "prompter",
-    "joytag",
-    "simpletext",
-]
+import os
+import importlib
+import pkg_resources
+import sys
+import subprocess
 
 # Define the check_requirements_installed function here or import it
 def check_requirements_installed(requirements_path):
@@ -29,10 +22,21 @@ def check_requirements_installed(requirements_path):
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', *missing_packages])
     else:
         print("All packages from requirements.txt are installed and up to date.")
-
-
 requirements_path  = os.path.join(os.path.dirname(os.path.realpath(__file__)), "requirements.txt")
 check_requirements_installed(requirements_path)
+
+from .install_init import init, get_system_info, install_llama
+system_info = get_system_info()
+install_llama(system_info)
+init()
+
+node_list = [
+    "moondream_script",
+    "prompter",
+    "joytag",
+    "simpletext",
+    "llavaloader",
+]
 
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
@@ -42,6 +46,7 @@ for module_name in node_list:
 
     NODE_CLASS_MAPPINGS = {**NODE_CLASS_MAPPINGS, **imported_module.NODE_CLASS_MAPPINGS}
     NODE_DISPLAY_NAME_MAPPINGS = {**NODE_DISPLAY_NAME_MAPPINGS, **imported_module.NODE_DISPLAY_NAME_MAPPINGS}
+
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
 
