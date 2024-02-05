@@ -7,7 +7,7 @@ You need to download the clip handler ```mmproj-model-f16.gguf```  from this rep
 - [Nous Hermes 2 Vision](billborkowski/llava-NousResearch_Nous-Hermes-2-Vision-GGUF)
 - [LlaVa 1.5 7B](https://huggingface.co/mys/ggml_llava-v1.5-7b/)
 - [LlaVa 1.5 13B](https://huggingface.co/mys/ggml_llava-v1.5-13b)
-- [BakLLaVa](https://huggingface.co/mys/ggml_bakllava-1)
+- [BakLLaVa](https://huggingface.co/mys/ggml_bakllava-1) etc..
 
 
 ## moondream Node
