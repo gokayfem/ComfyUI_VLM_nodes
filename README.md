@@ -5,7 +5,7 @@ Utilizes ```llama-cpp-python``` for integration of LLaVa models. You can load an
 You need to download the clip handler from this repositories. ```python=>3.9``` is necessary. Put all of the files inside ```models/LLavacheckpoints```
 - [LlaVa 1.5 7B](https://huggingface.co/mys/ggml_llava-v1.5-7b/)
 - [LlaVa 1.5 13B](https://huggingface.co/mys/ggml_llava-v1.5-13b)
-- [BakLLava](https://huggingface.co/mys/ggml_bakllava-1)
+- [BakLLaVa](https://huggingface.co/mys/ggml_bakllava-1)
 
 ## moondream Node
 This node is designed to work with the Moondream model, a powerful small vision language model built by @vikhyatk using SigLIP, Phi-1.5, and the LLaVa training dataset. 
