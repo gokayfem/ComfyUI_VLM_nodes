@@ -35,7 +35,7 @@ class LLavaLoader:
     FUNCTION = "load_llava_checkpoint"
 
     CATEGORY = "VLM Nodes/LLava/LLavaLoader"
-    def load_llava_checkpoint(self, ckpt_name, max_ctx, clip ):
+    def load_llava_checkpoint(self, ckpt_name, max_ctx, gpu_layers, n_threads, clip ):
         ckpt_path = folder_paths.get_full_path("LLavacheckpoints", ckpt_name)
         llm = Llama(model_path = ckpt_path, n_ctx = max_ctx, chat_handler=clip, n_gpu_layers=gpu_layers, n_threads=n_threads, logits_all=True, verbose=False) 
         return (llm, ) 
