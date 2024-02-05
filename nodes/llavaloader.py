@@ -57,7 +57,7 @@ class LlavaClipLoader:
         clip = Llava15ChatHandler(clip_model_path = clip_path, verbose=False)        
         return (clip, ) 
 
-class LLavaSampler:        
+class LLavaSamplerSimple:        
     def __init__(self):
         pass
     
@@ -184,14 +184,14 @@ class LLavaSamplerAdvanced:
 
 NODE_CLASS_MAPPINGS = {
     "LLava Loader Simple": LLavaLoader,
-    "LLavaSampler": LLavaSampler,
+    "LLavaSamplerSimple": LLavaSamplerSimple,
     "LlavaClipLoader": LlavaClipLoader,
     "LLavaSamplerAdvanced": LLavaSamplerAdvanced
 }
 # A dictionary that contains the friendly/humanly readable titles for the nodes
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LLava Loader Simple": "LLava Loader Simple",
-    "LLavaSampler": "LLava Text Sampler",
+    "LLavaSamplerSimple": "LLava Sampler Simple",
     "LlavaClipLoader": "Llava Clip Loader",
     "LLavaSamplerAdvanced": "LLava Sampler Advanced"
 }
