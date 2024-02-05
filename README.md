@@ -32,7 +32,7 @@ cd custom_nodes
 git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ```
 ## Example LLaVa Nodes
-![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/35501b3c-571d-4503-a14a-36851f8b5968)
+![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/c30b9599-fa14-4f1a-b023-65a3697892f2)
 
 ## Example moondream
 ![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/2e82fe70-550d-437c-8738-6fb638e42d1d)
