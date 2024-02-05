@@ -1,4 +1,4 @@
-# 👁️ VLM_nodes - Work In Progress
+# 👁️ VLM_nodes 
 
 ## LLavaLoader, LavaSampler, LLavaClipLoader Nodes
 Utilizes ```llama-cpp-python``` for integration of LLaVa models. You can load and use LLaVa models in GGUF format with this nodes.  
