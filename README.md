@@ -1,6 +1,13 @@
 # 👁️ VLM_nodes - Work In Progress
 
-## Visual Question Answering Node
+## LLavaLoader, LavaSampler, LLavaClipLoader Nodes
+Utilizes llama-cpp-python for integration of LLaVa models. You can load and use LLaVa models in GGUF format with this nodes.  
+You need to download the clip handler inside this repositories. python=>3.9 is necessary.
+- [Llava 1.5 7B](https://huggingface.co/mys/ggml_llava-v1.5-7b/)
+- [Llava 1.5 13B](https://huggingface.co/mys/ggml_llava-v1.5-13b)
+- [BakLLava](https://huggingface.co/mys/ggml_bakllava-1)
+
+## moondream Node
 This node is designed to work with the Moondream model, a powerful small vision language model built by @vikhyatk using SigLIP, Phi-1.5, and the LLaVa training dataset. 
 The model boasts 1.6 billion parameters and is made available for research purposes only; commercial use is not allowed.
 
@@ -24,8 +31,10 @@ It uses the Danbooru tagging schema, but works across a wide range of images, fr
 cd custom_nodes
 git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ```
+## Example LLaVa Nodes
+![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/35501b3c-571d-4503-a14a-36851f8b5968)
 
-## Example Visual Question Answering
+## Example moondream
 ![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/2e82fe70-550d-437c-8738-6fb638e42d1d)
 
 ## Example Joytag
