@@ -109,15 +109,89 @@ class LLavaSampler:
         )
 
         return (f"{response['choices'][0]['message']['content']}", )
+    
+class LLavaSamplerAdvanced:        
+    def __init__(self):
+        pass
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "system_msg": ("STRING",{"default" : "You are an assistant who perfectly describes images."}),
+                "prompt": ("STRING",{"forceInput": True, "default": ""}),
+                "model": ("CUSTOM", {"default": ""}),
+                "max_tokens": ("INT", {"default": 512, "min": 1, "max": 2048, "step": 1}),
+                "temperature": ("FLOAT", {"default": 0.2, "min": 0.01, "max": 1.0, "step": 0.01}),
+                "top_p": ("FLOAT", {"default": 0.95, "min": 0.1, "max": 1.0, "step": 0.01}),
+                "top_k": ("INT", {"default": 40, "step": 1}), 
+                "frequency_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "presence_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "repeat_penalty": ("FLOAT", {"default": 1.1, "step": 0.01}),
+                             
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "generate_text_advanced"
+    CATEGORY = "VLM Nodes/LLava/LLavaSamplerAdvanced"
+
+    def generate_text_advanced(self, image, system_msg, prompt, model, max_tokens, temperature, top_p, frequency_penalty, presence_penalty, repeat_penalty, top_k):
+        
+
+        # Assuming 'image' is a PyTorch tensor of shape [C, H, W]
+        # Convert the PyTorch tensor to a PIL image
+        pil_image = ToPILImage()(image[0].permute(2, 0, 1))
+
+        # Convert the PIL image to a bytes buffer
+        buffer = BytesIO()
+        pil_image.save(buffer, format="JPEG")  # You can change the format if needed
+
+        # Get the bytes from the buffer
+        image_bytes = buffer.getvalue()
+
+        # Encode the bytes to base64
+        base64_string = f"data:image/jpeg;base64,{base64.b64encode(image_bytes).decode('utf-8')}"
+
+        # Now, `base64_string` contains the base64-encoded string of the image
+
+        llm = model
+        response = llm.create_chat_completion(
+            messages = [
+                {"role": "system", "content": system_msg},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url" : base64_string}},
+                        {"type" : "text", "text": f"{prompt}"}
+                    ]
+                }
+
+            ],
+            max_tokens = max_tokens,
+            temperature = temperature,
+            top_p = top_p,
+            top_k = top_k,
+            frequency_penalty = frequency_penalty,
+            presence_penalty = presence_penalty,
+            repeat_penalty = repeat_penalty
+
+        )
+
+
+        return (f"{response['choices'][0]['message']['content']}", )
 
 NODE_CLASS_MAPPINGS = {
     "LLava Loader Simple": LLavaLoader,
     "LLavaSampler": LLavaSampler,
-    "LlavaClipLoader": LlavaClipLoader
+    "LlavaClipLoader": LlavaClipLoader,
+    "LLavaSamplerAdvanced": LLavaSamplerAdvanced
 }
 # A dictionary that contains the friendly/humanly readable titles for the nodes
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LLava Loader Simple": "LLava Loader Simple",
     "LLavaSampler": "LLava Text Sampler",
-    "LlavaClipLoader": "Llava Clip Loader"
+    "LlavaClipLoader": "Llava Clip Loader",
+    "LLavaSamplerAdvanced": "LLava Sampler Advanced"
 }
