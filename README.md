@@ -5,7 +5,7 @@ Examples below!
 Utilizes ```llama-cpp-python``` for integration of LLaVa models. You can load and use any llm with LLaVa models in GGUF format with this nodes.  
 You need to download the clip projector ```mmproj-model-f16.gguf```  from this repositories. ```python=>3.9``` is necessary. Put all of the files inside ```models/LLavacheckpoints```
 - [LlaVa 1.6 Mistral 7B](https://huggingface.co/cjpais/llava-1.6-mistral-7b-gguf/)
-- [Nous Hermes 2 Vision](billborkowski/llava-NousResearch_Nous-Hermes-2-Vision-GGUF)
+- [Nous Hermes 2 Vision](https://huggingface.co/billborkowski/llava-NousResearch_Nous-Hermes-2-Vision-GGUF)
 - [LlaVa 1.5 7B](https://huggingface.co/mys/ggml_llava-v1.5-7b/)
 - [LlaVa 1.5 13B](https://huggingface.co/mys/ggml_llava-v1.5-13b)
 - [BakLLaVa](https://huggingface.co/mys/ggml_bakllava-1) 
