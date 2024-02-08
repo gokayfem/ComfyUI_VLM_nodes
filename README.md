@@ -17,8 +17,9 @@ You need to download the clip projector ```mmproj-model-f16.gguf```  from this r
 etc..
 
 ## LLM Nodes
+Currently creates prompts given description.
 [Qwen 1.8B Stable Diffusion Prompt](https://huggingface.co/hahahafofo/Qwen-1_8B-Stable-Diffusion-Prompt-GGUF)
-Works best with turning descriptions into prompts. 
+This model works best when turning descriptions into prompts. 
 
 ## moondream Node
 This node is designed to work with the Moondream model, a powerful small vision language model built by @vikhyatk using SigLIP, Phi-1.5, and the LLaVa training dataset. 
