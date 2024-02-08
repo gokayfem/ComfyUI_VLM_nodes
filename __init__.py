@@ -36,6 +36,7 @@ node_list = [
     "joytag",
     "simpletext",
     "llavaloader",
+    "suggest",
 ]
 
 NODE_CLASS_MAPPINGS = {}

@@ -34,7 +34,7 @@ class LLavaLoader:
     RETURN_NAMES = ("model",)
     FUNCTION = "load_llava_checkpoint"
 
-    CATEGORY = "VLM Nodes/LLava/LLavaLoader"
+    CATEGORY = "VLM Nodes/LLava"
     def load_llava_checkpoint(self, ckpt_name, max_ctx, gpu_layers, n_threads, clip ):
         ckpt_path = folder_paths.get_full_path("LLavacheckpoints", ckpt_name)
         llm = Llama(model_path = ckpt_path, n_ctx = max_ctx, chat_handler=clip, n_gpu_layers=gpu_layers, n_threads=n_threads, logits_all=True, verbose=False) 
@@ -51,7 +51,7 @@ class LlavaClipLoader:
     RETURN_NAMES = ("clip", )
     FUNCTION = "load_clip_checkpoint"
 
-    CATEGORY = "VLM Nodes/LLava/LavaClipLoader"
+    CATEGORY = "VLM Nodes/LLava"
     def load_clip_checkpoint(self, clip_name):
         clip_path = folder_paths.get_full_path("LLavacheckpoints", clip_name)
         clip = Llava15ChatHandler(clip_model_path = clip_path, verbose=False)        
@@ -73,7 +73,7 @@ class LLavaSamplerSimple:
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate_text"
-    CATEGORY = "VLM Nodes/LLava/LLavaSampler"
+    CATEGORY = "VLM Nodes/LLava"
 
     def generate_text(self, image, prompt, model):
         
@@ -135,7 +135,7 @@ class LLavaSamplerAdvanced:
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate_text_advanced"
-    CATEGORY = "VLM Nodes/LLava/LLavaSamplerAdvanced"
+    CATEGORY = "VLM Nodes/LLava"
 
     def generate_text_advanced(self, image, system_msg, prompt, model, max_tokens, temperature, top_p, frequency_penalty, presence_penalty, repeat_penalty, top_k):
         
