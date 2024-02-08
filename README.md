@@ -1,7 +1,12 @@
 # 👁️ VLM_nodes 
 Examples below!
 
-## LLavaLoader, LavaSampler, LLavaClipLoader Nodes
+## Usage
+```
+cd custom_nodes
+git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
+```
+## VLM Nodes
 Utilizes ```llama-cpp-python``` for integration of LLaVa models. You can load and use any llm with LLaVa models in GGUF format with this nodes.  
 You need to download the clip projector ```mmproj-model-f16.gguf```  from this repositories. ```python=>3.9``` is necessary. Put all of the files inside ```models/LLavacheckpoints```
 - [LlaVa 1.6 Mistral 7B](https://huggingface.co/cjpais/llava-1.6-mistral-7b-gguf/)
@@ -10,6 +15,10 @@ You need to download the clip projector ```mmproj-model-f16.gguf```  from this r
 - [LlaVa 1.5 13B](https://huggingface.co/mys/ggml_llava-v1.5-13b)
 - [BakLLaVa](https://huggingface.co/mys/ggml_bakllava-1) 
 etc..
+
+## LLM Nodes
+[Qwen 1.8B Stable Diffusion Prompt](https://huggingface.co/hahahafofo/Qwen-1_8B-Stable-Diffusion-Prompt-GGUF)
+Works best with turning descriptions into prompts. 
 
 ## moondream Node
 This node is designed to work with the Moondream model, a powerful small vision language model built by @vikhyatk using SigLIP, Phi-1.5, and the LLaVa training dataset. 
@@ -29,14 +38,11 @@ https://platform.deepseek.com/ gives 10m free tokens.
 @fpgamine's JoyTag is a state of the art AI vision model for tagging images, with a focus on sex positivity and inclusivity.  
 It uses the Danbooru tagging schema, but works across a wide range of images, from hand drawn to photographic.
 
-## Usage
-
-```
-cd custom_nodes
-git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
-```
 ## Example LLaVa Nodes
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/c30b9599-fa14-4f1a-b023-65a3697892f2)
+
+## LLM Nodes
+![VLM + LLM](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/4897d11a-e818-4d7e-bf04-0cd7dd4102dc)
 
 ## Example moondream
 ![image](https://github.com/gokayfem/VLM_nodes/assets/88277926/2e82fe70-550d-437c-8738-6fb638e42d1d)
