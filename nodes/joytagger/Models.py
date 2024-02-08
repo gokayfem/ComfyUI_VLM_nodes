@@ -24,7 +24,7 @@ class VisionModel(nn.Module):
 		self.n_tags = n_tags
 	
 	@staticmethod
-	def load_model(path: Path | str, device: str | None = None) -> 'VisionModel':
+	def load_model(path: Path or str, device: str or None = None) -> 'VisionModel':
 		"""
 		Load a model from a directory.
 		:param path: The directory containing the model.
@@ -65,7 +65,7 @@ class VisionModel(nn.Module):
 		raise NotImplementedError
 
 
-def basic_calculate_loss(preds: dict[str, torch.Tensor], batch: dict, pos_weight: torch.Tensor | None, loss_type: str):
+def basic_calculate_loss(preds: dict[str, torch.Tensor], batch: dict, pos_weight: torch.Tensor or None, loss_type: str):
 	def asl_helper(preds, target):
 		p = F.softmax(preds, dim=1)
 		xs_pos = p.clamp(min=1e-6)
@@ -961,7 +961,7 @@ class ViT(VisionModel):
 		loss_type: str,
 		layerscale_init: Optional[float] = None,
 		head_mean_after: bool = False,
-		cnn_stem: str | None = None,
+		cnn_stem: str or None = None,
 		patch_dropout: float = 0.0,
 	):
 		super().__init__(image_size, n_tags)
