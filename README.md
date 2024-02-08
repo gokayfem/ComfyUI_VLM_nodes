@@ -17,7 +17,7 @@ You need to download the clip projector ```mmproj-model-f16.gguf```  from this r
 etc..
 
 ## LLM Nodes
-Currently creates prompts given description.
+Currently creates prompts given description.  
 [Qwen 1.8B Stable Diffusion Prompt](https://huggingface.co/hahahafofo/Qwen-1_8B-Stable-Diffusion-Prompt-GGUF)
 This model works best when turning descriptions into prompts. 
 
