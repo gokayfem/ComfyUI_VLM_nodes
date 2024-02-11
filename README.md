@@ -7,9 +7,9 @@ cd custom_nodes
 git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ```
 ## VLM Nodes
-Utilizes ```llama-cpp-python``` for integration of LLaVa models. You can load and use any vlm with LLaVa models in GGUF format with this nodes.  
+Utilizes ```llama-cpp-python``` for integration of LLaVa models. You can load and use any VLM with LLaVa models in GGUF format with this nodes.  
 You need to download the model ```ggml-model-q4_k.gguf``` and it's clip projector ```mmproj-model-f16.gguf``` from this repositories (in the files and versions). ```python=>3.9``` is necessary. Put all of the files inside ```models/LLavacheckpoints```
-Note that every model's clip projector is different.
+Note that every **model's clip projector** is different!
 - [LlaVa 1.6 Mistral 7B](https://huggingface.co/cjpais/llava-1.6-mistral-7b-gguf/)
 - [Nous Hermes 2 Vision](https://huggingface.co/billborkowski/llava-NousResearch_Nous-Hermes-2-Vision-GGUF)
 - [LlaVa 1.5 7B](https://huggingface.co/mys/ggml_llava-v1.5-7b/)
@@ -18,9 +18,9 @@ Note that every model's clip projector is different.
 etc..
 
 ## Automatic Prompt Generation and Suggestion Nodes
-Get Keyword node: It can take LLava outputs and extract keywords from them.  
-LLava PromptGenerator node: It can create prompts given descriptions or keywords Using  (input prompt could be Get Keyword or LLava output directly).
-Suggester node: It can generate 5 different prompts based on the original prompt using consistent in the options or random prompts using random in the options.
+**Get Keyword** node: It can take LLava outputs and extract keywords from them.  
+**LLava PromptGenerator** node: It can create prompts given descriptions or keywords using  (input prompt could be Get Keyword or LLava output directly).
+**Suggester** node: It can generate 5 different prompts based on the original prompt using consistent in the options or random prompts using random in the options.
 Works best with LLava 1.5 and 1.6.
 
 Outputs are JSON files, you can see them as a text using JsonToText Node.
@@ -28,12 +28,14 @@ You can see any string output with ViewText Node
 You can set any string input using SimpleText Node
 
 ## LLM Prompt Generation nodes
-You can use any LLM in gguf format, you can use LLava models as an LLM also.   
+
+**LLM PromptGenerator** node: You can use any LLM in gguf format, you can use LLava models as an LLM also.   
 [Qwen 1.8B Stable Diffusion Prompt](https://huggingface.co/hahahafofo/Qwen-1_8B-Stable-Diffusion-Prompt-GGUF)  
 [IF prompt MKR](https://huggingface.co/impactframes/IFpromptMKR-7b-L2-gguf-q4_k_m)  
 This LLM's works best for now for prompt generation.
+You can chat with any LLM or VLM with **LLMSampler** node.
 
-You can use ChatGPT and DeepSeek API's to create prompts using PromptGenerator API node. https://platform.deepseek.com/ gives 10m free tokens.
+**API PromptGenerator** node: You can use ChatGPT and DeepSeek API's to create prompts. https://platform.deepseek.com/ gives 10m free tokens.
 - ChatGPT-4
 - ChatGPT-3.5
 - DeepSeek
