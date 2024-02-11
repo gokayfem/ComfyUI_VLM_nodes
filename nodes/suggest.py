@@ -25,10 +25,10 @@ class Analysis(BaseModel):
     """
     Represents entries about an analysis.
     """
-    main_character: str = Field(..., description="Description of the main objects of the analysis")
+    main_character: list[str] = Field(..., description="Description of the main objects of the analysis")
     artform: list[str]  = Field(..., description="List of Artforms of the analysis")
     photo_type: list[str]  = Field(..., description="List of Types of the photo used in the analysis")
-    color_with_objects: list[str]  = Field(..., description="List of Colors with objects of the analysis")
+    color_with_objects: list[str]  = Field(..., description="List of objects and their colors of the analysis")
     digital_artform: list[str]  = Field(..., description="List of Digital artforms of the analysis")
     background: list[str]  = Field(..., description="List of Background of the analysis") 
     lighting: list[str]  = Field(..., description="List of Lighting settings of the analysis.")
