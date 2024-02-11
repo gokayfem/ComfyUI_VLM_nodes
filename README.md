@@ -20,6 +20,7 @@ Note that every **model's clip projector** is different!
 etc..
 
 ## Automatic Prompt Generation and Suggestion Nodes
+Utilizes ```llama-cpp-agents``` for getting structured outputs.  
 **Get Keyword** node: It can take LLava outputs and extract keywords from them.    
 **LLava PromptGenerator** node: It can create prompts given descriptions or keywords using  (input prompt could be Get Keyword or LLava output directly).  
 **Suggester** node: It can generate 5 different prompts based on the original prompt using consistent in the options or random prompts using random in the options.  
