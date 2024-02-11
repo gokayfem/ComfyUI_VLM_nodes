@@ -1,0 +1,651 @@
+{
+  "last_node_id": 145,
+  "last_link_id": 235,
+  "nodes": [
+    {
+      "id": 90,
+      "type": "LoadImage",
+      "pos": [
+        -684,
+        696
+      ],
+      "size": {
+        "0": 315,
+        "1": 314.0000305175781
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            176
+          ],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "spartan_warrior_by_rylyn84_dfo1esx-pre (1).jpg",
+        "image"
+      ]
+    },
+    {
+      "id": 106,
+      "type": "LLavaSamplerSimple",
+      "pos": [
+        -314,
+        771
+      ],
+      "size": {
+        "0": 315,
+        "1": 98
+      },
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 176,
+          "slot_index": 0
+        },
+        {
+          "name": "model",
+          "type": "CUSTOM",
+          "link": 175
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 178,
+          "widget": {
+            "name": "prompt"
+          },
+          "slot_index": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            179,
+            235
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LLavaSamplerSimple"
+      },
+      "widgets_values": [
+        "",
+        0.15
+      ],
+      "color": "#322",
+      "bgcolor": "#533"
+    },
+    {
+      "id": 109,
+      "type": "KeywordExtraction",
+      "pos": [
+        77,
+        764
+      ],
+      "size": {
+        "0": 310.54718017578125,
+        "1": 98.95659637451172
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "CUSTOM",
+          "link": 185,
+          "slot_index": 0
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 179,
+          "widget": {
+            "name": "prompt"
+          },
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            223,
+            225
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KeywordExtraction"
+      },
+      "widgets_values": [
+        "",
+        0.8
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 135,
+      "type": "JsonToText",
+      "pos": [
+        860,
+        953
+      ],
+      "size": [
+        501.14657465820346,
+        288.81892265014676
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 222,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "JsonToText"
+      },
+      "widgets_values": [
+        "",
+        "A knight wearing heavy plate armor, holding a shield and a red cape, standing atop a rocky outcrop during a snowstorm.\n\nAn armored warrior standing on a rocky cliff overlooking a snow-covered landscape, wielding a shield and a red cape.\n\nA medieval soldier dressed in full plate armor, holding a shield and a red cape while standing on a rocky hillside amidst a snowstorm.\n\nA heavily armed knight standing on a rocky summit during a blizzard, wearing a red cape and holding a shield.\n\nA warrior in full plate armor, standing on a rocky ridge with a shield and a red cape, surveying a snow-covered valley below."
+      ]
+    },
+    {
+      "id": 134,
+      "type": "JsonToText",
+      "pos": [
+        417,
+        956
+      ],
+      "size": [
+        430.38062340087936,
+        280.48788203125014
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 228,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "JsonToText"
+      },
+      "widgets_values": [
+        "",
+        "A warrior in full armor standing on top of a rocky surface with a shield and a red cape in his hand, surrounded by snow."
+      ]
+    },
+    {
+      "id": 136,
+      "type": "JsonToText",
+      "pos": [
+        21,
+        957
+      ],
+      "size": [
+        376.5025665344242,
+        279.156930773926
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 223,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "JsonToText"
+      },
+      "widgets_values": [
+        "",
+        "main_character: warrior, knight, adventure, fantasy, Greek mythology\n\nartform: digital art, graphic design, illustration\n\nphoto_type: digital art, drawing, digital painting\n\ncolor_with_objects: red cape, shield, snow\n\ndigital_artform: digital painting, graphic design, digital art\n\nbackground: rocky surface, snow\n\nlighting: natural light, torch light"
+      ]
+    },
+    {
+      "id": 112,
+      "type": "Suggester",
+      "pos": [
+        877,
+        766
+      ],
+      "size": {
+        "0": 315,
+        "1": 102
+      },
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "CUSTOM",
+          "link": 189,
+          "slot_index": 0
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 227,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            222
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Suggester"
+      },
+      "widgets_values": [
+        "",
+        0.05,
+        true
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 145,
+      "type": "ViewText",
+      "pos": [
+        -340,
+        955
+      ],
+      "size": [
+        348.8505909057619,
+        284.156930773926
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 235,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ViewText"
+      },
+      "widgets_values": [
+        "",
+        " The image features a man dressed as a warrior or knight, wearing a red cape and holding a shield. He is standing on a rocky surface with snow around him, giving off a sense of adventure. The man appears to be a character from a fantasy world, possibly inspired by Greek mythology.\n\nIn addition to the main figure, there are several other people scattered throughout the scene, but they do not seem to be the main focus. The overall atmosphere suggests that the man is embarking on a journey or facing challenges in his quest for victory."
+      ]
+    },
+    {
+      "id": 108,
+      "type": "SimpleText",
+      "pos": [
+        -682,
+        1056
+      ],
+      "size": [
+        301.86761933898936,
+        176.1848901550295
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            178
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SimpleText"
+      },
+      "widgets_values": [
+        "describe this image in great detail, describe everything in the image"
+      ]
+    },
+    {
+      "id": 137,
+      "type": "LLavaPromptGenerator",
+      "pos": [
+        477,
+        779
+      ],
+      "size": {
+        "0": 315,
+        "1": 82
+      },
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "CUSTOM",
+          "link": 226
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 225,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            227,
+            228
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LLavaPromptGenerator"
+      },
+      "widgets_values": [
+        "",
+        0.05
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 104,
+      "type": "LlavaClipLoader",
+      "pos": [
+        -269,
+        513
+      ],
+      "size": {
+        "0": 315,
+        "1": 58
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "clip",
+          "type": "CUSTOM",
+          "links": [
+            173
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LlavaClipLoader"
+      },
+      "widgets_values": [
+        "mmproj-model-f16.gguf"
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 103,
+      "type": "LLava Loader Simple",
+      "pos": [
+        92,
+        481
+      ],
+      "size": {
+        "0": 315,
+        "1": 130
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CUSTOM",
+          "link": 173,
+          "slot_index": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "CUSTOM",
+          "links": [
+            175,
+            185,
+            189,
+            226
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LLava Loader Simple"
+      },
+      "widgets_values": [
+        "ggml-model-q4_k.gguf",
+        2048,
+        70,
+        4
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    }
+  ],
+  "links": [
+    [
+      173,
+      104,
+      0,
+      103,
+      0,
+      "CUSTOM"
+    ],
+    [
+      175,
+      103,
+      0,
+      106,
+      1,
+      "CUSTOM"
+    ],
+    [
+      176,
+      90,
+      0,
+      106,
+      0,
+      "IMAGE"
+    ],
+    [
+      178,
+      108,
+      0,
+      106,
+      2,
+      "STRING"
+    ],
+    [
+      179,
+      106,
+      0,
+      109,
+      1,
+      "STRING"
+    ],
+    [
+      185,
+      103,
+      0,
+      109,
+      0,
+      "CUSTOM"
+    ],
+    [
+      189,
+      103,
+      0,
+      112,
+      0,
+      "CUSTOM"
+    ],
+    [
+      222,
+      112,
+      0,
+      135,
+      0,
+      "STRING"
+    ],
+    [
+      223,
+      109,
+      0,
+      136,
+      0,
+      "STRING"
+    ],
+    [
+      225,
+      109,
+      0,
+      137,
+      1,
+      "STRING"
+    ],
+    [
+      226,
+      103,
+      0,
+      137,
+      0,
+      "CUSTOM"
+    ],
+    [
+      227,
+      137,
+      0,
+      112,
+      1,
+      "STRING"
+    ],
+    [
+      228,
+      137,
+      0,
+      134,
+      0,
+      "STRING"
+    ],
+    [
+      235,
+      106,
+      0,
+      145,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "groupNodes": {}
+  },
+  "version": 0.4
+}

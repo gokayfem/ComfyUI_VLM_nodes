@@ -1,0 +1,292 @@
+{
+  "last_node_id": 154,
+  "last_link_id": 243,
+  "nodes": [
+    {
+      "id": 150,
+      "type": "LoadImage",
+      "pos": [
+        -104,
+        636
+      ],
+      "size": [
+        315,
+        313.99999618530273
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            239
+          ],
+          "shape": 3
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "1233444ı.PNG",
+        "image"
+      ]
+    },
+    {
+      "id": 151,
+      "type": "LLava Loader Simple",
+      "pos": [
+        513,
+        508
+      ],
+      "size": {
+        "0": 315,
+        "1": 130
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CUSTOM",
+          "link": 241,
+          "slot_index": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "CUSTOM",
+          "links": [
+            240
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LLava Loader Simple"
+      },
+      "widgets_values": [
+        "ggml-model-q4_k.gguf",
+        2048,
+        27,
+        8
+      ]
+    },
+    {
+      "id": 149,
+      "type": "LLavaSamplerSimple",
+      "pos": [
+        859,
+        702
+      ],
+      "size": [
+        315,
+        102
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 239,
+          "slot_index": 0
+        },
+        {
+          "name": "model",
+          "type": "CUSTOM",
+          "link": 240,
+          "slot_index": 1
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 242,
+          "widget": {
+            "name": "prompt"
+          },
+          "slot_index": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            243
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LLavaSamplerSimple"
+      },
+      "widgets_values": [
+        "",
+        0.1
+      ]
+    },
+    {
+      "id": 153,
+      "type": "SimpleText",
+      "pos": [
+        287,
+        880
+      ],
+      "size": {
+        "0": 400,
+        "1": 200
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            242
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SimpleText"
+      },
+      "widgets_values": [
+        "describe this image"
+      ]
+    },
+    {
+      "id": 152,
+      "type": "LlavaClipLoader",
+      "pos": [
+        148,
+        509
+      ],
+      "size": {
+        "0": 315,
+        "1": 58
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "clip",
+          "type": "CUSTOM",
+          "links": [
+            241
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LlavaClipLoader"
+      },
+      "widgets_values": [
+        "mmproj-model-f16.gguf"
+      ]
+    },
+    {
+      "id": 154,
+      "type": "ViewText",
+      "pos": [
+        1218.715096679687,
+        732.3865441284178
+      ],
+      "size": [
+        366.63005908203104,
+        143.98996676635738
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 243,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ViewText"
+      },
+      "widgets_values": [
+        "",
+        " The image features a painting of a woman with long hair, likely inspired by the famous Mona Lisa portrait. She is wearing a dress and has her hands clasped in front of her chest. The painting captures her gaze towards the viewer, creating a sense of connection between the subject and the observer. The background of the painting includes a boat on water, adding depth to the scene."
+      ]
+    }
+  ],
+  "links": [
+    [
+      239,
+      150,
+      0,
+      149,
+      0,
+      "IMAGE"
+    ],
+    [
+      240,
+      151,
+      0,
+      149,
+      1,
+      "CUSTOM"
+    ],
+    [
+      241,
+      152,
+      0,
+      151,
+      0,
+      "CUSTOM"
+    ],
+    [
+      242,
+      153,
+      0,
+      149,
+      2,
+      "STRING"
+    ],
+    [
+      243,
+      149,
+      0,
+      154,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "groupNodes": {}
+  },
+  "version": 0.4
+}
