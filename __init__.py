@@ -28,15 +28,16 @@ check_requirements_installed(requirements_path)
 from .install_init import init, get_system_info, install_llama
 system_info = get_system_info()
 install_llama(system_info)
+llama_cpp_agent_path  = os.path.join(os.path.dirname(os.path.realpath(__file__)), "cpp_agent_req.txt")
+check_requirements_installed(llama_cpp_agent_path)
 init()
 
 node_list = [
     "moondream_script",
-    "prompter",
-    "joytag",
     "simpletext",
     "llavaloader",
     "suggest",
+    "joytag",
 ]
 
 NODE_CLASS_MAPPINGS = {}

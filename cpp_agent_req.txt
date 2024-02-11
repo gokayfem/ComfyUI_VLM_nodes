@@ -1,0 +1,5 @@
+llama-cpp-agent
+mkdocs
+mkdocs-material
+mkdocstrings[python]
+docstring-parser
