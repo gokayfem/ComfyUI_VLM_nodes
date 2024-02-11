@@ -29,7 +29,7 @@ Outputs are JSON looking texts, you can see them as a text using JsonToText Node
 You can see any string output with ViewText Node  
 You can set any string input using SimpleText Node  
 
-## LLM Prompt Generation nodes
+## LLM Prompt Generation from text nodes
 
 **LLM PromptGenerator** node: 
 [Qwen 1.8B Stable Diffusion Prompt](https://huggingface.co/hahahafofo/Qwen-1_8B-Stable-Diffusion-Prompt-GGUF)  
