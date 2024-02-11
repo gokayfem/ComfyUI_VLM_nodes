@@ -25,7 +25,7 @@ etc..
 **Suggester** node: It can generate 5 different prompts based on the original prompt using consistent in the options or random prompts using random in the options.  
 Works best with LLava 1.5 and 1.6.  
 
-Outputs are JSON files, you can see them as a text using JsonToText Node.  
+Outputs are JSON looking texts, you can see them as a text using JsonToText Node.  
 You can see any string output with ViewText Node  
 You can set any string input using SimpleText Node  
 
