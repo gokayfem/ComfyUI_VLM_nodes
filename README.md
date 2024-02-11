@@ -8,7 +8,7 @@ git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ```
 ## VLM Nodes
 Utilizes ```llama-cpp-python``` for integration of LLaVa models. You can load and use any VLM with LLaVa models in GGUF format with this nodes.   
-You need to download the model ```ggml-model-q4_k.gguf``` and it's clip projector ```mmproj-model-f16.gguf``` from this repositories (in the files and versions).  
+You need to download the model similar to ```ggml-model-q4_k.gguf``` and it's clip projector similar to ```mmproj-model-f16.gguf``` from this repositories (in the files and versions).  
 ```python=>3.9``` is necessary.  
 Put all of the files inside ```models/LLavacheckpoints```  
 Note that every **model's clip projector** is different!  
