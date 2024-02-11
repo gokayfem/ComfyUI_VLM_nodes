@@ -99,7 +99,7 @@ class PromptGenerateAPI:
 
     FUNCTION = "generate_prompt"
 
-    CATEGORY = "VLM Nodes/Prompt Generator"
+    CATEGORY = "VLM Nodes/LLM"
 
     def generate_prompt(self, model_name, chat_type, api_key, description, question):
 
