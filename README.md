@@ -35,7 +35,7 @@ You can set any string input using SimpleText Node
 [Qwen 1.8B Stable Diffusion Prompt](https://huggingface.co/hahahafofo/Qwen-1_8B-Stable-Diffusion-Prompt-GGUF)  
 [IF prompt MKR](https://huggingface.co/impactframes/IFpromptMKR-7b-L2-gguf-q4_k_m)  
 This LLM's works best for now for prompt generation.  
-**LLMSampler** node: You can chat with any LLM in gguf format, you can use LLava models as an LLM also using.  
+**LLMSampler** node: You can chat with any LLM in gguf format, you can use LLava models as an LLM also.  
 
 **API PromptGenerator** node: You can use ChatGPT and DeepSeek API's to create prompts. https://platform.deepseek.com/ gives 10m free tokens.
 - ChatGPT-4
