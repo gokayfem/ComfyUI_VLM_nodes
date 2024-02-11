@@ -37,7 +37,7 @@ class LLavaLoader:
     CATEGORY = "VLM Nodes/LLava"
     def load_llava_checkpoint(self, ckpt_name, max_ctx, gpu_layers, n_threads, clip ):
         ckpt_path = folder_paths.get_full_path("LLavacheckpoints", ckpt_name)
-        llm = Llama(model_path = ckpt_path, n_ctx = max_ctx, chat_handler=clip, n_gpu_layers=gpu_layers, n_threads=n_threads, logits_all=True, verbose=False) 
+        llm = Llama(model_path = ckpt_path, chat_handler=clip,offload_kqv=True, f16_kv=True, use_mlock=False, embedding=False, n_batch=1024, last_n_tokens_size=1024, verbose=True, seed=42, n_ctx = max_ctx, n_gpu_layers=gpu_layers, n_threads=n_threads, logits_all=True, echo=False) 
         return (llm, ) 
     
 class LlavaClipLoader:
@@ -67,7 +67,8 @@ class LLavaSamplerSimple:
             "required": {
                 "image": ("IMAGE",),
                 "prompt": ("STRING",{"forceInput": True} ),
-                "model": ("CUSTOM", {"default": ""}),              
+                "model": ("CUSTOM", {"default": ""}),
+                "temperature": ("FLOAT", {"default": 0.1, "min": 0.01, "max": 1.0, "step": 0.01}),              
             }
         }
 
@@ -75,7 +76,7 @@ class LLavaSamplerSimple:
     FUNCTION = "generate_text"
     CATEGORY = "VLM Nodes/LLava"
 
-    def generate_text(self, image, prompt, model):
+    def generate_text(self, image, prompt, model, temperature):
         
 
         # Assuming 'image' is a PyTorch tensor of shape [C, H, W]
@@ -105,7 +106,9 @@ class LLavaSamplerSimple:
                         {"type" : "text", "text": f"{prompt}"}
                     ]
                 }
-            ]
+                
+            ],
+            temperature = temperature,
         )
 
         return (f"{response['choices'][0]['message']['content']}", )
@@ -123,7 +126,7 @@ class LLavaSamplerAdvanced:
                 "prompt": ("STRING",{"forceInput": True, "default": ""}),
                 "model": ("CUSTOM", {"default": ""}),
                 "max_tokens": ("INT", {"default": 512, "min": 1, "max": 2048, "step": 1}),
-                "temperature": ("FLOAT", {"default": 0.2, "min": 0.01, "max": 1.0, "step": 0.01}),
+                "temperature": ("FLOAT", {"default": 0.1, "min": 0.01, "max": 1.0, "step": 0.01}),
                 "top_p": ("FLOAT", {"default": 0.95, "min": 0.1, "max": 1.0, "step": 0.01}),
                 "top_k": ("INT", {"default": 40, "step": 1}), 
                 "frequency_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),

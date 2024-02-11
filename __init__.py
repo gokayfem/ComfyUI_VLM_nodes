@@ -32,11 +32,10 @@ init()
 
 node_list = [
     "moondream_script",
-    "prompter",
-    "joytag",
     "simpletext",
     "llavaloader",
     "suggest",
+    "joytag",
 ]
 
 NODE_CLASS_MAPPINGS = {}

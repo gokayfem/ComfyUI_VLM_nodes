@@ -15,3 +15,8 @@ opencv-python
 scikit-build
 typing
 diskcache
+llama-cpp-agent
+mkdocs
+mkdocs-material
+mkdocstrings[python]
+docstring-parser
