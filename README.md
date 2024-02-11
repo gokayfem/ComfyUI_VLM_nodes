@@ -20,14 +20,14 @@ Note that every **model's clip projector** is different!
 etc..
 
 ## Automatic Prompt Generation and Suggestion Nodes
-**Get Keyword** node: It can take LLava outputs and extract keywords from them.  
-**LLava PromptGenerator** node: It can create prompts given descriptions or keywords using  (input prompt could be Get Keyword or LLava output directly).
-**Suggester** node: It can generate 5 different prompts based on the original prompt using consistent in the options or random prompts using random in the options.
-Works best with LLava 1.5 and 1.6.
+**Get Keyword** node: It can take LLava outputs and extract keywords from them.    
+**LLava PromptGenerator** node: It can create prompts given descriptions or keywords using  (input prompt could be Get Keyword or LLava output directly).  
+**Suggester** node: It can generate 5 different prompts based on the original prompt using consistent in the options or random prompts using random in the options.  
+Works best with LLava 1.5 and 1.6.  
 
-Outputs are JSON files, you can see them as a text using JsonToText Node.
-You can see any string output with ViewText Node
-You can set any string input using SimpleText Node
+Outputs are JSON files, you can see them as a text using JsonToText Node.  
+You can see any string output with ViewText Node  
+You can set any string input using SimpleText Node  
 
 ## LLM Prompt Generation nodes
 
