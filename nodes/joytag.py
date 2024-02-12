@@ -85,7 +85,7 @@ class Joytag:
 	CATEGORY = "VLM Nodes/JoyTag"
 
 	def tags(self, image, tag_number):
-		model, path = download_joytag()
+		model, path = download_joytag(use_local_dir=use_local_dir)
 
 		with open(Path(path) / 'top_tags.txt', 'r') as f:
 			top_tags = [line.strip() for line in f.readlines() if line.strip()]
