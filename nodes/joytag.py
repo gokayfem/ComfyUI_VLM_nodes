@@ -10,8 +10,15 @@ import os
 
 THRESHOLD = 0.4
 files_for_joytagger = os.path.join(os.path.dirname(os.path.realpath(__file__)), "files_for_joytagger")
-def download_joytag():	
-	path = snapshot_download("fancyfeast/joytag", local_dir_use_symlinks=False, local_dir=files_for_joytagger, force_download=False)	
+
+if os.path.exists(files_for_joytagger):
+  use_local_dir = True
+else:
+  use_local_dir = False
+	
+def download_joytag(use_local_dir=use_local_dir):	
+	path = snapshot_download("fancyfeast/joytag", local_dir_use_symlinks=False, local_dir=files_for_joytagger, force_download=False, local_files_only=use_local_dir)	
+	print(path)
 	model = Models.VisionModel.load_model(path)
 	model.eval()
 	model = model.to('cuda')
