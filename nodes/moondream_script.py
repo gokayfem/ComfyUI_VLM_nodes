@@ -14,10 +14,11 @@ else:
 
 
 output_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
+files_for_moondream = os.path.join(os.path.dirname(os.path.realpath(__file__)), "files_for_moondream")
 image_encoder_cache_path = os.path.join(output_directory, "image_encoder_cache")
 class MoonDream:
     def __init__(self):
-        self.model_path = snapshot_download("vikhyatk/moondream1", revision="5cd8d1ecd7e0d8d95222543e1960d340ddffbfef")
+        self.model_path = snapshot_download("vikhyatk/moondream1", revision="5cd8d1ecd7e0d8d95222543e1960d340ddffbfef", local_dir_use_symlinks=False, local_dir=files_for_moondream, force_download=False, local_files_only=True)
         self.vision_encoder = VisionEncoder(self.model_path)
         self.text_model = TextModel(self.model_path)
 
