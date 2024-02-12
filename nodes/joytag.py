@@ -6,16 +6,16 @@ import torch
 import torchvision.transforms.functional as TVF
 from huggingface_hub import snapshot_download
 from torchvision import transforms
+import os
 
-path = snapshot_download("fancyfeast/joytag")
 THRESHOLD = 0.4
-
-model = Models.VisionModel.load_model(path)
-model.eval()
-model = model.to('cuda')
-
-with open(Path(path) / 'top_tags.txt', 'r') as f:
-	top_tags = [line.strip() for line in f.readlines() if line.strip()]
+files_for_joytagger = os.path.join(os.path.dirname(os.path.realpath(__file__)), "files_for_joytagger")
+def download_joytag():	
+	path = snapshot_download("fancyfeast/joytag", local_dir_use_symlinks=False, local_dir=files_for_joytagger, force_download=False, local_files_only=True)	
+	model = Models.VisionModel.load_model(path)
+	model.eval()
+	model = model.to('cuda')
+	return model, path
 
 def prepare_image(image: Image.Image, target_size: int) -> torch.Tensor:
 	# Pad image to square
@@ -40,22 +40,7 @@ def prepare_image(image: Image.Image, target_size: int) -> torch.Tensor:
 	return image_tensor
 
 
-@torch.no_grad()
-def predict(image: Image.Image):
-	image_tensor = prepare_image(image, model.image_size)
-	batch = {
-		'image': image_tensor.unsqueeze(0).to('cuda'),
-	}
 
-	with torch.amp.autocast_mode.autocast('cuda', enabled=True):
-		preds = model(batch)
-		tag_preds = preds['tags'].sigmoid().cpu()
-	
-	scores = {top_tags[i]: tag_preds[0][i] for i in range(len(top_tags))}
-	predicted_tags = [tag for tag, score in scores.items() if score > THRESHOLD]
-	tag_string = ', '.join(predicted_tags)
-
-	return tag_string, scores
 
 # Extract and process the tags
 def process_tag(tag):
@@ -76,7 +61,7 @@ class Joytag:
 		return {
 			"required": {
 				"image": ("IMAGE",),
-				"top_tags": ("INT", {
+				"tag_number": ("INT", {
                     "default": 1, 
                     "min": 1, #Minimum value
                     "max": 100, #Maximum value
@@ -92,13 +77,33 @@ class Joytag:
 
 	CATEGORY = "VLM Nodes/JoyTag"
 
-	def tags(self, image, top_tags):
+	def tags(self, image, tag_number):
+		model, path = download_joytag()
+
+		with open(Path(path) / 'top_tags.txt', 'r') as f:
+			top_tags = [line.strip() for line in f.readlines() if line.strip()]
+		@torch.no_grad()
+		def predict(image: Image.Image):
+			image_tensor = prepare_image(image, model.image_size)
+			batch = {
+				'image': image_tensor.unsqueeze(0).to('cuda'),
+			}
+
+			with torch.amp.autocast_mode.autocast('cuda', enabled=True):
+				preds = model(batch)
+				tag_preds = preds['tags'].sigmoid().cpu()
+			
+			scores = {top_tags[i]: tag_preds[0][i] for i in range(len(top_tags))}
+			predicted_tags = [tag for tag, score in scores.items() if score > THRESHOLD]
+			tag_string = ', '.join(predicted_tags)
+
+			return tag_string, scores
 			
 		image = transforms.ToPILImage()(image[0].permute(2, 0, 1))
 		_, scores = predict(image)
 
 		# Get the top 50 tag and score pairs
-		top_tags_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:top_tags]
+		top_tags_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:tag_number]
 
 		# Extract the tags from the pairs
 		top_tags_processed = [process_tag(tag) for tag, _ in top_tags_scores]
