@@ -9,6 +9,7 @@ import json
 from openai import OpenAI
 from .prompts import system_msg_prompts
 from .prompts import system_msg_simple
+from typing import List
 
 supported_LLava_extensions = set(['.gguf'])
 
@@ -25,13 +26,13 @@ class Analysis(BaseModel):
     """
     Represents entries about an analysis.
     """
-    main_character: list[str] = Field(..., description="Description of the main objects of the analysis")
-    artform: list[str]  = Field(..., description="List of Artforms of the analysis")
-    photo_type: list[str]  = Field(..., description="List of Types of the photo used in the analysis")
-    color_with_objects: list[str]  = Field(..., description="List of objects and their colors of the analysis")
-    digital_artform: list[str]  = Field(..., description="List of Digital artforms of the analysis")
-    background: list[str]  = Field(..., description="List of Background of the analysis") 
-    lighting: list[str]  = Field(..., description="List of Lighting settings of the analysis.")
+    main_character: List[str] = Field(..., description="Description of the main objects of the analysis")
+    artform: List[str]  = Field(..., description="List of Artforms of the analysis")
+    photo_type: List[str]  = Field(..., description="List of Types of the photo used in the analysis")
+    color_with_objects: List[str]  = Field(..., description="List of objects and their colors of the analysis")
+    digital_artform: List[str]  = Field(..., description="List of Digital artforms of the analysis")
+    background: List[str]  = Field(..., description="List of Background of the analysis") 
+    lighting: List[str]  = Field(..., description="List of Lighting settings of the analysis.")
 
 class PromptGen(BaseModel):
     """
