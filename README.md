@@ -23,7 +23,7 @@ etc..
 **Get Keyword** node: It can take LLava outputs and extract keywords from them.    
 **LLava PromptGenerator** node: It can create prompts given descriptions or keywords using  (input prompt could be Get Keyword or LLava output directly).  
 **Suggester** node: It can generate 5 different prompts based on the original prompt using consistent in the options or random prompts using random in the options.  
-Works best with LLava 1.5 and 1.6.  
+Works best with **LLava 1.5** and **1.6**.  
 
 **Play with the ```temperature``` for creative or consistent results. Higher the temperature more creative are the results.**  
 
