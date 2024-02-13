@@ -26,6 +26,7 @@ etc..
 Works best with **LLava 1.5** and **1.6**.  
 
 **Play with the ```temperature``` for creative or consistent results. Higher the temperature more creative are the results.**  
+If you want to dive deep into [LLM Settings](https://www.promptingguide.ai/introduction/settings)  
 
 Outputs are JSON looking texts, you can see them as a text using JsonToText Node.  
 You can see any string output with ViewText Node  
