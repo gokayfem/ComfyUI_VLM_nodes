@@ -9,20 +9,28 @@ from torchvision import transforms
 import os
 
 THRESHOLD = 0.4
-files_for_joytagger = os.path.join(os.path.dirname(os.path.realpath(__file__)), "files_for_joytagger")
 
-if os.path.exists(files_for_joytagger):
-  use_local_dir = True
-else:
-  use_local_dir = False
-	
-def download_joytag(use_local_dir=use_local_dir):	
-	path = snapshot_download("fancyfeast/joytag", local_dir_use_symlinks=False, local_dir=files_for_joytagger, force_download=False, local_files_only=use_local_dir)	
-	print(path)
-	model = Models.VisionModel.load_model(path)
-	model.eval()
-	model = model.to('cuda')
-	return model, path
+# Define your local directory where you want to save the files
+files_for_joytagger = Path(__file__).resolve().parent / "files_for_joytagger"
+
+# Check if the directory exists, create if it doesn't (optional)
+files_for_joytagger.mkdir(parents=True, exist_ok=True)
+
+def download_joytag():
+    # Ensure the correct behavior based on the existence of the local directory
+    print(f"Target directory for download: {files_for_joytagger}")
+    
+    # Call snapshot_download with specified parameters
+    path = snapshot_download(
+        "fancyfeast/joytag",  # Example repo_id
+        local_dir=files_for_joytagger,
+        force_download=False,  # Set to True if you always want to download, regardless of local copy
+        local_files_only=False,  # Set to False to allow downloading if not available locally
+        local_dir_use_symlinks="auto"  # or set to True/False based on your symlink preference
+    )
+    print(f"Model path: {path}")
+    return path
+
 
 def prepare_image(image: Image.Image, target_size: int) -> torch.Tensor:
 	# Pad image to square
@@ -85,10 +93,13 @@ class Joytag:
 	CATEGORY = "VLM Nodes/JoyTag"
 
 	def tags(self, image, tag_number):
-		model, path = download_joytag(use_local_dir=use_local_dir)
-
+		path = download_joytag()
+		print(f"Model path: {path}")
+		model = Models.VisionModel.load_model(Path(path), device='cuda')
+		model.eval()
 		with open(Path(path) / 'top_tags.txt', 'r') as f:
 			top_tags = [line.strip() for line in f.readlines() if line.strip()]
+
 		@torch.no_grad()
 		def predict(image: Image.Image):
 			image_tensor = prepare_image(image, model.image_size)
