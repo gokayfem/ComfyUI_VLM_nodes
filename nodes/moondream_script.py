@@ -4,6 +4,7 @@ import torch
 import os
 import hashlib
 from torchvision import transforms
+from pathlib import Path
 
 if torch.cuda.is_available():
     DEVICE = "cuda"
@@ -14,11 +15,21 @@ else:
 
 
 output_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
-files_for_moondream = os.path.join(os.path.dirname(os.path.realpath(__file__)), "files_for_moondream")
+# Define your local directory where you want to save the files
+files_for_moondream = Path(__file__).resolve().parent / "files_for__moondream"
+
+# Check if the directory exists, create if it doesn't (optional)
+files_for_moondream.mkdir(parents=True, exist_ok=True)
 image_encoder_cache_path = os.path.join(output_directory, "image_encoder_cache")
 class MoonDream:
     def __init__(self):
-        self.model_path = snapshot_download("vikhyatk/moondream1", revision="5cd8d1ecd7e0d8d95222543e1960d340ddffbfef", local_dir_use_symlinks=False, local_dir=files_for_moondream, force_download=False)
+        self.model_path = snapshot_download("vikhyatk/moondream1", 
+                                            revision="5cd8d1ecd7e0d8d95222543e1960d340ddffbfef", 
+                                            local_dir=files_for_moondream,
+                                            force_download=False,  # Set to True if you always want to download, regardless of local copy
+                                            local_files_only=False,  # Set to False to allow downloading if not available locally
+                                            local_dir_use_symlinks="auto"  # or set to True/False based on your symlink preference
+                                        )
         self.vision_encoder = VisionEncoder(self.model_path)
         self.text_model = TextModel(self.model_path)
 
