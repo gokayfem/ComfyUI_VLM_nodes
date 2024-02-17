@@ -78,7 +78,7 @@ def package_is_installed(package_name):
     return importlib.util.find_spec(package_name) is not None
 
 def install_llama(system_info):
-    imported = package_is_installed("llama-cpp-python")
+    imported = package_is_installed("llama-cpp-python") or package_is_installed("llama_cpp")
     if imported:
         print("llama-cpp installed")
     else:
