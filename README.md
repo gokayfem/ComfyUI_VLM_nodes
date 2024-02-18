@@ -1,8 +1,7 @@
-# 👁️ VLM_nodes 
 <div align="center">
-  <h1>🗣️ Large Language Model Course</h1>
+  <h1>VLM Nodes</h1>
   <p align="center">
-    **Examples below!**  •  
+    <b>Examples below!</b>b>  •  
     📙 <a href="[https://twitter.com/maximelabonne](https://github.com/gokayfem/Awesome-VLM-Architectures)">Visit My Repository for learning more about VLMs</a> 
   </p>
 </div>
