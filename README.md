@@ -1,7 +1,7 @@
 <div align="center">
   <h1>VLM Nodes</h1>
   <p align="center">
-    <b>Examples below!</b>b>  •  
+    <b>Examples below!</b>  •  
     📙 <a href="[https://twitter.com/maximelabonne](https://github.com/gokayfem/Awesome-VLM-Architectures)">Visit My Repository for learning more about VLMs</a> 
   </p>
 </div>
