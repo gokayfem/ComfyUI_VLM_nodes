@@ -1,5 +1,12 @@
 # 👁️ VLM_nodes 
-Examples below!
+<div align="center">
+  <h1>🗣️ Large Language Model Course</h1>
+  <p align="center">
+    **Examples below!**  •  
+    📙 <a href="[https://twitter.com/maximelabonne](https://github.com/gokayfem/Awesome-VLM-Architectures)">Visit My Repository for learning more about VLMs</a> 
+  </p>
+</div>
+<br/>
 
 ## Usage
 ```
