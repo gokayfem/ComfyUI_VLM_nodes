@@ -2,7 +2,7 @@
   <h1> 👁️ VLM Nodes</h1>
   <p align="center">
     <b>Examples below!</b>  •  
-    📙 <a href="https://github.com/gokayfem/Awesome-VLM-Architectures">Visit My Repository for learning more about VLMs</a> 
+    📙 <a href="https://github.com/gokayfem/Awesome-VLM-Architectures">Visit my repo for learning more about VLMs</a> 
   </p>
 </div>
 <br/>
