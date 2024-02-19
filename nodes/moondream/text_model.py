@@ -21,7 +21,7 @@ class TextModel:
         self.model = load_checkpoint_and_dispatch(
             self.model,
             f"{model_path}/text_model.pt",
-            device_map={"": "cpu"},
+            device_map="auto",
         )
 
         self.text_emb = self.model.get_input_embeddings()
