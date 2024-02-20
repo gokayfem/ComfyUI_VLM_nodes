@@ -24,6 +24,10 @@ Note that every **model's clip projector** is different!
 - [LlaVa 1.5 13B](https://huggingface.co/mys/ggml_llava-v1.5-13b)
 - [BakLLaVa](https://huggingface.co/mys/ggml_bakllava-1)  
 etc..
+## InternLM-XComposer Node
+Utilizes ```AutoGPTQ``` for integration of InternLM-XComposer Model. It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_internlm```.
+This is one of the best models for visual perception.
+- [InternLM-XComposer2](https://huggingface.co/internlm/internlm-xcomposer2-vl-7b-4bit)
 
 ## Automatic Prompt Generation and Suggestion Nodes
 **Get Keyword** node: It can take LLava outputs and extract keywords from them.    
