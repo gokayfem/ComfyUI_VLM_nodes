@@ -132,7 +132,7 @@ class LLavaSamplerAdvanced:
                 "frequency_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
                 "presence_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
                 "repeat_penalty": ("FLOAT", {"default": 1.1, "step": 0.01}),
-                             
+                "seed": ("INT", {"default": 42, "step":1})                             
             }
         }
 
@@ -140,9 +140,8 @@ class LLavaSamplerAdvanced:
     FUNCTION = "generate_text_advanced"
     CATEGORY = "VLM Nodes/LLava"
 
-    def generate_text_advanced(self, image, system_msg, prompt, model, max_tokens, temperature, top_p, frequency_penalty, presence_penalty, repeat_penalty, top_k):
+    def generate_text_advanced(self, image, system_msg, prompt, model, max_tokens, temperature, top_p, frequency_penalty, presence_penalty, repeat_penalty, top_k,seed):
         
-
         # Assuming 'image' is a PyTorch tensor of shape [C, H, W]
         # Convert the PyTorch tensor to a PIL image
         pil_image = ToPILImage()(image[0].permute(2, 0, 1))
@@ -178,7 +177,8 @@ class LLavaSamplerAdvanced:
             top_k = top_k,
             frequency_penalty = frequency_penalty,
             presence_penalty = presence_penalty,
-            repeat_penalty = repeat_penalty
+            repeat_penalty = repeat_penalty,
+            seed=seed
 
         )
 
