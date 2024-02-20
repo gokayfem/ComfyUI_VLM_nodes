@@ -18,4 +18,4 @@ diskcache
 pytz
 six
 cffi
-python-dateutil
+python-dateutil=>2.7.0
