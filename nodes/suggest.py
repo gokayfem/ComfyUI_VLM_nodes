@@ -221,7 +221,7 @@ class LLMSampler:
                 "frequency_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
                 "presence_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
                 "repeat_penalty": ("FLOAT", {"default": 1.1, "step": 0.01}),
-		"seed": ("INT", {"default": 42, "step": 1}
+		"seed": ("INT", {"default": 42, "step": 1})
             }
         }
 
