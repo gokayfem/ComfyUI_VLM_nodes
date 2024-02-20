@@ -63,6 +63,9 @@ It uses the Danbooru tagging schema, but works across a wide range of images, fr
 ## Example LLaVa Nodes
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/c30b9599-fa14-4f1a-b023-65a3697892f2)
 
+## Example InternLM-XComposer Node
+![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/ff051e6c-5ad8-41fe-9d77-fdeea6eb2c5c)
+
 ## Example Using Automatic Prompt Generation
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/bff68f6f-5f77-4cd6-ade3-6810a32500bf)
 
