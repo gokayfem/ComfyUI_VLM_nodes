@@ -220,7 +220,8 @@ class LLMSampler:
                 "top_k": ("INT", {"default": 40, "step": 1}), 
                 "frequency_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
                 "presence_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "repeat_penalty": ("FLOAT", {"default": 1.1, "step": 0.01}),                             
+                "repeat_penalty": ("FLOAT", {"default": 1.1, "step": 0.01}),
+		"seed": ("INT", {"default": 42, "step": 1}
             }
         }
 
@@ -228,7 +229,7 @@ class LLMSampler:
     FUNCTION = "generate_text_advanced"
     CATEGORY = "VLM Nodes/LLM"
 
-    def generate_text_advanced(self, system_msg, prompt, model, max_tokens, temperature, top_p, top_k, frequency_penalty, presence_penalty, repeat_penalty):
+    def generate_text_advanced(self, system_msg, prompt, model, max_tokens, temperature, top_p, top_k, frequency_penalty, presence_penalty, repeat_penalty, seed):
         llm = model
         response = llm.create_chat_completion(messages=[
             {"role": "system", "content": system_msg},
@@ -241,6 +242,7 @@ class LLMSampler:
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
             repeat_penalty=repeat_penalty,
+	    seed=seed
             
         )
         return (f"{response['choices'][0]['message']['content']}", )
