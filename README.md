@@ -25,7 +25,7 @@ Note that every **model's clip projector** is different!
 - [BakLLaVa](https://huggingface.co/mys/ggml_bakllava-1)  
 etc..
 ## InternLM-XComposer Node
-Utilizes ```AutoGPTQ``` for integration of InternLM-XComposer Model. It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_internlm```.
+Utilizes ```AutoGPTQ``` for integration of InternLM-XComposer2-VL Model. It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_internlm```.
 This is one of the best models for visual perception.   
 **Important Note : This model is heavy.**
 - [InternLM-XComposer2](https://huggingface.co/internlm/internlm-xcomposer2-vl-7b-4bit)
