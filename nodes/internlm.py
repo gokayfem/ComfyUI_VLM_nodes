@@ -1,4 +1,3 @@
-from .joytagger import Models
 from PIL import Image
 import torch.amp.autocast_mode
 from pathlib import Path
