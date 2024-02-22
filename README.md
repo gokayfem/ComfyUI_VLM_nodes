@@ -65,6 +65,11 @@ UForm-Gen2 is an extremely fast small generative vision-language model primarily
 [UForm-Gen2 Qwen](https://huggingface.co/unum-cloud/uform-gen2-qwen-500m)  
 It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_uform_gen2_qwen```
 
+## Kosmos-2 Node
+Kosmos-2: Grounding Multimodal Large Language Models to the World.
+[Kosmos-2](https://huggingface.co/microsoft/kosmos-2-patch14-224)
+It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_kosmos2```
+
 ## moondream Node
 This node is designed to work with the Moondream model, a powerful small vision language model built by @vikhyatk using SigLIP, Phi-1.5, and the LLaVa training dataset. 
 The model boasts 1.6 billion parameters and is made available for research purposes only; commercial use is not allowed.
@@ -88,6 +93,9 @@ It will automatically download the necessary files into ```custom_nodes/ComfyUI_
 
 ## Example UForm-Gen2 Qwen Node
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/4531f8f2-94af-498f-b364-f9e07c826eb5)
+
+# Example Kosmos-2 Node
+![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/a28035dc-a0c4-4c4f-9c87-e8b284c3997d)
 
 ## Example moondream
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/79ea61e9-60c6-406d-9e83-0d16128e30a6)
