@@ -39,6 +39,7 @@ node_list = [
     "suggest",
     "joytag",
     "uform",
+    "kosmos2",
 ]
 
 NODE_CLASS_MAPPINGS = {}
