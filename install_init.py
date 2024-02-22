@@ -49,7 +49,7 @@ def get_system_info():
     
     # Check for AVX2 support
     if importlib.util.find_spec('cpuinfo'):        
-        system_info['avx2'] = 'avx2' in cpuinfo.get_cpu_info()['flags']
+        system_info['avx2'] = 'avx2' in cpuinfo.get_cpu_info().get('flags',[])
 
     # Determine the platform tag
     if importlib.util.find_spec('packaging.tags'):        
@@ -78,19 +78,23 @@ def package_is_installed(package_name):
     return importlib.util.find_spec(package_name) is not None
 
 def install_llama(system_info):
+    """Install llama-cpp-python with consideration for macOS or other OS specifics."""
     imported = package_is_installed("llama-cpp-python") or package_is_installed("llama_cpp")
-    if imported:
-        print("llama-cpp installed")
-    else:
-        lcpp_version = latest_lamacpp()
-        base_url = "https://github.com/abetlen/llama-cpp-python/releases/download/v"
-        avx = "AVX2" if system_info['avx2'] else "AVX"
-        if system_info['gpu']:
-            cuda_version = system_info['cuda_version']
-            custom_command = f"--force-reinstall --no-deps --index-url=https://jllllll.github.io/llama-cpp-python-cuBLAS-wheels/{avx}/{cuda_version}"
+    if not imported:
+        if system_info['os'] == 'Darwin':  # macOS
+            install_package("llama-cpp-python")
         else:
-            custom_command = f"{base_url}{lcpp_version}/llama_cpp_python-{lcpp_version}-{system_info['platform_tag']}.whl"
-        install_package("llama-cpp-python", custom_command=custom_command)
+            lcpp_version = latest_lamacpp()
+            if system_info['gpu']:
+                cuda_version = system_info['cuda_version']
+                avx = "AVX2" if system_info['avx2'] else "AVX"
+                custom_command = f"--force-reinstall --no-deps --index-url=https://jllllll.github.io/llama-cpp-python-cuBLAS-wheels/{avx}/{cuda_version}"
+            else:
+                base_url = "https://github.com/abetlen/llama-cpp-python/releases/download/v"
+                custom_command = f"{base_url}{lcpp_version}/llama_cpp_python-{lcpp_version}-{system_info['platform_tag']}.whl"
+            install_package("llama-cpp-python", custom_command=custom_command)
+    else:
+        print("llama-cpp-python is already installed.")
 
 config = None
 
