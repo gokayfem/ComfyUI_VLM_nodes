@@ -8,10 +8,13 @@
 <br/>
 
 ## Usage
+- For **Windows** and **Linux**
 ```
 cd custom_nodes
 git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ```
+- For **macOS** go to the ```mac``` branch. Download the repository as zip and unzip it to the ```custom_nodes``` folder.
+
 ## VLM Nodes
 Utilizes ```llama-cpp-python``` for integration of LLaVa models. You can load and use any VLM with LLaVa models in GGUF format with this nodes.   
 You need to download the model similar to ```ggml-model-q4_k.gguf``` and it's clip projector similar to ```mmproj-model-f16.gguf``` from this repositories (in the files and versions).  
@@ -24,17 +27,12 @@ Note that every **model's clip projector** is different!
 - [LlaVa 1.5 13B](https://huggingface.co/mys/ggml_llava-v1.5-13b)
 - [BakLLaVa](https://huggingface.co/mys/ggml_bakllava-1)  
 etc..
-## InternLM-XComposer2-VL Node
-Utilizes ```AutoGPTQ``` for integration of InternLM-XComposer2-VL Model. It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_internlm```.
-This is one of the best models for visual perception.   
-**Important Note : This model is heavy.**
-- [InternLM-XComposer2](https://huggingface.co/internlm/internlm-xcomposer2-vl-7b-4bit)
 
 ## Automatic Prompt Generation and Suggestion Nodes
 **Get Keyword** node: It can take LLava outputs and extract keywords from them.    
 **LLava PromptGenerator** node: It can create prompts given descriptions or keywords using  (input prompt could be Get Keyword or LLava output directly).  
 **Suggester** node: It can generate 5 different prompts based on the original prompt using consistent in the options or random prompts using random in the options.  
-Works best with **LLava 1.5** and **1.6**.  
+- Works best with **LLava 1.5** and **1.6**.  
 
 **Play with the ```temperature``` for creative or consistent results. Higher the temperature more creative are the results.**  
 If you want to dive deep into [LLM Settings](https://www.promptingguide.ai/introduction/settings)  
@@ -57,10 +55,16 @@ This LLM's works best for now for prompt generation.
 - DeepSeek
 You can use them for simple chat also there is an option in the node.
 
+## UForm-Gen2 Qwen Node
+UForm-Gen2 is an extremely fast small generative vision-language model primarily designed for Image Captioning and Visual Question Answering.  
+[UForm-Gen2 Qwen](https://huggingface.co/unum-cloud/uform-gen2-qwen-500m)  
+It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_uform_gen2_qwen```
+
 ## moondream Node
 This node is designed to work with the Moondream model, a powerful small vision language model built by @vikhyatk using SigLIP, Phi-1.5, and the LLaVa training dataset. 
 The model boasts 1.6 billion parameters and is made available for research purposes only; commercial use is not allowed.
 It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for__moondream```
+
 ## JoyTag Node
 @fpgamine's JoyTag is a state of the art AI vision model for tagging images, with a focus on sex positivity and inclusivity.  
 It uses the Danbooru tagging schema, but works across a wide range of images, from hand drawn to photographic.
@@ -68,14 +72,14 @@ It will automatically download the necessary files into ```custom_nodes/ComfyUI_
 ## Example LLaVa Nodes
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/c30b9599-fa14-4f1a-b023-65a3697892f2)
 
-## Example InternLM-XComposer Node
-![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/ff051e6c-5ad8-41fe-9d77-fdeea6eb2c5c)
-
 ## Example Using Automatic Prompt Generation
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/bff68f6f-5f77-4cd6-ade3-6810a32500bf)
 
 ## LLM Nodes
 ![VLM + LLM](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/4897d11a-e818-4d7e-bf04-0cd7dd4102dc)
+
+## Example UForm-Gen2 Qwen Node
+![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/4531f8f2-94af-498f-b364-f9e07c826eb5)
 
 ## Example moondream
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/79ea61e9-60c6-406d-9e83-0d16128e30a6)
