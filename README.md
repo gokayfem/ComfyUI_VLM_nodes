@@ -60,10 +60,16 @@ This LLM's works best for now for prompt generation.
 - DeepSeek
 You can use them for simple chat also there is an option in the node.
 
+## UForm-Gen2 Qwen Node
+UForm-Gen2 is an extremely fast small generative vision-language model primarily designed for Image Captioning and Visual Question Answering.
+[UForm-Gen2 Qwen](https://huggingface.co/unum-cloud/uform-gen2-qwen-500m)
+It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_uform_gen2_qwen```
+
 ## moondream Node
 This node is designed to work with the Moondream model, a powerful small vision language model built by @vikhyatk using SigLIP, Phi-1.5, and the LLaVa training dataset. 
 The model boasts 1.6 billion parameters and is made available for research purposes only; commercial use is not allowed.
 It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for__moondream```
+
 ## JoyTag Node
 @fpgamine's JoyTag is a state of the art AI vision model for tagging images, with a focus on sex positivity and inclusivity.  
 It uses the Danbooru tagging schema, but works across a wide range of images, from hand drawn to photographic.
@@ -79,6 +85,9 @@ It will automatically download the necessary files into ```custom_nodes/ComfyUI_
 
 ## LLM Nodes
 ![VLM + LLM](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/4897d11a-e818-4d7e-bf04-0cd7dd4102dc)
+
+## Example UForm-Gen2 Qwen Node
+![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/4531f8f2-94af-498f-b364-f9e07c826eb5)
 
 ## Example moondream
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/79ea61e9-60c6-406d-9e83-0d16128e30a6)
