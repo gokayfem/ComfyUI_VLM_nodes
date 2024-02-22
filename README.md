@@ -61,8 +61,8 @@ This LLM's works best for now for prompt generation.
 You can use them for simple chat also there is an option in the node.
 
 ## UForm-Gen2 Qwen Node
-UForm-Gen2 is an extremely fast small generative vision-language model primarily designed for Image Captioning and Visual Question Answering.
-[UForm-Gen2 Qwen](https://huggingface.co/unum-cloud/uform-gen2-qwen-500m)
+UForm-Gen2 is an extremely fast small generative vision-language model primarily designed for Image Captioning and Visual Question Answering.  
+[UForm-Gen2 Qwen](https://huggingface.co/unum-cloud/uform-gen2-qwen-500m)  
 It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_uform_gen2_qwen```
 
 ## moondream Node
