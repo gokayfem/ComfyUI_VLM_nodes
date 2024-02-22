@@ -210,11 +210,12 @@ class FastCLIPAttention2(nn.Module):
 		k_states = k_states.view(bsz, src_len, self.num_heads, self.head_dim).transpose(1, 2)  # (bsz, num_heads, src_len, head_dim)
 		v_states = v_states.view(bsz, src_len, self.num_heads, self.head_dim).transpose(1, 2)  # (bsz, num_heads, src_len, head_dim)
 
-		# Performs scale of query_states, attention, and softmax
-		with torch.backends.cuda.sdp_kernel(enable_math=False):
-			x = F.scaled_dot_product_attention(q_states, k_states, v_states)   # (bsz, num_heads, tgt_len, head_dim)
-			x = x.transpose(1, 2).contiguous().view(bsz, tgt_len, embed_dim)   # (bsz, tgt_len, embed_dim)
-		
+		if torch.cuda.is_available():
+			with torch.backends.cuda.sdp_kernel(enable_math=False):
+				pass
+		x = F.scaled_dot_product_attention(q_states, k_states, v_states)   # (bsz, num_heads, tgt_len, head_dim)
+		x = x.transpose(1, 2).contiguous().view(bsz, tgt_len, embed_dim)   # (bsz, tgt_len, embed_dim)
+
 		# Projection
 		x = self.out_proj(x)  # (bsz, tgt_len, out_dim)
 
@@ -865,9 +866,12 @@ class ViTBlock(nn.Module):
 		k_states = qkv_states[1].view(bsz, src_len, self.num_heads, embed_dim // self.num_heads).transpose(1, 2)  # (bsz, num_heads, src_len, embed_dim // num_heads)
 		v_states = qkv_states[2].view(bsz, src_len, self.num_heads, embed_dim // self.num_heads).transpose(1, 2)  # (bsz, num_heads, src_len, embed_dim // num_heads)
 
-		with torch.backends.cuda.sdp_kernel(enable_math=False):
-			out = F.scaled_dot_product_attention(q_states, k_states, v_states)   # (bsz, num_heads, tgt_len, head_dim)
-			out = out.transpose(1, 2).contiguous().view(bsz, src_len, embed_dim)   # (bsz, tgt_len, embed_dim)
+		if torch.cuda.is_available():
+			with torch.backends.cuda.sdp_kernel(enable_math=False):
+				pass
+
+		out = F.scaled_dot_product_attention(q_states, k_states, v_states)   # (bsz, num_heads, tgt_len, head_dim)
+		out = out.transpose(1, 2).contiguous().view(bsz, src_len, embed_dim)   # (bsz, tgt_len, embed_dim)
 		
 		out = self.out_proj(out)
 

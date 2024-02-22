@@ -8,6 +8,11 @@ from huggingface_hub import snapshot_download
 from torchvision import transforms
 import os
 
+if torch.cuda.is_available():
+    DEVICE = "cuda"
+else:
+    DEVICE = "cpu"
+
 THRESHOLD = 0.4
 
 # Define your local directory where you want to save the files
@@ -95,7 +100,7 @@ class Joytag:
 	def tags(self, image, tag_number):
 		path = download_joytag()
 		print(f"Model path: {path}")
-		model = Models.VisionModel.load_model(Path(path), device='cuda')
+		model = Models.VisionModel.load_model(Path(path), device=DEVICE)
 		model.eval()
 		with open(Path(path) / 'top_tags.txt', 'r') as f:
 			top_tags = [line.strip() for line in f.readlines() if line.strip()]
@@ -104,10 +109,10 @@ class Joytag:
 		def predict(image: Image.Image):
 			image_tensor = prepare_image(image, model.image_size)
 			batch = {
-				'image': image_tensor.unsqueeze(0).to('cuda'),
+				'image': image_tensor.unsqueeze(0).to(DEVICE),
 			}
 
-			with torch.amp.autocast_mode.autocast('cuda', enabled=True):
+			with torch.amp.autocast_mode.autocast(DEVICE, enabled=True):
 				preds = model(batch)
 				tag_preds = preds['tags'].sigmoid().cpu()
 			
