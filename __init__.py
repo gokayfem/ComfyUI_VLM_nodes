@@ -40,6 +40,7 @@ node_list = [
     "suggest",
     "joytag",
     "internlm",
+    "uform",
 ]
 
 NODE_CLASS_MAPPINGS = {}
