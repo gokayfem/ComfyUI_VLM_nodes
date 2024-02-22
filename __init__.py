@@ -38,6 +38,7 @@ node_list = [
     "llavaloader",
     "suggest",
     "joytag",
+    "uform",
 ]
 
 NODE_CLASS_MAPPINGS = {}
