@@ -12,6 +12,8 @@
 cd custom_nodes
 git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ```
+- For **macOS** users go to the ```mac``` branch. Download the repository as zip and unzip it to the ```custom_nodes``` folder.
+
 ## VLM Nodes
 Utilizes ```llama-cpp-python``` for integration of LLaVa models. You can load and use any VLM with LLaVa models in GGUF format with this nodes.   
 You need to download the model similar to ```ggml-model-q4_k.gguf``` and it's clip projector similar to ```mmproj-model-f16.gguf``` from this repositories (in the files and versions).  
