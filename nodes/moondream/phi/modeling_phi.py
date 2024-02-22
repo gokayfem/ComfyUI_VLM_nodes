@@ -453,14 +453,16 @@ class CrossAttention(nn.Module):
         scores = torch.einsum("bthd,bshd->bhts", q, k * softmax_scale)
 
         if key_padding_mask is not None:
+            # Ensure key_padding_mask has the expected size [batch_size, seqlen_k]
+            assert key_padding_mask.size(1) == seqlen_k, f"key_padding_mask second dimension must match seqlen_k: expected {seqlen_k}, got {key_padding_mask.size(1)}"
+            
             padding_mask = torch.full(
                 (batch_size, seqlen_k),
                 -10000.0,
                 dtype=scores.dtype,
                 device=scores.device,
             )
-            padding_mask.masked_fill_(key_padding_mask, 0.0)
-
+            padding_mask = padding_mask.masked_fill(key_padding_mask, 0.0)
             scores = scores + rearrange(padding_mask, "b s -> b 1 1 s")
 
         if causal:
