@@ -79,6 +79,11 @@ It will automatically download the necessary files into ```custom_nodes/ComfyUI_
 @fpgamine's JoyTag is a state of the art AI vision model for tagging images, with a focus on sex positivity and inclusivity.  
 It uses the Danbooru tagging schema, but works across a wide range of images, from hand drawn to photographic.
 It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_joytagger```
+
+## Acknowledgements
+
+ - [JAGS](https://github.com/jags111)
+
 ## Example LLaVa Nodes
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/c30b9599-fa14-4f1a-b023-65a3697892f2)
 
