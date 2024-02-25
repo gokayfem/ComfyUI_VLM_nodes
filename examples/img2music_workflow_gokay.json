@@ -1,0 +1,690 @@
+{
+  "last_node_id": 43,
+  "last_link_id": 54,
+  "nodes": [
+    {
+      "id": 31,
+      "type": "LlavaClipLoader",
+      "pos": [
+        439.6340175903321,
+        172.3240056098938
+      ],
+      "size": {
+        "0": 315,
+        "1": 58
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "clip",
+          "type": "CUSTOM",
+          "links": [
+            37
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LlavaClipLoader"
+      },
+      "widgets_values": [
+        "mistrallava16clip.gguf"
+      ]
+    },
+    {
+      "id": 35,
+      "type": "SimpleText",
+      "pos": [
+        1145.0176354455555,
+        158.27893214202888
+      ],
+      "size": {
+        "0": 378.79046630859375,
+        "1": 186.27911376953125
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            41
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SimpleText"
+      },
+      "widgets_values": [
+        "You are an advanced AI that shortens descriptions into sentences.\n\nExample 1: Birds singing sweetly in a blooming garden\nExample 2: A modern synthesizer creating futuristic soundscapes\nExample 3: The vibrant beat of Brazilian samba drums"
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 32,
+      "type": "SimpleText",
+      "pos": [
+        439.6340175903321,
+        452.3240056098937
+      ],
+      "size": {
+        "0": 318.79754638671875,
+        "1": 82.05603790283203
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            38
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SimpleText"
+      },
+      "widgets_values": [
+        "describe this image in short, concisely"
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 38,
+      "type": "SimpleText",
+      "pos": [
+        647.6433994140625,
+        1010.9179632824712
+      ],
+      "size": {
+        "0": 318.79754638671875,
+        "1": 82.05603790283203
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            45
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SimpleText"
+      },
+      "widgets_values": [
+        "Low quality, average quality."
+      ],
+      "color": "#322",
+      "bgcolor": "#533"
+    },
+    {
+      "id": 29,
+      "type": "LLavaSamplerSimple",
+      "pos": [
+        769.6340175903323,
+        182.3240056098938
+      ],
+      "size": {
+        "0": 315,
+        "1": 102
+      },
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 39,
+          "slot_index": 0
+        },
+        {
+          "name": "model",
+          "type": "CUSTOM",
+          "link": 36,
+          "slot_index": 1
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 38,
+          "widget": {
+            "name": "prompt"
+          },
+          "slot_index": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            42,
+            43
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LLavaSamplerSimple"
+      },
+      "widgets_values": [
+        "",
+        0.1
+      ]
+    },
+    {
+      "id": 36,
+      "type": "ViewText",
+      "pos": [
+        774,
+        325
+      ],
+      "size": {
+        "0": 303.2503967285156,
+        "1": 156.48916625976562
+      },
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 43,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ViewText"
+      },
+      "widgets_values": [
+        "",
+        " The image shows a group of dancers performing on stage. They are dressed in colorful costumes with vibrant patterns and shades of green, yellow, and pink. The dancers appear to be in motion, suggesting they are dancing. The lighting is dim, which highlights the performers and creates a dramatic atmosphere. There is no visible text or branding in the image. The style of the image is a candid photograph capturing a live performance. "
+      ]
+    },
+    {
+      "id": 30,
+      "type": "LLava Loader Simple",
+      "pos": [
+        439.6340175903321,
+        272.3240056098937
+      ],
+      "size": {
+        "0": 315,
+        "1": 130
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CUSTOM",
+          "link": 37,
+          "slot_index": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "CUSTOM",
+          "links": [
+            36,
+            40
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LLava Loader Simple"
+      },
+      "widgets_values": [
+        "llava-v1.6-mistral-7b.Q5_K_M.gguf",
+        2048,
+        100,
+        2
+      ]
+    },
+    {
+      "id": 33,
+      "type": "LoadImage",
+      "pos": [
+        100,
+        172
+      ],
+      "size": {
+        "0": 328.0104675292969,
+        "1": 361.09918212890625
+      },
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            39
+          ],
+          "shape": 3
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "412342132.PNG",
+        "image"
+      ]
+    },
+    {
+      "id": 34,
+      "type": "LLMSampler",
+      "pos": [
+        1536,
+        193
+      ],
+      "size": {
+        "0": 315,
+        "1": 298
+      },
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "CUSTOM",
+          "link": 40,
+          "slot_index": 0
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 42,
+          "widget": {
+            "name": "prompt"
+          },
+          "slot_index": 1
+        },
+        {
+          "name": "system_msg",
+          "type": "STRING",
+          "link": 41,
+          "widget": {
+            "name": "system_msg"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            44,
+            48
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LLMSampler"
+      },
+      "widgets_values": [
+        "You are an assistant who perfectly describes images.",
+        "",
+        512,
+        0.1,
+        0.95,
+        40,
+        0,
+        0,
+        1.1,
+        617,
+        "randomize"
+      ]
+    },
+    {
+      "id": 40,
+      "type": "ViewText",
+      "pos": [
+        1162,
+        399
+      ],
+      "size": {
+        "0": 345.2934265136719,
+        "1": 106.57048034667969
+      },
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 48,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ViewText"
+      },
+      "widgets_values": [
+        "",
+        " Dancers in colorful costumes performing on stage under dim lighting. "
+      ]
+    },
+    {
+      "id": 43,
+      "type": "PlayMusic",
+      "pos": [
+        1033,
+        720
+      ],
+      "size": [
+        315,
+        130
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "wave_form",
+          "type": "COMBO",
+          "link": 53,
+          "widget": {
+            "name": "wave_form"
+          }
+        },
+        {
+          "name": "sample_rate",
+          "type": "INT",
+          "link": 54,
+          "widget": {
+            "name": "sample_rate"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "*",
+          "type": "*",
+          "links": null,
+          "shape": 6
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PlayMusic"
+      },
+      "widgets_values": [
+        "always",
+        0.5,
+        null,
+        0
+      ]
+    },
+    {
+      "id": 37,
+      "type": "AudioLDM2Node",
+      "pos": [
+        666,
+        725
+      ],
+      "size": {
+        "0": 315,
+        "1": 222
+      },
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 44,
+          "widget": {
+            "name": "text"
+          }
+        },
+        {
+          "name": "negative_prompt",
+          "type": "STRING",
+          "link": 45,
+          "widget": {
+            "name": "negative_prompt"
+          },
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "wave_form",
+          "type": "*",
+          "links": [
+            53
+          ],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "sample_rate",
+          "type": "INT",
+          "links": [
+            54
+          ],
+          "shape": 3,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "AudioLDM2Node"
+      },
+      "widgets_values": [
+        "",
+        "",
+        10,
+        3.5,
+        995,
+        "randomize",
+        3,
+        16000,
+        "mp3"
+      ]
+    }
+  ],
+  "links": [
+    [
+      36,
+      30,
+      0,
+      29,
+      1,
+      "CUSTOM"
+    ],
+    [
+      37,
+      31,
+      0,
+      30,
+      0,
+      "CUSTOM"
+    ],
+    [
+      38,
+      32,
+      0,
+      29,
+      2,
+      "STRING"
+    ],
+    [
+      39,
+      33,
+      0,
+      29,
+      0,
+      "IMAGE"
+    ],
+    [
+      40,
+      30,
+      0,
+      34,
+      0,
+      "CUSTOM"
+    ],
+    [
+      41,
+      35,
+      0,
+      34,
+      2,
+      "STRING"
+    ],
+    [
+      42,
+      29,
+      0,
+      34,
+      1,
+      "STRING"
+    ],
+    [
+      43,
+      29,
+      0,
+      36,
+      0,
+      "STRING"
+    ],
+    [
+      44,
+      34,
+      0,
+      37,
+      0,
+      "STRING"
+    ],
+    [
+      45,
+      38,
+      0,
+      37,
+      1,
+      "STRING"
+    ],
+    [
+      48,
+      34,
+      0,
+      40,
+      0,
+      "STRING"
+    ],
+    [
+      53,
+      37,
+      0,
+      43,
+      0,
+      "COMBO"
+    ],
+    [
+      54,
+      37,
+      1,
+      43,
+      1,
+      "INT"
+    ]
+  ],
+  "groups": [
+    {
+      "title": "VLM",
+      "bounding": [
+        90,
+        98,
+        1005,
+        446
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "locked": false
+    },
+    {
+      "title": "LLM",
+      "bounding": [
+        1135,
+        84,
+        733,
+        491
+      ],
+      "color": "#a1309b",
+      "font_size": 24,
+      "locked": false
+    },
+    {
+      "title": "Sound",
+      "bounding": [
+        638,
+        667,
+        711,
+        436
+      ],
+      "color": "#b58b2a",
+      "font_size": 24,
+      "locked": false
+    }
+  ],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
