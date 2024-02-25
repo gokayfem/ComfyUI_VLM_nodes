@@ -27,6 +27,11 @@ Note that every **model's clip projector** is different!
 - [LlaVa 1.5 13B](https://huggingface.co/mys/ggml_llava-v1.5-13b)
 - [BakLLaVa](https://huggingface.co/mys/ggml_bakllava-1)  
 etc..
+
+## Image to Music
+Utilizes VLMs, LLMs and [AudioLDM-2](https://arxiv.org/abs/2308.05734) to make music from images.
+It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_audioldm2```
+
 ## InternLM-XComposer2-VL Node
 Utilizes ```AutoGPTQ``` for integration of InternLM-XComposer2-VL Model. It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_internlm```.
 This is one of the best models for visual perception.   
@@ -86,6 +91,9 @@ It will automatically download the necessary files into ```custom_nodes/ComfyUI_
 
 ## Example LLaVa Nodes
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/c30b9599-fa14-4f1a-b023-65a3697892f2)
+
+## Example Image to Music
+![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/e216c299-c9ea-4227-aa85-9533cb6af260)
 
 ## Example InternLM-XComposer Node
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/ff051e6c-5ad8-41fe-9d77-fdeea6eb2c5c)
