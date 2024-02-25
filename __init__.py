@@ -42,6 +42,8 @@ node_list = [
     "internlm",
     "uform",
     "kosmos2",
+    "audioldm2",
+    "playmusic",
 ]
 
 NODE_CLASS_MAPPINGS = {}
