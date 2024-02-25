@@ -56,7 +56,7 @@ class AudioLDM2ModelPredictor:
         # Save the generated waveform to a file
         audio_path = Path(output_directory) / f"generated_audio_{random_seed}.{extension}"
         
-        sf.write(audio_path , waveforms[0], sample_rate)
+        sf.write(audio_path.as_posix() , waveforms[0], sample_rate)
         final_waveforms = waveforms[0].tolist()
         return (final_waveforms, sample_rate)  # Return the path of the generated audio file
 
