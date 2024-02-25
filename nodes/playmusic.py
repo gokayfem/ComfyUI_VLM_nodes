@@ -34,9 +34,9 @@ class PlayMusic:
 
 
 NODE_CLASS_MAPPINGS = {
-    "PlaySound": PlayMusic,
+    "PlayMusic": PlayMusic,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "PlaySound": "PlaySound Node",
+    "PlayMusic": "PlayMusic Node",
 }
