@@ -15,3 +15,9 @@ opencv-python
 scikit-build
 typing
 diskcache
+pytz
+six
+cffi
+python-dateutil>=2.7.0
+diffusers
+soundfile

@@ -137,17 +137,28 @@ def get_web_ext_dir():
     dir = os.path.join(dir, name)
     return dir
 
+
 def get_extension_config(reload=False):
     global config
     if reload == False and config is not None:
         return config
 
     config_path = get_ext_dir("vlmnodes.json")
+    default_config_path = get_ext_dir("vlmnodes.default.json")
     if not os.path.exists(config_path):
-        log("Missing vlmnodes.json, this extension may not work correctly. Please reinstall the extension.",
-            type="ERROR", always=True, name="???")
-        print(f"Extension path: {get_ext_dir()}")
-        return {"name": "Unknown", "version": -1}
+        if os.path.exists(default_config_path):
+            shutil.copy(default_config_path, config_path)
+            if not os.path.exists(config_path):
+                log(f"Failed to create config at {config_path}", type="ERROR", always=True, name="???")
+                print(f"Extension path: {get_ext_dir()}")
+                return {"name": "Unknown", "version": -1}
+    
+        else:
+            log("Missing pysssss.default.json, this extension may not work correctly. Please reinstall the extension.",
+                type="ERROR", always=True, name="???")
+            print(f"Extension path: {get_ext_dir()}")
+            return {"name": "Unknown", "version": -1}
+
     with open(config_path, "r") as f:
         config = json.loads(f.read())
     return config
@@ -179,23 +190,42 @@ def is_junction(path):
         return False
 
 def install_js():
-    src_dir = get_ext_dir("js")
+    src_dir = get_ext_dir("web/js")
     if not os.path.exists(src_dir):
         log("No JS")
         return
 
+    should_install = should_install_js()
+    if should_install:
+        log("it looks like you're running an old version of ComfyUI that requires manual setup of web files, it is recommended you update your installation.", "warning", True)
     dst_dir = get_web_ext_dir()
-
-    if os.path.exists(dst_dir):
-        if os.path.islink(dst_dir) or is_junction(dst_dir):
-            log("JS already linked")
-            return
-    elif link_js(src_dir, dst_dir):
+    linked = os.path.islink(dst_dir) or is_junction(dst_dir)
+    if linked or os.path.exists(dst_dir):
+        if linked:
+            if should_install:
+                log("JS already linked")
+            else:
+                os.unlink(dst_dir)
+                log("JS unlinked, PromptServer will serve extension")
+        elif not should_install:
+            shutil.rmtree(dst_dir)
+            log("JS deleted, PromptServer will serve extension")
+        return
+    
+    if not should_install:
+        log("JS skipped, PromptServer will serve extension")
+        return
+    
+    if link_js(src_dir, dst_dir):
         log("JS linked")
         return
 
     log("Copying JS files")
     shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
+
+def should_install_js():
+    return not hasattr(PromptServer.instance, "supports") or "custom_nodes_from_web" not in PromptServer.instance.supports
+
 
 def init(check_imports=None):
     log("Init")
@@ -212,6 +242,7 @@ def init(check_imports=None):
     install_js()
     return True
 
+
 def get_async_loop():
     loop = None
     try:
@@ -221,9 +252,11 @@ def get_async_loop():
         asyncio.set_event_loop(loop)
     return loop
 
+
 def get_http_session():
     loop = get_async_loop()
     return aiohttp.ClientSession(loop=loop)
+
 
 async def download(url, stream, update_callback=None, session=None):
     close_session = False
@@ -251,17 +284,81 @@ async def download(url, stream, update_callback=None, session=None):
         if close_session and session is not None:
             await session.close()
 
+
 async def download_to_file(url, destination, update_callback=None, is_ext_subpath=True, session=None):
     if is_ext_subpath:
         destination = get_ext_dir(destination)
     with open(destination, mode='wb') as f:
         download(url, f, update_callback, session)
 
+
+def wait_for_async(async_fn, loop=None):
+    res = []
+
+    async def run_async():
+        r = await async_fn()
+        res.append(r)
+
+    if loop is None:
+        try:
+            loop = asyncio.get_event_loop()
+        except:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+    loop.run_until_complete(run_async())
+
+    return res[0]
+
+
+def update_node_status(client_id, node, text, progress=None):
+    if client_id is None:
+        client_id = PromptServer.instance.client_id
+
+    if client_id is None:
+        return
+
+    PromptServer.instance.send_sync("vlmnodes/update_status", {
+        "node": node,
+        "progress": progress,
+        "text": text
+    }, client_id)
+
+
+async def update_node_status_async(client_id, node, text, progress=None):
+    if client_id is None:
+        client_id = PromptServer.instance.client_id
+
+    if client_id is None:
+        return
+
+    await PromptServer.instance.send("vlmnodes/update_status", {
+        "node": node,
+        "progress": progress,
+        "text": text
+    }, client_id)
+
+
+def get_config_value(key, default=None, throw=False):
+    split = key.split(".")
+    obj = get_extension_config()
+    for s in split:
+        if s in obj:
+            obj = obj[s]
+        else:
+            if throw:
+                raise KeyError("Configuration key missing: " + key)
+            else:
+                return default
+    return obj
+
+
 def is_inside_dir(root_dir, check_path):
     root_dir = os.path.abspath(root_dir)
     if not os.path.isabs(check_path):
         check_path = os.path.abspath(os.path.join(root_dir, check_path))
     return os.path.commonpath([check_path, root_dir]) == root_dir
+
 
 def get_child_dir(root_dir, child_path, throw_if_outside=True):
     child_path = os.path.abspath(os.path.join(root_dir, child_path))
