@@ -30,7 +30,7 @@ etc..
 
 ## Image to Music
 Utilizes VLMs, LLMs and [AudioLDM-2](https://arxiv.org/abs/2308.05734) to make music from images.  
-It will save the sounds inside your output folder.  
+It will save the sounds inside your ```output``` folder.  
 It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_audioldm2```  
 
 ## InternLM-XComposer2-VL Node
