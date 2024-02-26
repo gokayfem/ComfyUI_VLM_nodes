@@ -1,12 +1,12 @@
-import { app } from "/scripts/app.js";
-import { ComfyWidgets } from "/scripts/widgets.js";
+import { app } from "../../../scripts/app.js";
+import { ComfyWidgets } from "../../../scripts/widgets.js";
 
 app.registerExtension({
-    name: "n.ViewText",
+    name: "n.JsonToText",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         
-        if (nodeData.name === "ViewText") {
-            console.warn("ViewText");
+        if (nodeData.name === "JsonToText") {
+            console.warn("JsonToText");
             
             const onExecuted = nodeType.prototype.onExecuted;
             
@@ -22,10 +22,10 @@ app.registerExtension({
                 onExecuted?.apply(this, arguments);
                 
                 // Check if the "text" widget already exists.
-                let textWidget = this.widgets.find(w => w.name === "new_text");
+                let textWidget = this.widgets.find(w => w.name === "newtext");
                 if (!textWidget) {
                     // If the "text" widget does not exist, create it.
-                    textWidget = ComfyWidgets["STRING"](this, "new_text", ["STRING", { multiline: true }], app).widget;
+                    textWidget = ComfyWidgets["STRING"](this, "newtext", ["STRING", { multiline: true }], app).widget;
                 }
                 
                 // Generate a random number and set it as the value of the "text" widget.
