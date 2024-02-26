@@ -77,7 +77,7 @@ def install_package(package_name, custom_command=None):
 def package_is_installed(package_name):
     return importlib.util.find_spec(package_name) is not None
 
-def install_llama(system_info):
+def install_llama():
     """Install llama-cpp-python with consideration for macOS or other OS specifics."""
     imported = package_is_installed("llama-cpp-python") or package_is_installed("llama_cpp")
     if not imported:
