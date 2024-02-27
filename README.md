@@ -33,8 +33,6 @@ Utilizes VLMs, LLMs and [AudioLDM-2](https://arxiv.org/abs/2308.05734) to make m
 It will save the sounds inside your ```output``` folder.  
 It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_audioldm2```  
 
-![](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/d8ede2dd-675a-4cc1-8eaf-ff6908be2c63)
-
 ## InternLM-XComposer2-VL Node
 Utilizes ```AutoGPTQ``` for integration of InternLM-XComposer2-VL Model. It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_internlm```.
 This is one of the best models for visual perception.   
