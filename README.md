@@ -13,7 +13,7 @@
 cd custom_nodes
 git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ```
-- For **macOS** or **AMD GPUs(ROCm) ** go to the ```mac``` branch. Download the repository as zip and unzip it to the ```custom_nodes``` folder.
+- For **macOS** or **AMD GPUs(ROCm)** go to the ```mac``` branch. Download the repository as zip and unzip it to the ```custom_nodes``` folder.
 
 ## VLM Nodes
 Utilizes ```llama-cpp-python``` for integration of LLaVa models. You can load and use any VLM with LLaVa models in GGUF format with this nodes.   
