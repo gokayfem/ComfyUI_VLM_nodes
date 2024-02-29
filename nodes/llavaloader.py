@@ -85,7 +85,7 @@ class LLavaSamplerSimple:
 
         # Convert the PIL image to a bytes buffer
         buffer = BytesIO()
-        pil_image.save(buffer, format="JPEG")  # You can change the format if needed
+        pil_image.save(buffer, format="PNG")  # You can change the format if needed
 
         # Get the bytes from the buffer
         image_bytes = buffer.getvalue()
@@ -148,7 +148,7 @@ class LLavaSamplerAdvanced:
 
         # Convert the PIL image to a bytes buffer
         buffer = BytesIO()
-        pil_image.save(buffer, format="JPEG")  # You can change the format if needed
+        pil_image.save(buffer, format="PNG")  # You can change the format if needed
 
         # Get the bytes from the buffer
         image_bytes = buffer.getvalue()
