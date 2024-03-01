@@ -8,7 +8,7 @@ torchvision>=0.15.2
 einops>=0.7.0
 safetensors>=0.4.1
 pillow>=9.4.0
-py-cpuinfo
+py-cpuinfo==3.3.0
 gitpython
 moviepy
 opencv-python
