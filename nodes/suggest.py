@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, validator
 from llama_cpp_agent.llm_agent import LlamaCppAgent
 from llama_cpp_agent.gbnf_grammar_generator.gbnf_grammar_from_pydantic_models import generate_gbnf_grammar_and_documentation
 import json
-from openai import OpenAI
 from .prompts import system_msg_prompts
 from .prompts import system_msg_simple
 from typing import List, Optional
@@ -160,7 +159,7 @@ class PromptGenerateAPI:
     CATEGORY = "VLM Nodes/LLM"
 
     def generate_prompt(self, model_name, chat_type, api_key, description, question):
-
+        from openai import OpenAI            
         if chat_type == True:
             system_msg = system_msg_prompts
         elif chat_type == False:

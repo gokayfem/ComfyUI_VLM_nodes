@@ -1,4 +1,3 @@
-from diffusers import AudioLDM2Pipeline
 from huggingface_hub import snapshot_download
 from pathlib import Path
 import torch
@@ -18,7 +17,9 @@ base_path = os.path.dirname(os.path.realpath(__file__))
 # Our any instance wants to be a wildcard string
 any = AnyType("*")
 class AudioLDM2ModelPredictor:
+    
     def __init__(self):
+        from diffusers import AudioLDM2Pipeline
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
 
