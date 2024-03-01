@@ -11,9 +11,10 @@ def check_requirements_installed(requirements_path):
         requirements = [pkg_resources.Requirement.parse(line.strip()) for line in f if line.strip()]
 
     installed_packages = {pkg.key: pkg for pkg in pkg_resources.working_set}
+    installed_packages_set = set(installed_packages.keys())
     missing_packages = []
     for requirement in requirements:
-        if requirement.key not in installed_packages or not installed_packages[requirement.key] in requirement:
+        if requirement.key not in installed_packages_set or not installed_packages[requirement.key] in requirement:
             missing_packages.append(str(requirement))
 
     if missing_packages:
@@ -22,6 +23,7 @@ def check_requirements_installed(requirements_path):
         subprocess.check_call([sys.executable, '-s', '-m', 'pip', 'install', *missing_packages])
     else:
         print("All packages from requirements.txt are installed and up to date.")
+
 requirements_path  = os.path.join(os.path.dirname(os.path.realpath(__file__)), "requirements.txt")
 check_requirements_installed(requirements_path)
 
@@ -31,6 +33,7 @@ install_llama(system_info)
 llama_cpp_agent_path  = os.path.join(os.path.dirname(os.path.realpath(__file__)), "cpp_agent_req.txt")
 check_requirements_installed(llama_cpp_agent_path)
 install_autogptq(system_info)
+
 init()
 
 node_list = [
