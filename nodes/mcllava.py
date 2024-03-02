@@ -45,7 +45,7 @@ class MCLLaVAModelPredictor:
             inputs = self.processor(final_prompt, [image_input], self.model, max_crops=max_crops, num_tokens=num_tokens)
 
         with torch.inference_mode():
-            output = self.model.generate(**inputs, max_new_tokens=200, do_sample=True, use_cache=False, top_p=top_p, temperature=temperature, eos_token_id=self.processor.tokenizer.eos_token_id)
+            output = self.model.generate(**inputs, max_new_tokens=200, do_sample=False, use_cache=False, top_p=top_p, temperature=temperature, eos_token_id=self.processor.tokenizer.eos_token_id)
 
         generated_text = self.processor.tokenizer.decode(output[0]).replace(final_prompt, "").replace("<|im_end|>", "")
         return generated_text
