@@ -4,9 +4,9 @@ import torch
 import os
 import soundfile as sf
 from folder_paths import output_directory
-
+import folder_paths
 # Define the directory for saving files related to the audio model
-files_for_audio_model = Path(__file__).resolve().parent / "files_for_audioldm2"
+files_for_audio_model = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_audioldm2"
 files_for_audio_model.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
 
 class AnyType(str):

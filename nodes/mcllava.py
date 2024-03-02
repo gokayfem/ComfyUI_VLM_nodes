@@ -6,9 +6,9 @@ from huggingface_hub import snapshot_download
 from torchvision.transforms import ToPILImage
 import io
 from PIL import Image
-
+import folder_paths
 # Define the directory for saving files related to the MCLLaVA model
-files_for_mcllava_model = Path(__file__).resolve().parent / "files_for_mcllava"
+files_for_mcllava_model = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_mcllava"
 files_for_mcllava_model.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
 
 class MCLLaVAModelPredictor:

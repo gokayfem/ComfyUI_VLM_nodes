@@ -1,18 +1,14 @@
-from PIL import Image
 import torch.amp.autocast_mode
 from pathlib import Path
 import torch
-import torchvision.transforms.functional as TVF
 from huggingface_hub import snapshot_download
-from torchvision import transforms
-import torch, auto_gptq
-from transformers import AutoModel, AutoTokenizer 
-
-from io import BytesIO
+import torch
+from transformers import AutoTokenizer 
 from torchvision.transforms import ToPILImage
+import folder_paths
 
 # Define your local directory where you want to save the files
-files_for_internlm = Path(__file__).resolve().parent / "files_for_internlm"
+files_for_internlm = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_internlm"
 
 # Check if the directory exists, create if it doesn't (optional)
 files_for_internlm.mkdir(parents=True, exist_ok=True)

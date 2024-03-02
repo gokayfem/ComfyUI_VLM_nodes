@@ -4,9 +4,9 @@ from pathlib import Path
 import torch
 from torchvision.transforms import ToPILImage
 from huggingface_hub import snapshot_download
-
+import folder_paths
 # Define the directory for saving files related to your new model
-files_for_new_model = Path(__file__).resolve().parent / "files_for_kosmos2"
+files_for_new_model = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_kosmos2"
 files_for_new_model.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
 
 class KosmosModelPredictor:
