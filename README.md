@@ -31,12 +31,12 @@ etc..
 ## Image to Music
 Utilizes VLMs, LLMs and [AudioLDM-2](https://arxiv.org/abs/2308.05734) to make music from images.  
 It will save the sounds inside your ```output``` folder.  
-It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_audioldm2```  
+It will automatically download the necessary files into ```models/LLavacheckpoints/files_for_audioldm2```  
 
 https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/2c5bdcde-d637-49ad-b317-14ac0a12f7df
 
 ## InternLM-XComposer2-VL Node
-Utilizes ```AutoGPTQ``` for integration of InternLM-XComposer2-VL Model. It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_internlm```.
+Utilizes ```AutoGPTQ``` for integration of InternLM-XComposer2-VL Model. It will automatically download the necessary files into ```models/LLavacheckpoints/files_for_internlm```.
 This is one of the best models for visual perception.   
 **Important Note : This model is heavy.**
 - [InternLM-XComposer2](https://huggingface.co/internlm/internlm-xcomposer2-vl-7b-4bit)
@@ -71,22 +71,22 @@ You can use them for simple chat also there is an option in the node.
 ## UForm-Gen2 Qwen Node
 UForm-Gen2 is an extremely fast small generative vision-language model primarily designed for Image Captioning and Visual Question Answering.  
 [UForm-Gen2 Qwen](https://huggingface.co/unum-cloud/uform-gen2-qwen-500m)  
-It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_uform_gen2_qwen```
+It will automatically download the necessary files into ```models/LLavacheckpoints/files_for_uform_gen2_qwen```
 
 ## Kosmos-2 Node
 Kosmos-2: Grounding Multimodal Large Language Models to the World.
 [Kosmos-2](https://huggingface.co/microsoft/kosmos-2-patch14-224)
-It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_kosmos2```
+It will automatically download the necessary files into ```models/LLavacheckpoints/files_for_kosmos2```
 
 ## moondream Node
 This node is designed to work with the Moondream model, a powerful small vision language model built by @vikhyatk using SigLIP, Phi-1.5, and the LLaVa training dataset. 
 The model boasts 1.6 billion parameters and is made available for research purposes only; commercial use is not allowed.
-It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for__moondream```
+It will automatically download the necessary files into ```models/LLavacheckpoints/files_for__moondream```
 
 ## JoyTag Node
 @fpgamine's JoyTag is a state of the art AI vision model for tagging images, with a focus on sex positivity and inclusivity.  
 It uses the Danbooru tagging schema, but works across a wide range of images, from hand drawn to photographic.
-It will automatically download the necessary files into ```custom_nodes/ComfyUI_VLM_nodes/nodes/files_for_joytagger```
+It will automatically download the necessary files into ```models/LLavacheckpoints/files_for_joytagger```
 
 ## Acknowledgements
 
