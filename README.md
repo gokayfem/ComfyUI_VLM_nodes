@@ -35,6 +35,16 @@ It will automatically download the necessary files into ```models/LLavacheckpoin
 
 https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/2c5bdcde-d637-49ad-b317-14ac0a12f7df
 
+## LLM to Music
+Utilizes Chat Musician, an open-source LLM that integrates intrinsic musical abilities.
+
+**Download the GGUF file**
+[ChatMusician GGUF Files](https://huggingface.co/MaziyarPanahi/ChatMusician-GGUF/tree/main)
+
+**ChatMusician.Q5_K_M.gguf** or **ChatMusician.Q5_K_S.gguf** recommended
+
+### BIG BIG BIG Warning: It **does NOT work perfectly**, you need to **queue prompt** again if you got errors.
+
 ## InternLM-XComposer2-VL Node
 Utilizes ```AutoGPTQ``` for integration of InternLM-XComposer2-VL Model. It will automatically download the necessary files into ```models/LLavacheckpoints/files_for_internlm```.
 This is one of the best models for visual perception.   
