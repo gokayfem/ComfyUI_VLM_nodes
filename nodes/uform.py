@@ -4,9 +4,9 @@ import torch
 from PIL import Image
 from torchvision.transforms import ToPILImage
 from huggingface_hub import snapshot_download
-
+import folder_paths
 # Define the directory for saving files related to uform-gen2-qwen
-files_for_uform_gen2_qwen = Path(__file__).resolve().parent / "files_for_uform_gen2_qwen"
+files_for_uform_gen2_qwen = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_uform_gen2_qwen"
 files_for_uform_gen2_qwen.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
 
 class StopOnTokens(StoppingCriteria):

@@ -21,3 +21,4 @@ cffi
 python-dateutil>=2.7.0
 diffusers
 soundfile
+symusic

@@ -7,6 +7,7 @@ import torchvision.transforms.functional as TVF
 from huggingface_hub import snapshot_download
 from torchvision import transforms
 import os
+import folder_paths
 
 if torch.cuda.is_available():
     DEVICE = "cuda"
@@ -16,7 +17,7 @@ else:
 THRESHOLD = 0.4
 
 # Define your local directory where you want to save the files
-files_for_joytagger = Path(__file__).resolve().parent / "files_for_joytagger"
+files_for_joytagger = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_joytagger"
 
 # Check if the directory exists, create if it doesn't (optional)
 files_for_joytagger.mkdir(parents=True, exist_ok=True)

@@ -5,6 +5,7 @@ import os
 import hashlib
 from torchvision import transforms
 from pathlib import Path
+import folder_paths
 
 if torch.cuda.is_available():
     DEVICE = "cuda"
@@ -14,12 +15,11 @@ else:
     DTYPE = torch.float32
 
 
-output_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
-# Define your local directory where you want to save the files
-files_for_moondream = Path(__file__).resolve().parent / "files_for__moondream"
-
-# Check if the directory exists, create if it doesn't (optional)
+files_for_moondream = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for__moondream"
 files_for_moondream.mkdir(parents=True, exist_ok=True)
+output_directory = os.path.join(files_for_moondream , "output")
+# Define your local directory where you want to save the files
+
 image_encoder_cache_path = os.path.join(output_directory, "image_encoder_cache")
 class MoonDream:
     def __init__(self):

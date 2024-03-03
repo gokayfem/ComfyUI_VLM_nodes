@@ -2,14 +2,16 @@ import folder_paths
 import os
 from llama_cpp import Llama, LlamaGrammar
 from .prompts import system_msg_prompts
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator 
 from llama_cpp_agent.llm_agent import LlamaCppAgent
 from llama_cpp_agent.gbnf_grammar_generator.gbnf_grammar_from_pydantic_models import generate_gbnf_grammar_and_documentation
 import json
-from openai import OpenAI
 from .prompts import system_msg_prompts
 from .prompts import system_msg_simple
-from typing import List
+from typing import List, Optional
+import re
+from string import Template
+ 
 
 supported_LLava_extensions = set(['.gguf'])
 
@@ -21,6 +23,14 @@ except:
         os.mkdir(os.path.join(folder_paths.models_dir, "LLavacheckpoints"))
         
     folder_paths.folder_names_and_paths["LLavacheckpoints"] = ([os.path.join(folder_paths.models_dir, "LLavacheckpoints")], supported_LLava_extensions)
+
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+
+# Our any instance wants to be a wildcard string
+any = AnyType("*")
 
 class Analysis(BaseModel):
     """
@@ -50,6 +60,93 @@ class Suggestion(BaseModel):
     suggestion4 : str = Field(..., description="new Suggestion based on the inputs")
     suggestion5 : str = Field(..., description="new Suggestion based on the inputs")
 
+class ArtisticTechniques(BaseModel):
+    preferred: List[str] = Field(
+        ...,
+        description="Long description of Techniques and tools favored for creating the artwork, emphasizing cutting-edge or specialized modern or traditional techniques."
+    )
+    
+    avoided: List[str] = Field(
+        ...,
+        description="Long description of Techniques and tools favored for creating the artwork, emphasizing cutting-edge or specialized modern or traditional techniques."
+    )
+
+class ImageryTheme(BaseModel):
+    core_subject: str = Field(
+        ...,
+        description="Long description of Core subject or theme of the artwork, described vividly to evoke a strong image or emotion."
+    )
+    additional_elements: Optional[List[str]] = Field(
+        default=None,
+        description="Long description of Additional elements or motifs to include, enhancing the core theme with specific details or themes for a more immersive and detailed scene."
+    )
+
+class VisualStyle(BaseModel):
+    desired: List[str] = Field(
+        ...,
+        description="Long description of Desired visual styles and aesthetic qualities, such as realistic, stylized, or rich artwork."
+    )
+    undesired: List[str] = Field(
+        ...,
+        description="Long description of Styles and aesthetic qualities to avoid."
+    )
+
+
+class ArtInspirationNarrative(BaseModel):
+    description: str
+
+class ArtPromptSpecification(BaseModel):
+    techniques: ArtisticTechniques
+    theme: ImageryTheme
+    style: VisualStyle
+    creative_descriptions: List[ArtInspirationNarrative] = []
+
+    @validator('creative_descriptions', always=True)
+    def generate_creative_descriptions(cls, v, values):
+        if not values.get('techniques') or not values.get('theme') or not values.get('style'):
+            return v  # Ensures prerequisites are met
+
+        # Synthesizing the description
+        technique_str = " and ".join(values['techniques'].preferred)
+        theme_description = values['theme'].core_subject
+        style_description = " and ".join(values['style'].desired)
+        additional_elements = ", ".join(values['theme'].additional_elements) if values['theme'].additional_elements else "enriching details"
+
+        # Constructing the integrated creative description
+        integrated_description = f"Envision an artwork that utilizes {technique_str}. The essence revolves around '{theme_description}', adorned with {additional_elements}. The visual pursuit should mirror styles such as {style_description}, bringing the concept to life with depth and emotion."
+
+        return [ArtInspirationNarrative(description=integrated_description)]
+    
+def _parse_text(text):
+    lines = text.split("\n")
+    lines = [line for line in lines if line != ""]
+    count = 0
+    for i, line in enumerate(lines):
+        if "```" in line:
+            count += 1
+            items = line.split("`")
+            if count % 2 == 1:
+                lines[i] = f'<pre><code class="language-{items[-1]}">'
+            else:
+                lines[i] = f"<br></code></pre>"
+        else:
+            if i > 0:
+                if count % 2 == 1:
+                    line = line.replace("`", r"\`")
+                    line = line.replace("<", "&lt;")
+                    line = line.replace(">", "&gt;")
+                    line = line.replace(" ", "&nbsp;")
+                    line = line.replace("*", "&ast;")
+                    line = line.replace("_", "&lowbar;")
+                    line = line.replace("-", "&#45;")
+                    line = line.replace(".", "&#46;")
+                    line = line.replace("!", "&#33;")
+                    line = line.replace("(", "&#40;")
+                    line = line.replace(")", "&#41;")
+                    line = line.replace("$", "&#36;")
+                lines[i] = "<br>" + line
+    text = "".join(lines)
+    return text
 class PromptGenerateAPI:
     def __init__(self):
     	pass
@@ -103,7 +200,7 @@ class PromptGenerateAPI:
     CATEGORY = "VLM Nodes/LLM"
 
     def generate_prompt(self, model_name, chat_type, api_key, description, question):
-
+        from openai import OpenAI            
         if chat_type == True:
             system_msg = system_msg_prompts
         elif chat_type == False:
@@ -247,7 +344,60 @@ class LLMSampler:
         )
         return (f"{response['choices'][0]['message']['content']}", )
 
-# Example output model
+class ChatMusician:        
+    def __init__(self):
+        pass
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING",{"forceInput": True,"default": ""}),
+                "model": ("CUSTOM", {"default": ""}),
+                "max_tokens": ("INT", {"default": 512, "min": 1, "max": 2048, "step": 1}),
+                "temperature": ("FLOAT", {"default": 0.2, "min": 0.01, "max": 1.0, "step": 0.01}),
+                "top_p": ("FLOAT", {"default": 0.90, "min": 0.1, "max": 1.0, "step": 0.01}),
+                "top_k": ("INT", {"default": 40, "step": 1}), 
+                "frequency_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "presence_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "repeat_penalty": ("FLOAT", {"default": 1.1, "step": 0.01}),
+		        "seed": ("INT", {"default": 42, "step": 1}),
+                "sample_rate": ("INT", {"default": 44100, "min": 8000, "max": 48000, "step": 1}),
+            }
+        }
+
+    RETURN_NAMES = ("response", "wave_form", "sample_rate", )
+    RETURN_TYPES = ("STRING", any, "INT", )
+    FUNCTION = "chat_musician"
+    CATEGORY = "VLM Nodes/Audio"
+    OUTPUT_NODE = True
+
+    def chat_musician(self, prompt, model, max_tokens, temperature, top_p, top_k, frequency_penalty, presence_penalty, repeat_penalty, seed, sample_rate):
+        llm = model
+        prompt = _parse_text(prompt)
+        prompt_template = Template("Human: ${inst} </s> Assistant: ")
+        prompt = prompt_template.safe_substitute({"inst": prompt})
+        response = llm.create_chat_completion(messages=[
+            {"role": "user", "content": f"Human: {prompt} </s> Assistant: "},
+        ],
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+            repeat_penalty=repeat_penalty,
+	        seed=seed           
+        )
+
+        from symusic import Score, Synthesizer
+
+        abc_pattern = r'(X:\d+\n(?:[^\n]*\n)+)'
+        abc_notation = re.findall(abc_pattern, f"{response['choices'][0]['message']['content']}\n")[0]
+        s = Score.from_abc(abc_notation)
+        audio = Synthesizer().render(s, stereo=True).tolist()[0]
+        
+        return (abc_notation, audio, sample_rate, )
     
 class KeywordExtraction:        
     def __init__(self):
@@ -304,7 +454,35 @@ class LLavaPromptGenerator:
                                     system_prompt="You are an advanced AI, tasked to create JSON database entries for creative long prompts for image generation. \n\n\n" + documentation)
         response = wrapped_model.get_chat_response(prompt, temperature=temperature, grammar=grammar, max_tokens=512, repeat_penalty=1.1)
         return (f"{response}", )
+
+class CreativeArtPromptGenerator:        
+    def __init__(self):
+        pass
     
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING",{"forceInput": True,"default": ""}),
+                "model": ("CUSTOM", {"default": ""}),
+                "temperature": ("FLOAT", {"default": 0.15, "min": 0.01, "max": 1.0, "step": 0.01}),                           
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "create_creative_art_prompts"
+    CATEGORY = "VLM Nodes/LLM"
+    
+    def create_creative_art_prompts(self, prompt, model, temperature):
+        gbnf_grammar, documentation = generate_gbnf_grammar_and_documentation([ArtPromptSpecification])
+        grammar = LlamaGrammar.from_string(gbnf_grammar, verbose=False)
+
+        wrapped_model = LlamaCppAgent(model, debug_output=True,
+                                    system_prompt="You are an advanced AI, tasked to create JSON database entries for creative description for image generation. \n\n\n" + documentation)
+        response = wrapped_model.get_chat_response(prompt, temperature=temperature, grammar=grammar, max_tokens=512, repeat_penalty=1.1)
+        json_response = json.loads(response)
+        final_response = json_response["creative_descriptions"][0]["description"]
+        return (f"{final_response}", )    
 
 class Suggester:        
     def __init__(self):
@@ -348,7 +526,9 @@ NODE_CLASS_MAPPINGS = {
     "KeywordExtraction": KeywordExtraction,
     "LLavaPromptGenerator": LLavaPromptGenerator,
     "Suggester": Suggester,
-    "PromptGenerateAPI": PromptGenerateAPI
+    "PromptGenerateAPI": PromptGenerateAPI,
+    "CreativeArtPromptGenerator": CreativeArtPromptGenerator,
+    "ChatMusician": ChatMusician
 }
 # A dictionary that contains the friendly/humanly readable titles for the nodes
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -358,5 +538,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "KeywordExtraction": "Get Keywords",
     "LLavaPromptGenerator": "LLava PromptGenerator",
     "Suggester": "Suggester",
-    "PromptGenerateAPI": "API PromptGenerator"
+    "PromptGenerateAPI": "API PromptGenerator",
+    "CreativeArtPromptGenerator": "Creative Art PromptGenerator",
+    "ChatMusician": "ChatMusician"
 }

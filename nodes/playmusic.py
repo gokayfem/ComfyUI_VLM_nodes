@@ -24,7 +24,7 @@ class PlayMusic:
     OUTPUT_NODE = True
     RETURN_TYPES = (any,)
 
-    CATEGORY = "VLM Nodes/AudioLDM2"
+    CATEGORY = "VLM Nodes/Audio"
 
     def IS_CHANGED(self, **kwargs):
         return float("NaN")

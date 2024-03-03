@@ -4,7 +4,18 @@ import importlib
 import pkg_resources
 import sys
 import subprocess
+import folder_paths
 
+supported_LLava_extensions = set(['.gguf'])
+
+try:
+    folder_paths.folder_names_and_paths["LLavacheckpoints"] = (folder_paths.folder_names_and_paths["LLavacheckpoints"][0], supported_LLava_extensions)
+except:
+    # check if LLavacheckpoints exists otherwise create
+    if not os.path.isdir(os.path.join(folder_paths.models_dir, "LLavacheckpoints")):
+        os.mkdir(os.path.join(folder_paths.models_dir, "LLavacheckpoints"))
+        
+    folder_paths.folder_names_and_paths["LLavacheckpoints"] = ([os.path.join(folder_paths.models_dir, "LLavacheckpoints")], supported_LLava_extensions)
 # Define the check_requirements_installed function here or import it
 def check_requirements_installed(requirements_path):
     with open(requirements_path, 'r') as f:
