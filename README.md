@@ -36,11 +36,11 @@ It will automatically download the necessary files into ```models/LLavacheckpoin
 https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/2c5bdcde-d637-49ad-b317-14ac0a12f7df
 
 ## LLM to Music
-Utilizes Chat Musician, an open-source LLM that integrates intrinsic musical abilities.
-**Download the GGUF file**
-[ChatMusician GGUF Files](https://huggingface.co/MaziyarPanahi/ChatMusician-GGUF/tree/main)
-**ChatMusician.Q5_K_M.gguf** or **ChatMusician.Q5_K_S.gguf** recommended
-### BIG BIG BIG Warning: It **does NOT work perfectly**, you need to **queue prompt** again if you got errors.
+Utilizes Chat Musician, an open-source LLM that integrates intrinsic musical abilities.  
+**Download the GGUF file**  
+[ChatMusician GGUF Files](https://huggingface.co/MaziyarPanahi/ChatMusician-GGUF/tree/main)  
+**ChatMusician.Q5_K_M.gguf** or **ChatMusician.Q5_K_S.gguf** recommended  
+### BIG BIG BIG Warning: It **does NOT work perfectly**, you need to **queue prompt** again if you got errors.  
 
 https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/7f22d4f2-b998-402e-88c8-c382a730d624
 
