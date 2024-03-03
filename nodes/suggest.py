@@ -527,7 +527,8 @@ NODE_CLASS_MAPPINGS = {
     "LLavaPromptGenerator": LLavaPromptGenerator,
     "Suggester": Suggester,
     "PromptGenerateAPI": PromptGenerateAPI,
-    "CreativeArtPromptGenerator": CreativeArtPromptGenerator
+    "CreativeArtPromptGenerator": CreativeArtPromptGenerator,
+    "ChatMusician": ChatMusician
 }
 # A dictionary that contains the friendly/humanly readable titles for the nodes
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -538,5 +539,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LLavaPromptGenerator": "LLava PromptGenerator",
     "Suggester": "Suggester",
     "PromptGenerateAPI": "API PromptGenerator",
-    "CreativeArtPromptGenerator": "Creative Art PromptGenerator"
+    "CreativeArtPromptGenerator": "Creative Art PromptGenerator",
+    "ChatMusician": "ChatMusician"
 }
