@@ -30,7 +30,7 @@ etc..
 
 ## Image to Music
 Utilizes VLMs, LLMs and [AudioLDM-2](https://arxiv.org/abs/2308.05734) to make music from images.  
-It will save the sounds inside your ```output``` folder.  
+Use SaveAudioNode to save the music inside ```output``` folder.  
 It will automatically download the necessary files into ```models/LLavacheckpoints/files_for_audioldm2```  
 
 https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/2c5bdcde-d637-49ad-b317-14ac0a12f7df
