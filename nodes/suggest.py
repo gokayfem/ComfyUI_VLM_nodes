@@ -9,6 +9,8 @@ import json
 from .prompts import system_msg_prompts
 from .prompts import system_msg_simple
 from typing import List, Optional
+import re
+from string import Template
  
 
 supported_LLava_extensions = set(['.gguf'])
@@ -21,6 +23,14 @@ except:
         os.mkdir(os.path.join(folder_paths.models_dir, "LLavacheckpoints"))
         
     folder_paths.folder_names_and_paths["LLavacheckpoints"] = ([os.path.join(folder_paths.models_dir, "LLavacheckpoints")], supported_LLava_extensions)
+
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+
+# Our any instance wants to be a wildcard string
+any = AnyType("*")
 
 class Analysis(BaseModel):
     """
@@ -106,6 +116,37 @@ class ArtPromptSpecification(BaseModel):
         integrated_description = f"Envision an artwork that utilizes {technique_str}. The essence revolves around '{theme_description}', adorned with {additional_elements}. The visual pursuit should mirror styles such as {style_description}, bringing the concept to life with depth and emotion."
 
         return [ArtInspirationNarrative(description=integrated_description)]
+    
+def _parse_text(text):
+    lines = text.split("\n")
+    lines = [line for line in lines if line != ""]
+    count = 0
+    for i, line in enumerate(lines):
+        if "```" in line:
+            count += 1
+            items = line.split("`")
+            if count % 2 == 1:
+                lines[i] = f'<pre><code class="language-{items[-1]}">'
+            else:
+                lines[i] = f"<br></code></pre>"
+        else:
+            if i > 0:
+                if count % 2 == 1:
+                    line = line.replace("`", r"\`")
+                    line = line.replace("<", "&lt;")
+                    line = line.replace(">", "&gt;")
+                    line = line.replace(" ", "&nbsp;")
+                    line = line.replace("*", "&ast;")
+                    line = line.replace("_", "&lowbar;")
+                    line = line.replace("-", "&#45;")
+                    line = line.replace(".", "&#46;")
+                    line = line.replace("!", "&#33;")
+                    line = line.replace("(", "&#40;")
+                    line = line.replace(")", "&#41;")
+                    line = line.replace("$", "&#36;")
+                lines[i] = "<br>" + line
+    text = "".join(lines)
+    return text
 class PromptGenerateAPI:
     def __init__(self):
     	pass
@@ -303,7 +344,60 @@ class LLMSampler:
         )
         return (f"{response['choices'][0]['message']['content']}", )
 
-# Example output model
+class ChatMusician:        
+    def __init__(self):
+        pass
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING",{"forceInput": True,"default": ""}),
+                "model": ("CUSTOM", {"default": ""}),
+                "max_tokens": ("INT", {"default": 512, "min": 1, "max": 2048, "step": 1}),
+                "temperature": ("FLOAT", {"default": 0.2, "min": 0.01, "max": 1.0, "step": 0.01}),
+                "top_p": ("FLOAT", {"default": 0.90, "min": 0.1, "max": 1.0, "step": 0.01}),
+                "top_k": ("INT", {"default": 40, "step": 1}), 
+                "frequency_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "presence_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "repeat_penalty": ("FLOAT", {"default": 1.1, "step": 0.01}),
+		        "seed": ("INT", {"default": 42, "step": 1}),
+                "sample_rate": ("INT", {"default": 44100, "min": 8000, "max": 48000, "step": 1}),
+            }
+        }
+
+    RETURN_NAMES = ("response", "wave_form", "sample_rate", )
+    RETURN_TYPES = ("STRING", any, "INT", )
+    FUNCTION = "chat_musician"
+    CATEGORY = "VLM Nodes/Audio"
+    OUTPUT_NODE = True
+
+    def chat_musician(self, prompt, model, max_tokens, temperature, top_p, top_k, frequency_penalty, presence_penalty, repeat_penalty, seed, sample_rate):
+        llm = model
+        prompt = _parse_text(prompt)
+        prompt_template = Template("Human: ${inst} </s> Assistant: ")
+        prompt = prompt_template.safe_substitute({"inst": prompt})
+        response = llm.create_chat_completion(messages=[
+            {"role": "user", "content": f"Human: {prompt} </s> Assistant: "},
+        ],
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+            repeat_penalty=repeat_penalty,
+	        seed=seed           
+        )
+
+        from symusic import Score, Synthesizer
+
+        abc_pattern = r'(X:\d+\n(?:[^\n]*\n)+)'
+        abc_notation = re.findall(abc_pattern, f"{response['choices'][0]['message']['content']}\n")[0]
+        s = Score.from_abc(abc_notation)
+        audio = Synthesizer().render(s, stereo=True).tolist()[0]
+        
+        return (abc_notation, audio, sample_rate, )
     
 class KeywordExtraction:        
     def __init__(self):

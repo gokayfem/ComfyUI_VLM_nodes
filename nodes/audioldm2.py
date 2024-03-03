@@ -5,6 +5,9 @@ import os
 import soundfile as sf
 from folder_paths import output_directory
 import folder_paths
+import datetime
+from pathlib import Path
+
 # Define the directory for saving files related to the audio model
 files_for_audio_model = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_audioldm2"
 files_for_audio_model.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
@@ -54,10 +57,6 @@ class AudioLDM2ModelPredictor:
             generator=self.generator,
         )["audios"]
 
-        # Save the generated waveform to a file
-        audio_path = Path(output_directory) / f"generated_audio_{random_seed}.{extension}"
-        
-        sf.write(audio_path.as_posix() , waveforms[0], sample_rate)
         final_waveforms = waveforms[0].tolist()
         return (final_waveforms, sample_rate)  # Return the path of the generated audio file
 
@@ -86,11 +85,47 @@ class AudioLDM2Node:
     OUTPUT_NODE = True
     FUNCTION = "generate_audio_final"
 
-    CATEGORY = "VLM Nodes/AudioLDM2"
+    CATEGORY = "VLM Nodes/Audio"
 
     def generate_audio_final(self, text, negative_prompt, duration, guidance_scale, sample_rate, seed, n_candidates, extension):
         wave_form, sample_rate_final = self.predictor.generate_audio(text, negative_prompt, duration, guidance_scale, seed, sample_rate, n_candidates, extension)
         return (wave_form, sample_rate_final, )
 
-NODE_CLASS_MAPPINGS = {"AudioLDM2Node": AudioLDM2Node}
-NODE_DISPLAY_NAME_MAPPINGS = {"AudioLDM2Node": "AudioLDM-2 Node"}
+class SaveAudioNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "waveforms": (any, {}),  # Assuming 'any' is a placeholder for the actual data type
+                "sample_rate": ("INT", {"forceInput": True}),
+                "extension": (["wav", "mp3", "flac"], {"default": "wav"})  # mp3, wav, flac
+            }
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "save_audio"
+    CATEGORY = "VLM Nodes/Audio"
+    OUTPUT_NODE = True
+
+    def save_audio(self, waveforms, sample_rate, extension):
+        # Define the date format
+        date_formats = {
+            'yyyyMMdd_HHmmss': lambda d: '{}{:02d}{:02d}_{:02d}{:02d}{:02d}'.format(d.year, d.month, d.day, d.hour, d.minute, d.second),
+        }
+        
+        # Generate the date-based prefix
+        current_datetime = datetime.datetime.now()
+        print(current_datetime.hour, current_datetime.minute, current_datetime.second)
+        for format_key, format_lambda in date_formats.items():
+            preset_prefix = f"{format_lambda(current_datetime)}"
+        
+        # Build the filename and save the audio
+        audio_path = Path(output_directory) / f"{preset_prefix}_audio.{extension}"
+        sf.write(audio_path.as_posix(), waveforms, sample_rate)
+
+        return ()
+
+NODE_CLASS_MAPPINGS = {"AudioLDM2Node": AudioLDM2Node,
+                       "SaveAudioNode": SaveAudioNode}
+NODE_DISPLAY_NAME_MAPPINGS = {"AudioLDM2Node": "AudioLDM-2 Node",
+                             "SaveAudioNode": "Save Audio Node"}
