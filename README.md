@@ -90,10 +90,13 @@ Kosmos-2: Grounding Multimodal Large Language Models to the World.
 [Kosmos-2](https://huggingface.co/microsoft/kosmos-2-patch14-224)
 It will automatically download the necessary files into ```models/LLavacheckpoints/files_for_kosmos2```
 
-## moondream Node
+## moondream1 and moondream2 Node
 This node is designed to work with the Moondream model, a powerful small vision language model built by @vikhyatk using SigLIP, Phi-1.5, and the LLaVa training dataset. 
-The model boasts 1.6 billion parameters and is made available for research purposes only; commercial use is not allowed.
-It will automatically download the necessary files into ```models/LLavacheckpoints/files_for__moondream```
+The model boasts 1.6 billion parameters and is made available for research purposes only; commercial use is not allowed.  
+
+moondream2 is a small vision language model designed to run efficiently on edge devices.  
+
+It will automatically download the necessary files into ```models/LLavacheckpoints/files_for__moondream``` and ```models/LLavacheckpoints/files_for_moondream2```
 
 ## JoyTag Node
 @fpgamine's JoyTag is a state of the art AI vision model for tagging images, with a focus on sex positivity and inclusivity.  
