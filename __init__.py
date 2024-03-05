@@ -60,6 +60,7 @@ node_list = [
     "audioldm2",
     "playmusic",
     "mcllava",
+    "moondream2",
 ]
 
 NODE_CLASS_MAPPINGS = {}
