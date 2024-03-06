@@ -21,7 +21,7 @@ class Moondream2Predictor:
                                             local_dir_use_symlinks="auto",  # or set to True/False based on your symlink preference
                                             ignore_patterns=["*.bin", "*.jpg", "*.png"])  # Customize based on need
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        self.model = AutoModelForCausalLM.from_pretrained(self.model_path, trust_remote_code=True).to(self.device)
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_path, trust_remote_code=True).to(self.device).eval()
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
 
     def generate_predictions(self, image_path, question):
