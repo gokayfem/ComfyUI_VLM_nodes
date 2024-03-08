@@ -49,8 +49,7 @@ def get_system_info():
     
     # Check for AVX2 support
     if importlib.util.find_spec('cpuinfo'):        
-        system_info['avx2'] = 'avx2' in cpuinfo.get_cpu_info()['flags']
-
+        system_info['avx2'] = 'avx2' in cpuinfo.get_cpu_info().get('flags',[])
     # Determine the platform tag
     if importlib.util.find_spec('packaging.tags'):        
         system_info['platform_tag'] = next(packaging.tags.sys_tags()).platform
