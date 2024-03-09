@@ -48,8 +48,27 @@ def get_system_info():
             system_info['cuda_version'] = "cu" + torch.version.cuda.replace(".", "").strip()
     
     # Check for AVX2 support
-    if importlib.util.find_spec('cpuinfo'):        
-        system_info['avx2'] = 'avx2' in cpuinfo.get_cpu_info().get('flags',[])
+    if importlib.util.find_spec('cpuinfo'):
+        try:
+            # Attempt to import the cpuinfo module
+            import cpuinfo
+            
+            # Safely attempt to retrieve CPU flags
+            cpu_info = cpuinfo.get_cpu_info()
+            if cpu_info and 'flags' in cpu_info:
+                # Check if 'avx2' is among the CPU flags
+                system_info['avx2'] = 'avx2' in cpu_info['flags']
+            else:
+                # Handle the case where CPU info is unavailable or does not contain 'flags'
+                system_info['avx2'] = False
+        except Exception as e:
+            # Handle unexpected errors gracefully
+            print(f"Error retrieving CPU information: {e}")
+            system_info['avx2'] = False
+    else:
+        # Handle the case where the cpuinfo module is not installed
+        print("cpuinfo module not available.")
+        system_info['avx2'] = False
     # Determine the platform tag
     if importlib.util.find_spec('packaging.tags'):        
         system_info['platform_tag'] = next(packaging.tags.sys_tags()).platform
