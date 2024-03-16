@@ -11,6 +11,10 @@ from .prompts import system_msg_simple
 from typing import List, Optional
 import re
 from string import Template
+from typing import Any, List
+from pydantic import BaseModel, Field, create_model
+from typing_extensions import Literal
+
  
 
 supported_LLava_extensions = set(['.gguf'])
@@ -517,6 +521,68 @@ class Suggester:
         response = wrapped_model.get_chat_response(prompt, temperature=temperature, grammar=grammar, max_tokens=512, repeat_penalty=1.1)
     
         return (response, )
+    
+
+class PydanticAttributeSetter:
+    def __init__(self):
+        self.attributes = []
+
+    def add_attribute(self, name: str, type_: Any, description: str, categories: List[str] = None):
+        if type_ == Literal and categories:
+            # Instead of directly using categories, enrich the description to hint at them
+            enriched_description = f"For this {description} you should choose from this categories: {', '.join(categories)}."
+            enriched_description = enriched_description.replace("  ", " ")
+            self.attributes.append((name, str, Field(..., description=enriched_description)))
+        else:
+            self.attributes.append((name, type_, Field(..., description=description)))
+
+    def create_model(self, model_name: str):
+        return create_model(model_name, **{name: (type_, field) for name, type_, field in self.attributes})
+
+class StructuredOutput:
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"forceInput": True, "default": ""}),
+                "model": ("CUSTOM", {"default": ""}),
+                "temperature": ("FLOAT", {"default": 0.15, "min": 0.01, "max": 1.0, "step": 0.01}),
+                "attribute_name": ("STRING", {"default": ""}),
+                "attribute_type": (["str", "int", "float", "bool", "Category"], {"default": "str"}),
+                "attribute_description": ("STRING", {"default": ""}),
+                "categories": ("STRING", {"default": ""}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "keyword_extract"
+    CATEGORY = "VLM Nodes/LLM"
+
+    def keyword_extract(self, prompt, model, temperature, attribute_name, attribute_type, attribute_description, categories):
+        setter = PydanticAttributeSetter()
+        
+        if attribute_type == "Category":
+            categories = categories.split(",")
+            setter.add_attribute(attribute_name, Literal, attribute_description, categories)
+        else:
+            attribute_type = eval(attribute_type)
+            setter.add_attribute(attribute_name, attribute_type, attribute_description)
+
+        Analysis = setter.create_model("Analysis")
+
+        gbnf_grammar, documentation = generate_gbnf_grammar_and_documentation([Analysis])
+        grammar = LlamaGrammar.from_string(gbnf_grammar, verbose=False)
+
+        wrapped_model = LlamaCppAgent(model, debug_output=True,
+            system_prompt=f"You are an advanced AI, tasked to create JSON database entries for analysis. \n\n\n{documentation}")
+
+        response = wrapped_model.get_chat_response(prompt, temperature=temperature, grammar=grammar)
+        parsed_response = json.loads(response)
+        
+        return (next(iter(parsed_response.values())),)
 
 
 NODE_CLASS_MAPPINGS = {
@@ -528,7 +594,8 @@ NODE_CLASS_MAPPINGS = {
     "Suggester": Suggester,
     "PromptGenerateAPI": PromptGenerateAPI,
     "CreativeArtPromptGenerator": CreativeArtPromptGenerator,
-    "ChatMusician": ChatMusician
+    "ChatMusician": ChatMusician,
+    "StructuredOutput": StructuredOutput,
 }
 # A dictionary that contains the friendly/humanly readable titles for the nodes
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -540,5 +607,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Suggester": "Suggester",
     "PromptGenerateAPI": "API PromptGenerator",
     "CreativeArtPromptGenerator": "Creative Art PromptGenerator",
-    "ChatMusician": "ChatMusician"
+    "ChatMusician": "ChatMusician",
+    "StructuredOutput": "Structured Output",
 }
