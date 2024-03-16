@@ -28,6 +28,14 @@ Note that every **model's clip projector** is different!
 - [BakLLaVa](https://huggingface.co/mys/ggml_bakllava-1)  
 etc..
 
+## Structured Output
+Getting structured outputs can be quite challenging through prompt engineering alone.  
+I've added the Structured Output node to VLM Nodes.  
+Now, you can obtain your answers reliably.  
+You can extract entities, numbers, classify prompts with given classes, and generate one specific prompt. These are just a few examples.  
+You can add additional descriptions to fields and choose the attributes you want it to return.  
+![structured](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/43b86ad4-0b91-499f-b2fd-d9771ee4acdd)
+
 ## Image to Music
 Utilizes VLMs, LLMs and [AudioLDM-2](https://arxiv.org/abs/2308.05734) to make music from images.  
 Use SaveAudioNode to save the music inside ```output``` folder.  
