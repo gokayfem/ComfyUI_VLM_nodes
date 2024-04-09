@@ -153,26 +153,26 @@ def _parse_text(text):
     return text
 class PromptGenerateAPI:
     def __init__(self):
-    	pass
+        self.session_history = []  # Session history to store the conversation history
+        self.system_msg_prompts = "You are an advanced AI, please assist with the following request."
+        self.system_msg_simple = "Simple chat mode activated."
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "model_name": (
-                    ["ChatGPT-3.5", "ChatGPT-4", "DeepSeek"],
+                    ["ChatGPT-3.5", "ChatGPT-4", "DeepSeek", "gpt-3.5-turbo", "gpt-3.5-turbo-0125", "gpt-35-turbo", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613", "gpt-4-0613", "gpt-4-1106-preview", "glm-4"],
                     {
                         "default" : "ChatGPT-3.5"
                     }
-                )
-                , 
+                ), 
                 "chat_type": 
                     ("BOOLEAN", 
                     {
                         "default": True, "label_on": "PromptGenerator", "label_off": "SimpleChat"
                     }
-                )
-                ,        
+                ),        
                 "api_key": (
                     "STRING",
                     {
@@ -188,57 +188,85 @@ class PromptGenerateAPI:
                     }
                 ),
                 "question": (
-                            "STRING",
-                            {
-                                "multiline": True,
-                                "default": "",
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "",
                     },
+                ),                    
+                "context_size": (
+                    "INT", 
+                    {
+                        "default": 5, 
+                        "min": 0, 
+                        "max": 30, 
+                        "step": 1
+                    }
+                ),
+                "seed": (
+                    "INT", 
+                    {
+                        "default": 0, 
+                        "min": 0, 
+                        "max": 0xffffffffffffffff, 
+                        "step": 1
+                    }
                 ),
             },
         }
-
     RETURN_TYPES = ("STRING",)
 
     FUNCTION = "generate_prompt"
 
     CATEGORY = "VLM Nodes/LLM"
 
-    def generate_prompt(self, model_name, chat_type, api_key, description, question):
-        from openai import OpenAI            
+    def generate_prompt(self, model_name, chat_type, api_key, description, question, context_size, seed):  # Added seed parameter with a default value
+        from openai import OpenAI
         if chat_type == True:
-            system_msg = system_msg_prompts
+            system_msg = self.system_msg_prompts
         elif chat_type == False:
-            system_msg = system_msg_simple
-
+            system_msg = self.system_msg_simple
 
         # Define the user message
-        if model_name == "DeepSeek":
-            model = "deepseek-chat"
-            base_url = "https://api.deepseek.com/v1"
-        elif model_name == "ChatGPT-3.5":
-            model = "gpt-3.5-turbo"
-            base_url = None
-        elif model_name == "ChatGPT-4":
-            model = "gpt-4"
-            base_url = None
         user_msg = f"""
         Description: {description}
-	Optional Question: {question}
+        Optional Question: {question}
 
         Output: 
         """
-        
-        client = OpenAI(api_key = api_key, base_url=base_url)
 
+        # Custom logic to crop the session history based on context_size
+        self.session_history = self.session_history[-context_size:]
+
+        # Construct messages for API call
+        messages = [{"role": "system", "content": system_msg}] + self.session_history + [{"role": "user", "content": user_msg}]
+
+        if model_name == "DeepSeek":
+            model = "deepseek-chat"
+            base_url = "https://api.deepseek.com/v1"
+        elif model_name in ["ChatGPT-3.5", "gpt-3.5-turbo", "gpt-3.5-turbo-0125", "gpt-35-turbo", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613"]:
+            model = "gpt-3.5-turbo"
+            base_url = None
+        elif model_name in ["ChatGPT-4", "gpt-4-0613", "gpt-4-1106-preview"]:
+            model = "gpt-4"
+            base_url = None
+        elif model_name == "glm-4":
+            model = "glm-4"
+            base_url = None
+
+        client = OpenAI(api_key=api_key, base_url=base_url)
+
+        # Use the constructed messages for the API call, including the seed parameter if applicable
         completion = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": user_msg}
-        ]
+            model=model,
+            messages=messages,  # Use the constructed messages
+            seed=seed  # Utilize the seed parameter
         )
 
-        prompt = completion.choices[0].message.content       
+        prompt = completion.choices[0].message.content
+
+        self.session_history += [{"role": "user", "content": user_msg}, {'role': 'assistant', "content": prompt}]
+
         return (prompt,)
     
 class LLMLoader:
