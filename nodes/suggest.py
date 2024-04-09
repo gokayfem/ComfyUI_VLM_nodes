@@ -220,7 +220,8 @@ class PromptGenerateAPI:
 
     CATEGORY = "VLM Nodes/LLM"
 
-    def generate_prompt(self, model_name, chat_type, api_key, description, question, context_size, seed):  
+    def generate_prompt(self, model_name, chat_type, api_key, description, question, context_size, seed): 
+	from openai import OpenAI      
         if chat_type == True:
             system_msg = self.system_msg_prompts
         elif chat_type == False:
