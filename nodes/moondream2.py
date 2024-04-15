@@ -17,7 +17,7 @@ class Moondream2Predictor:
                                             local_dir=files_for_moondream2,
                                             force_download=False,  # Set to True if you always want to download, regardless of local copy
                                             local_files_only=False,  # Set to False to allow downloading if not available locally
-                                            revision="2024-03-04",  # Specify the revision date for version control
+                                            revision="2024-04-02",  # Specify the revision date for version control
                                             local_dir_use_symlinks="auto",  # or set to True/False based on your symlink preference
                                             ignore_patterns=["*.bin", "*.jpg", "*.png"])  # Customize based on need
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
