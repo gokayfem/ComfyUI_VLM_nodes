@@ -9,7 +9,6 @@ import sys
 import importlib.util
 import re
 import torch
-import cpuinfo
 import packaging.tags
 from requests import get
 import asyncio
