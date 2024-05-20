@@ -9,7 +9,7 @@ dependencies = ["openai>=0.27.8", "accelerate>=0.25.0", "huggingface-hub==0.20.3
 Repository = "https://github.com/gokayfem/ComfyUI_VLM_nodes"
 
 [tool.comfy]
-PublisherId = ""
+PublisherId = "gokayfem"
 DisplayName = "ComfyUI_VLM_nodes"
 Icon = ""
 Models = [{location = "/checkpoints/model.safetensor", model_url = "https://example.com/model.zip"}]
