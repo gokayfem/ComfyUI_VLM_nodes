@@ -1,6 +1,6 @@
 openai>=0.27.8
 accelerate>=0.25.0
-huggingface-hub==0.20.3
+huggingface-hub>=0.20.3
 transformers>=4.38.2
 torch>=2.0.1,<3.0.0
 torchvision>=0.15.2
