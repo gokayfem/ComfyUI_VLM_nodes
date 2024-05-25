@@ -5,6 +5,8 @@ from llama_cpp import Llama
 from llama_cpp.llama_chat_format import Llava15ChatHandler
 import base64
 from torchvision.transforms import ToPILImage
+import gc
+import torch
 
 
 supported_LLava_extensions = set(['.gguf'])
@@ -255,10 +257,14 @@ class LLavaOptionalMemoryFreeSimple:
         if unload and self.llm is not None:
             del self.llm  # Unload the model
             self.llm = None  # Remove reference to the model
+            gc.collect()
+            torch.cuda.empty_cache()
 
         if unload and self.clip is not None:
             del self.clip  # Unload the clip
             self.clip = None  # Remove reference to the clip
+            gc.collect()
+            torch.cuda.empty_cache()
 
         return (f"{response['choices'][0]['message']['content']}", )
 
@@ -345,10 +351,14 @@ class LLavaOptionalMemoryFreeAdvanced:
         if unload and self.llm is not None:
             del self.llm  # Unload the model
             self.llm = None  # Remove reference to the model
+            gc.collect()
+            torch.cuda.empty_cache()
 
         if unload and self.clip is not None:
             del self.clip  # Unload the clip
             self.clip = None  # Remove reference to the clip
+            gc.collect()
+            torch.cuda.empty_cache()
 
         return (f"{response['choices'][0]['message']['content']}", )
 
