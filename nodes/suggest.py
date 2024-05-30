@@ -274,7 +274,7 @@ class LLMLoader:
     def INPUT_TYPES(s):
         return {"required": { 
               "ckpt_name": (folder_paths.get_filename_list("LLavacheckpoints"), ),   
-              "max_ctx": ("INT", {"default": 2048, "min": 300, "max": 100000, "step": 64}),
+              "max_ctx": ("INT", {"default": 2048, "min": 128, "max": 128000, "step": 64}),
               "gpu_layers": ("INT", {"default": 27, "min": 0, "max": 100, "step": 1}),
               "n_threads": ("INT", {"default": 8, "min": 1, "max": 100, "step": 1}),
                             }
