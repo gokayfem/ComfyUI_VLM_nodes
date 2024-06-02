@@ -19,7 +19,7 @@ class Moondream2Predictor:
                                             local_files_only=False,  # Set to False to allow downloading if not available locally
                                             revision="2024-04-02",  # Specify the revision date for version control
                                             local_dir_use_symlinks="auto",  # or set to True/False based on your symlink preference
-                                            ignore_patterns=["*.bin", "*.jpg", "*.png"])  # Customize based on need
+                                            ignore_patterns=["*.bin", "*.jpg", "*.png", "*.gguf"])  # Customize based on need
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.model = AutoModelForCausalLM.from_pretrained(self.model_path, trust_remote_code=True).to(self.device).eval()
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
