@@ -7,7 +7,8 @@ torchvision>=0.15.2
 einops>=0.7.0
 safetensors>=0.4.1
 pillow>=9.4.0
-py-cpuinfo==3.3.0
+py-cpuinfo==3.3.0; platform_machine == "x86_64"
+py-cpuinfo==9; platform_machine == "arm64"
 gitpython
 moviepy
 opencv-python
