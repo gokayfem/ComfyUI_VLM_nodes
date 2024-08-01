@@ -106,6 +106,8 @@ def install_llama(system_info):
         if system_info['gpu']:
             cuda_version = system_info['cuda_version']
             custom_command = f"--force-reinstall --no-deps --index-url=https://jllllll.github.io/llama-cpp-python-cuBLAS-wheels/{avx}/{cuda_version}"
+        elif "arm64" in system_info['platform_tag']:
+            custom_command = None
         else:
             custom_command = f"{base_url}{lcpp_version}/llama_cpp_python-{lcpp_version}-{system_info['platform_tag']}.whl"
         install_package("llama-cpp-python", custom_command=custom_command)
