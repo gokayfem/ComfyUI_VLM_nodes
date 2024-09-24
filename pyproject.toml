@@ -1,9 +1,9 @@
 [project]
 name = "comfyui_vlm_nodes"
 description = "Custom Nodes for Vision Language Models (VLM) , Large Language Models (LLM), Image Captioning, Automatic Prompt Generation, Creative and Consistent Prompt Suggestion, Keyword Extraction"
-version = "1.0.2"
+version = "1.0.3"
 license = { file = "LICENSE" }
-dependencies = ["openai>=0.27.8", "accelerate>=0.25.0", "huggingface-hub==0.20.3", "transformers>=4.38.2", "torch>=2.0.1,<3.0.0", "torchvision>=0.15.2", "einops>=0.7.0", "safetensors>=0.4.1", "pillow>=9.4.0", "py-cpuinfo==3.3.0", "gitpython", "moviepy", "opencv-python", "scikit-build", "typing", "diskcache", "pytz", "six", "cffi", "python-dateutil>=2.7.0", "diffusers", "soundfile", "symusic"]
+dependencies = ["openai>=0.27.8", "accelerate>=0.25.0", "huggingface-hub==0.20.3", "transformers>=4.38.2", "torch>=2.0.1,<3.0.0", "torchvision>=0.15.2", "einops>=0.7.0", "safetensors>=0.4.1", "pillow>=9.4.0", "py-cpuinfo>=3.3.0", "gitpython", "moviepy", "opencv-python", "scikit-build", "typing", "diskcache", "pytz", "six", "cffi", "python-dateutil>=2.7.0", "diffusers", "soundfile", "symusic"]
 
 [project.urls]
 Repository = "https://github.com/gokayfem/ComfyUI_VLM_nodes"
