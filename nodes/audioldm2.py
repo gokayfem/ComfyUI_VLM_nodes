@@ -96,9 +96,10 @@ class SaveAudioNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "waveforms": (any, {}),  # Assuming 'any' is a placeholder for the actual data type
+                "waveforms": (any, {}),
                 "sample_rate": ("INT", {"forceInput": True}),
-                "extension": (["wav", "mp3", "flac"], {"default": "wav"})  # mp3, wav, flac
+                "extension": (["wav", "mp3", "flac"], {"default": "wav"}),
+                "filename": ("STRING", {"default": "audio", "forceInput": True})  # Input for filename
             }
         }
 
@@ -107,25 +108,36 @@ class SaveAudioNode:
     CATEGORY = "VLM Nodes/Audio"
     OUTPUT_NODE = True
 
-    def save_audio(self, waveforms, sample_rate, extension):
-        # Define the date format
-        date_formats = {
-            'yyyyMMdd_HHmmss': lambda d: '{}{:02d}{:02d}_{:02d}{:02d}{:02d}'.format(d.year, d.month, d.day, d.hour, d.minute, d.second),
-        }
+    def save_audio(self, waveforms, sample_rate, extension, filename):
+        # Build the base audio path
+        base_path = Path(output_directory) / filename
         
-        # Generate the date-based prefix
-        current_datetime = datetime.datetime.now()
-        print(current_datetime.hour, current_datetime.minute, current_datetime.second)
-        for format_key, format_lambda in date_formats.items():
-            preset_prefix = f"{format_lambda(current_datetime)}"
+        # Initialize a counter
+        counter = 1
         
-        # Build the filename and save the audio
-        audio_path = Path(output_directory) / f"{preset_prefix}_audio.{extension}"
+        # Check if the file exists and append a number if it does
+        while True:
+            # Format the filename with leading zeros for numbering
+            if counter == 1:
+                audio_path = base_path.with_suffix(f".{extension}")  # First instance
+            else:
+                audio_path = base_path.with_name(f"{filename}_{counter:05d}").with_suffix(f".{extension}")
+            
+            if not audio_path.exists():
+                break  # Found a unique filename
+            
+            counter += 1  # Increment the counter
+        
+        # Save the audio file
         sf.write(audio_path.as_posix(), waveforms, sample_rate)
 
         return ()
 
-NODE_CLASS_MAPPINGS = {"AudioLDM2Node": AudioLDM2Node,
-                       "SaveAudioNode": SaveAudioNode}
-NODE_DISPLAY_NAME_MAPPINGS = {"AudioLDM2Node": "AudioLDM-2 Node",
-                             "SaveAudioNode": "Save Audio Node"}
+NODE_CLASS_MAPPINGS = {
+    "AudioLDM2Node": AudioLDM2Node,
+    "SaveAudioNode": SaveAudioNode
+}
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "AudioLDM2Node": "AudioLDM-2 Node",
+    "SaveAudioNode": "Save Audio Node"
+}
