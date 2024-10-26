@@ -6,8 +6,18 @@ from pathlib import Path
 from torchvision.transforms import ToPILImage
 from huggingface_hub import snapshot_download
 import folder_paths
-from transformers import AutoModelForVision2Seq, AutoTokenizer, AutoProcessor
+from transformers import AutoModelForVision2Seq, AutoTokenizer, AutoProcessor, BitsAndBytesConfig
 from qwen_vl_utils import process_vision_info
+
+def check_flash_attention():
+    """Check if flash attention 2 is available"""
+    try:
+        from flash_attn import flash_attn_func
+        return True
+    except ImportError:
+        return False
+
+FLASH_ATTENTION_AVAILABLE = check_flash_attention()
 
 # Define the directory for saving Qwen2-VL files
 files_for_qwen2vl = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_qwen2vl"
@@ -44,6 +54,33 @@ QWEN2_VL_MODELS = {
     "Qwen2-VL-72B-GPTQ-Int8": "Qwen/Qwen2-VL-72B-Instruct-GPTQ-Int8",
 }
 
+MEMORY_EFFICIENT_CONFIGS = {
+    "Balanced (8-bit)": {
+        "load_in_8bit": True,
+        "load_in_4bit": False,
+        "cpu_offload": False,
+        "attention_mode": "flash_attention_2" if FLASH_ATTENTION_AVAILABLE else None,
+    },
+    "Maximum Savings (4-bit)": {
+        "load_in_8bit": False,
+        "load_in_4bit": True,
+        "cpu_offload": True,
+        "attention_mode": "flash_attention_2" if FLASH_ATTENTION_AVAILABLE else None,
+    },
+    "CPU Offload": {
+        "load_in_8bit": False,
+        "load_in_4bit": False,
+        "cpu_offload": True,
+        "attention_mode": None,
+    },
+    "Default": {
+        "load_in_8bit": False,
+        "load_in_4bit": False,
+        "cpu_offload": False,
+        "attention_mode": None,
+    }
+}
+
 class SystemResources:
     @staticmethod
     def get_available_memory():
@@ -63,9 +100,19 @@ class SystemResources:
             return 0
 
     @staticmethod
-    def check_resources(model_name):
+    def check_resources(model_name, memory_mode):
         """Check if system has enough resources for the model"""
         required_vram = MODEL_VRAM_REQUIREMENTS.get(model_name, 0)
+        config = MEMORY_EFFICIENT_CONFIGS[memory_mode]
+        
+        # Adjust VRAM requirements based on memory mode
+        if config["load_in_8bit"]:
+            required_vram = required_vram * 0.5  # Approximately half VRAM usage
+        elif config["load_in_4bit"]:
+            required_vram = required_vram * 0.25  # Approximately quarter VRAM usage
+        elif config["cpu_offload"]:
+            required_vram = required_vram * 0.7  # Rough estimate for CPU offloading
+            
         available_vram = SystemResources.get_available_vram()
         available_memory = SystemResources.get_available_memory()
         
@@ -77,7 +124,7 @@ class SystemResources:
             error_messages.append(
                 f"Insufficient VRAM: Model {model_name} requires {required_vram:.1f}GB VRAM, "
                 f"but only {available_vram:.1f}GB available. "
-                "Consider using a quantized version (AWQ/GPTQ) of the model."
+                "Try using a more aggressive memory saving mode."
             )
         
         if available_memory < required_system_memory:
@@ -89,9 +136,9 @@ class SystemResources:
         return error_messages
 
 class Qwen2VLPredictor:
-    def __init__(self, model_name):
+    def __init__(self, model_name, memory_mode="Balanced (8-bit)"):
         # Check system resources
-        error_messages = SystemResources.check_resources(model_name)
+        error_messages = SystemResources.check_resources(model_name, memory_mode)
         if error_messages:
             raise RuntimeError("\n".join(error_messages))
             
@@ -106,17 +153,42 @@ class Qwen2VLPredictor:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         
         try:
-            # Load model with appropriate settings based on model type
+            # Get memory configuration
+            config = MEMORY_EFFICIENT_CONFIGS[memory_mode]
+            
+            # Setup quantization config if needed
+            quantization_config = None
+            if config["load_in_8bit"] or config["load_in_4bit"]:
+                quantization_config = BitsAndBytesConfig(
+                    load_in_8bit=config["load_in_8bit"],
+                    load_in_4bit=config["load_in_4bit"],
+                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_use_double_quant=True,
+                )
+            
+            # Setup device map for CPU offloading
+            device_map = "auto" if config["cpu_offload"] else None
+            
+            # Base model kwargs
             model_kwargs = {
                 "trust_remote_code": True,
-                "device_map": "auto"
+                "device_map": device_map,
+                "quantization_config": quantization_config,
             }
             
+            # Add attention optimization if specified and available
+            if config["attention_mode"]:
+                try:
+                    model_kwargs["attn_implementation"] = config["attention_mode"]
+                except Exception as e:
+                    print(f"Warning: Flash Attention 2 requested but not available: {str(e)}")
+            
+            # Load model with appropriate settings based on model type
             if "GPTQ" in model_name or "AWQ" in model_name:
                 model_kwargs["torch_dtype"] = "auto"
             else:
                 model_kwargs["torch_dtype"] = torch.float16 if torch.cuda.is_available() else torch.float32
-                
+
             self.model = AutoModelForVision2Seq.from_pretrained(
                 self.model_path,
                 **model_kwargs
@@ -127,13 +199,17 @@ class Qwen2VLPredictor:
             
         except RuntimeError as e:
             if "out of memory" in str(e):
+                process = psutil.Process()
+                mem_info = process.memory_info()
                 torch.cuda.empty_cache()
                 raise RuntimeError(
                     f"Out of VRAM while loading {model_name}. Try:\n"
-                    "1. Using a smaller model (e.g., 2B instead of 7B)\n"
-                    "2. Using a quantized version (AWQ/GPTQ)\n"
-                    "3. Clearing other models from memory\n"
-                    "4. Restarting ComfyUI"
+                    "1. Using a more aggressive memory saving mode\n"
+                    "2. Using a smaller model (e.g., 2B instead of 7B)\n"
+                    "3. Using a quantized version (AWQ/GPTQ)\n"
+                    "4. Clearing other models from memory\n"
+                    "5. Restarting ComfyUI\n"
+                    f"Process memory: {mem_info.rss / 1024**3:.1f}GB"
                 ) from e
             raise
         
@@ -205,9 +281,10 @@ class Qwen2VLPredictor:
                     torch.cuda.empty_cache()
                     raise RuntimeError(
                         "Out of VRAM during generation. Try:\n"
-                        "1. Reducing max_new_tokens\n"
-                        "2. Using a smaller model\n"
-                        "3. Using a quantized version (AWQ/GPTQ)"
+                        "1. Using a more aggressive memory saving mode\n"
+                        "2. Reducing max_new_tokens\n"
+                        "3. Using a smaller model\n"
+                        "4. Using a quantized version (AWQ/GPTQ)"
                     ) from e
                 raise
                 
@@ -218,6 +295,7 @@ class Qwen2VLNode:
     def __init__(self):
         self.predictor = None
         self.current_model = None
+        self.current_memory_mode = None
         
     @classmethod
     def INPUT_TYPES(cls):
@@ -229,6 +307,7 @@ class Qwen2VLNode:
                     "default": "Describe this image in detail."
                 }),
                 "model_name": (list(QWEN2_VL_MODELS.keys()),),
+                "memory_mode": (list(MEMORY_EFFICIENT_CONFIGS.keys()),),
                 "max_new_tokens": ("INT", {
                     "default": 512,
                     "min": 1,
@@ -248,7 +327,7 @@ class Qwen2VLNode:
                 })
             },
             "optional": {
-                "video_frames": ("IMAGE",),  # For video input (batch of frames)
+                "video_frames": ("IMAGE",),
                 "fps": ("FLOAT", {
                     "default": 1.0,
                     "min": 0.1,
@@ -262,9 +341,12 @@ class Qwen2VLNode:
     FUNCTION = "generate"
     CATEGORY = "VLM Nodes/Qwen2-VL"
 
-    def generate(self, image, text_input, model_name, max_new_tokens=512, temperature=0.7, top_p=0.9, video_frames=None, fps=1.0):
-        # Initialize or update predictor if model changed
-        if self.predictor is None or self.current_model != model_name:
+    def generate(self, image, text_input, model_name, memory_mode="Balanced (8-bit)", 
+                max_new_tokens=512, temperature=0.7, top_p=0.9, video_frames=None, fps=1.0):
+        # Initialize or update predictor if model or memory mode changed
+        if (self.predictor is None or self.current_model != model_name or 
+            self.current_memory_mode != memory_mode):
+            
             # Clean up old model
             if self.predictor is not None:
                 del self.predictor.model
@@ -273,8 +355,9 @@ class Qwen2VLNode:
                 torch.cuda.empty_cache()
             
             try:
-                self.predictor = Qwen2VLPredictor(model_name)
+                self.predictor = Qwen2VLPredictor(model_name, memory_mode)
                 self.current_model = model_name
+                self.current_memory_mode = memory_mode
             except Exception as e:
                 return (f"Error initializing model: {str(e)}",)
             
@@ -282,7 +365,7 @@ class Qwen2VLNode:
         pil_image = ToPILImage()(image[0].permute(2, 0, 1))
         temp_path = files_for_qwen2vl / "temp_image.png"
         pil_image.save(temp_path)
-        
+                        
         video_frame_list = None
         if video_frames is not None:
             video_frame_list = [str(temp_path)]  # Use current image as first frame
@@ -292,26 +375,34 @@ class Qwen2VLNode:
                 ToPILImage()(frame.permute(2, 0, 1)).save(frame_path)
                 video_frame_list.append(str(frame_path))
         
-        # Generate response
-        response = self.predictor.generate_predictions(
-            temp_path,
-            text_input,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            video_frames=video_frame_list,
-            fps=fps
-        )
-        
-        # Clean up temporary video frames
-        if video_frame_list:
-            for frame_path in video_frame_list[1:]:
-                try:
-                    os.remove(frame_path)
-                except:
-                    pass
-        
-        return (response,)
+        try:
+            # Generate response
+            response = self.predictor.generate_predictions(
+                temp_path,
+                text_input,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                video_frames=video_frame_list,
+                fps=fps
+            )
+            
+            # Clean up all temporary files
+            try:
+                os.remove(temp_path)
+                if video_frame_list:
+                    for frame_path in video_frame_list[1:]:
+                        try:
+                            os.remove(frame_path)
+                        except:
+                            pass
+            except:
+                pass
+            
+            return (response,)
+            
+        except Exception as e:
+            return (f"Error during generation: {str(e)}",)
 
 # Register the node
 NODE_CLASS_MAPPINGS = {
