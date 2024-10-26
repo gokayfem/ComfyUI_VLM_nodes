@@ -111,6 +111,18 @@ It will automatically download the necessary files into ```models/LLavacheckpoin
 It uses the Danbooru tagging schema, but works across a wide range of images, from hand drawn to photographic.
 It will automatically download the necessary files into ```models/LLavacheckpoints/files_for_joytagger```
 
+## Qwen2-VL Node
+Utilizes the latest Qwen2-VL series of models, which are state-of-the-art vision language models supporting various resolutions, ratios, and languages. The models excel at:
+- Understanding images of various resolutions & ratios
+- Complex visual reasoning and decision making
+- Multilingual support (English, Chinese, European languages, Japanese, Korean, Arabic, Vietnamese, etc.)
+
+Available models include 2B, 7B, and 72B parameter versions, with standard, AWQ, and GPTQ quantized variants. It will automatically download the necessary files into `models/LLavacheckpoints/files_for_qwen2vl`.
+
+**Important Note**: Larger models (7B, 72B) require significant VRAM. Choose quantized versions (AWQ, GPTQ) for reduced memory usage.
+
+[Link to Qwen2-VL Models](https://huggingface.co/Qwen/Qwen2-VL-7B-Instruct)
+
 ## Acknowledgements
 
  - [JAGS](https://github.com/jags111)
