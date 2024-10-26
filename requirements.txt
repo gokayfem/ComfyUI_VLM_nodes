@@ -1,5 +1,6 @@
 accelerate>=0.27.0
 auto-gptq>=0.7.0
+bitsandbytes
 cffi
 diffusers
 diskcache
