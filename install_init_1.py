@@ -19,178 +19,96 @@ from server import PromptServer
 from tqdm import tqdm
 import pkg_resources
 
-def verify_python_support():
-    """Verify Python version meets minimum requirements."""
-    version = tuple(map(int, platform.python_version_tuple()[:2]))
-    if version < (3, 8):
-        print("Warning: Python 3.8 or higher is required")
-        return False
-    return True
 
-def verify_pypy_support(system_info):
-    """Verify if the current PyPy version/platform combination is supported."""
-    if 'pp' in system_info['python_version']:
-        pp_ver = system_info['python_version'][2:4]
-        if pp_ver not in ['38', '39', '310']:
-            print("Warning: Current PyPy version may not be supported")
-            return False
-        if system_info['platform_tag'] not in ['linux_i686', 'linux_x86_64', 'win_amd64', 
-                                             'macosx_10_15_x86_64', 'macosx_10_9_x86_64']:
-            print("Warning: Current platform may not be supported for PyPy")
-            return False
-    return True
 
 def get_python_version():
-    """Return the Python version in a format matching wheel tags, e.g., 'cp39' for Python 3.9."""
-    version = platform.python_version_tuple()[:2]
-    impl = 'pp' if platform.python_implementation().lower() == 'pypy' else 'cp'
-    return f"{impl}{version[0]}{version[1]}"
+    """Return the Python version in a concise format, e.g., '39' for Python 3.9."""
+    version_match = re.match(r"3\.(\d+)", platform.python_version())
+    if version_match:
+        return "3" + version_match.group(1)
+    else:
+        return None
 
 def get_system_info():
-    """Gather system information related to platform architecture, Python version, and OS."""
+    """Gather system information related to NVIDIA GPU, CUDA version, AVX2 support, Python version, OS, and platform tag."""
     system_info = {
         'gpu': False,
         'cuda_version': None,
-        'rocm_version': None,
+        'avx2': False,
         'python_version': get_python_version(),
-        'os': platform.system().lower(),
-        'arch': platform.machine().lower(),
-        'platform_tag': None
+        'os': platform.system(),
+        'os_bit': platform.architecture()[0].replace("bit", ""),
+        'platform_tag': None,
     }
 
-    # Determine platform-specific tags
-    if system_info['os'] == 'linux':
-        if system_info['arch'] == 'x86_64':
-            system_info['platform_tag'] = 'linux_x86_64'
-        elif system_info['arch'] == 'i686':
-            system_info['platform_tag'] = 'linux_i686'
-        elif system_info['arch'] == 'aarch64':
-            system_info['platform_tag'] = 'linux_aarch64'
-    elif system_info['os'] == 'windows':
-        if system_info['arch'] == 'amd64':
-            system_info['platform_tag'] = 'win_amd64'
-        elif system_info['arch'] == 'x86':
-            system_info['platform_tag'] = 'win32'
-    elif system_info['os'] == 'darwin':
-        if system_info['arch'] == 'x86_64':
-            # Intel Mac
-            if 'pp' in system_info['python_version']:
-                system_info['platform_tag'] = 'macosx_10_15_x86_64'
-            else:
-                py_ver = int(system_info['python_version'][3:])
-                if py_ver >= 12:
-                    system_info['platform_tag'] = 'macosx_10_13_x86_64'
-                else:
-                    system_info['platform_tag'] = 'macosx_10_9_x86_64'
-        elif system_info['arch'] == 'arm64':
-            # Apple Silicon (M1/M2/M3)
-            print("Apple Silicon detected. llama-cpp-python will be built with Metal support")
-            system_info['platform_tag'] = None  # Force source build for optimal Metal support
-            system_info['metal'] = True
-
-    # Check for GPU support
-    if importlib.util.find_spec('torch'):
+    # Check for NVIDIA GPU and CUDA version
+    if importlib.util.find_spec('torch'): 
+        system_info['gpu'] = torch.cuda.is_available()
+        if system_info['gpu']:
+            system_info['cuda_version'] = "cu" + torch.version.cuda.replace(".", "").strip()
+    
+    # Check for AVX2 support
+    if importlib.util.find_spec('cpuinfo'):
         try:
-            import torch
-            if hasattr(torch.version, 'hip') and torch.version.hip is not None:
-                system_info['gpu'] = True
-                system_info['rocm_version'] = f"rocm{torch.version.hip}"
-            elif torch.cuda.is_available():
-                system_info['gpu'] = True
-                system_info['cuda_version'] = "cu" + torch.version.cuda.replace(".", "").strip()
-        except:
-            pass
+            # Attempt to import the cpuinfo module
+            import cpuinfo
+            
+            # Safely attempt to retrieve CPU flags
+            cpu_info = cpuinfo.get_cpu_info()
+            if cpu_info and 'flags' in cpu_info:
+                # Check if 'avx2' is among the CPU flags
+                system_info['avx2'] = 'avx2' in cpu_info['flags']
+            else:
+                # Handle the case where CPU info is unavailable or does not contain 'flags'
+                system_info['avx2'] = False
+        except Exception as e:
+            # Handle unexpected errors gracefully
+            print(f"Error retrieving CPU information: {e}")
+            system_info['avx2'] = False
+    else:
+        # Handle the case where the cpuinfo module is not installed
+        print("cpuinfo module not available.")
+        system_info['avx2'] = False
+    # Determine the platform tag
+    if importlib.util.find_spec('packaging.tags'):        
+        system_info['platform_tag'] = next(packaging.tags.sys_tags()).platform
 
     return system_info
 
 def latest_lamacpp():
-    """Fetch the latest version of llama-cpp-python, with fallback."""
     try:        
-        response = get("https://api.github.com/repos/abetlen/llama-cpp-python/releases/latest", timeout=10)
-        response.raise_for_status()
+        response = get("https://api.github.com/repos/abetlen/llama-cpp-python/releases/latest")
         return response.json()["tag_name"].replace("v", "")
-    except Exception as e:
-        print(f"Failed to fetch latest version: {e}")
-        return "0.3.1"  # Fallback to known working version
+    except Exception:
+        return "0.2.20"
+
+def install_package(package_name, custom_command=None):
+    if not package_is_installed(package_name):
+        print(f"Installing {package_name}...")
+        command = [sys.executable, "-m", "pip", "install", package_name, "--no-cache-dir"]
+        if custom_command:
+            command += custom_command.split()
+        subprocess.check_call(command)
+    else:
+        print(f"{package_name} is already installed.")
 
 def package_is_installed(package_name):
-    """Check if a Python package is installed."""
     return importlib.util.find_spec(package_name) is not None
 
-def install_package(package_name, extra_args=None):
-    """Install a Python package with pip."""
-    command = [sys.executable, "-m", "pip", "install", package_name, "--no-cache-dir"]
-    if extra_args:
-        command.extend(extra_args.split())
-    subprocess.check_call(command)
-
 def install_llama(system_info):
-    """Install llama-cpp-python using the appropriate method based on system capabilities."""
-    if not verify_python_support():
-        print("ERROR: Unsupported Python version")
-        return False
-
-    if not verify_pypy_support(system_info):
-        print("WARNING: Unsupported PyPy configuration")
-
     imported = package_is_installed("llama-cpp-python") or package_is_installed("llama_cpp")
     if imported:
         print("llama-cpp installed")
-        return True
-
-    # If pre-built wheels fail, try GitHub release wheels
-    try:
-        version = latest_lamacpp()
-        platform_tag = system_info['platform_tag']
-        
-        if platform_tag:
-            python_version = system_info['python_version']
-            wheel_name = f"llama_cpp_python-{version}-{python_version}-{python_version}-{platform_tag}.whl"
-            wheel_url = f"https://github.com/abetlen/llama-cpp-python/releases/download/v{version}/{wheel_name}"
-            
-            print(f"Attempting to install from {wheel_url}")
-            install_package(wheel_url)
-            print(f"Successfully installed llama-cpp-python v{version}")
-            return True
-    except Exception as e:
-        print(f"GitHub wheel installation failed: {e}")
-        print("Attempting source build with acceleration...")
-
-# Build from source with appropriate acceleration
-    try:
-        if system_info.get('metal', False):
-            print("Building llama-cpp-python from source with Metal support")
-            os.environ['CMAKE_ARGS'] = "-DGGML_METAL=on"
-            install_package("llama-cpp-python")
-            return True
-        elif system_info['gpu']:
-            if system_info.get('cuda_version'):
-                print("Building llama-cpp-python from source with CUDA support")
-                # Add ZLUDA support check
-                if os.environ.get('ZLUDA_PATH'):
-                    print("ZLUDA detected, building with ZLUDA support")
-                    os.environ['CMAKE_ARGS'] = "-DGGML_CUDA=on -DGGML_CUDA_ZLUDA=on"
-                else:
-                    os.environ['CMAKE_ARGS'] = "-DGGML_CUDA=on"
-                install_package("llama-cpp-python")
-                return True
-            elif system_info.get('rocm_version'):
-                print("Building llama-cpp-python from source with ROCm support")
-                os.environ['CMAKE_ARGS'] = "-DGGML_HIPBLAS=on"
-                install_package("llama-cpp-python")
-                return True
-    except Exception as e:
-        print(f"Accelerated build failed: {e}")
-        print("Falling back to CPU-only version")
-
-    # Final fallback - basic CPU version
-    try:
-        print("Installing CPU-only version")
-        install_package("llama-cpp-python")
-        return True
-    except Exception as e:
-        print(f"CPU installation failed: {e}")
-        return False
+    else:
+        lcpp_version = latest_lamacpp()
+        base_url = "https://github.com/abetlen/llama-cpp-python/releases/download/v"
+        avx = "AVX2" if system_info['avx2'] else "AVX"
+        if system_info['gpu']:
+            cuda_version = system_info['cuda_version']
+            custom_command = f"--force-reinstall --no-deps --index-url=https://jllllll.github.io/llama-cpp-python-cuBLAS-wheels/{avx}/{cuda_version}"
+        else:
+            custom_command = f"{base_url}{lcpp_version}/llama_cpp_python-{lcpp_version}-{system_info['platform_tag']}.whl"
+        install_package("llama-cpp-python", custom_command=custom_command)
 
 def install_autogptq(system_info):
     # Check OS compatibility
