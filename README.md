@@ -13,7 +13,9 @@
 cd custom_nodes
 git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ```
+## Acknowledgements
 
+ - [JAGS](https://github.com/jags111) [EndangeredAntelope](https://github.com/EnragedAntelope)
 
 **If you get errors related to llama-cpp-python or if it is not using GPU.**  
 **I recommend installing it with the right arguments provided in this link [llama-cpp-python](https://github.com/abetlen/llama-cpp-python?tab=readme-ov-file#installation)**  
@@ -125,10 +127,6 @@ Available models include 2B, 7B, and 72B parameter versions, with standard, AWQ,
 **Important Note**: Larger models (7B, 72B) require significant VRAM. Choose quantized versions (AWQ, GPTQ) for reduced memory usage.
 
 [Link to Qwen2-VL Models](https://huggingface.co/Qwen/Qwen2-VL-7B-Instruct)
-
-## Acknowledgements
-
- - [JAGS](https://github.com/jags111)
 
 ## Example LLaVa Nodes
 ![image](https://github.com/gokayfem/ComfyUI_VLM_nodes/assets/88277926/c30b9599-fa14-4f1a-b023-65a3697892f2)
