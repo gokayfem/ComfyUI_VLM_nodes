@@ -15,7 +15,8 @@ git clone https://github.com/gokayfem/ComfyUI_VLM_nodes.git
 ```
 ## Acknowledgements
 
- - [JAGS](https://github.com/jags111) [EndangeredAntelope](https://github.com/EnragedAntelope)
+ - [JAGS](https://github.com/jags111) 
+ - [EndangeredAntelope](https://github.com/EnragedAntelope)
 
 **If you get errors related to llama-cpp-python or if it is not using GPU.**  
 **I recommend installing it with the right arguments provided in this link [llama-cpp-python](https://github.com/abetlen/llama-cpp-python?tab=readme-ov-file#installation)**  
