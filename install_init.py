@@ -138,6 +138,16 @@ def install_llama(system_info):
         print("llama-cpp installed")
         return True
 
+    # Simple pip install for Linux
+    if system_info['os'] == 'linux':
+        try:
+            print("Installing llama-cpp-python via pip")
+            install_package("llama-cpp-python")
+            return True
+        except Exception as e:
+            print(f"Installation failed: {e}")
+            return False
+
     # If pre-built wheels fail, try GitHub release wheels
     try:
         version = latest_lamacpp()
