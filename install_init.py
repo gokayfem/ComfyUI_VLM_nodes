@@ -202,41 +202,6 @@ def install_llama(system_info):
         print(f"CPU installation failed: {e}")
         return False
 
-def install_autogptq(system_info):
-    # Check OS compatibility
-    imported = package_is_installed("auto_gptq")
-    if imported:
-        print("AutoGPTQ installed")
-    else:
-        if system_info['os'] not in ['Linux', 'Windows']:
-            print("AutoGPTQ is not supported on your operating system.")
-            return
-        
-        # Prepare base install command
-        base_command = [sys.executable, "-m", "pip", "install", "auto-gptq"]
-        
-        # Determine the specific install command based on GPU and CUDA/ROCm version
-        if system_info['gpu']:
-            if 'cuda_version' in system_info and system_info['cuda_version'] in ['cu118', 'cu121']:
-                if system_info['cuda_version'] == 'cu118':
-                    base_command += ["--extra-index-url", "https://huggingface.github.io/autogptq-index/whl/cu118/"]
-                # No extra URL needed for cu121 as it's the default
-            elif 'rocm_version' in system_info and system_info['rocm_version'] == 'rocm573':
-                base_command += ["--extra-index-url", "https://huggingface.github.io/autogptq-index/whl/rocm573/"]
-            else:
-                print("Unsupported GPU configuration for AutoGPTQ.")
-                return
-        else:
-            print("No GPU detected. AutoGPTQ installation requires a GPU with CUDA or ROCm support.")
-            return
-        
-        # Execute the installation command
-        try:
-            print(f"Installing AutoGPTQ with command: {' '.join(base_command)}")
-            subprocess.check_call(base_command)
-        except Exception as e:
-            print(f"Failed to install AutoGPTQ: {e}")
-
 config = None
 
 def is_logging_enabled():

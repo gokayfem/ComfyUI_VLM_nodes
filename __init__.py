@@ -54,7 +54,6 @@ node_list = [
     "llavaloader",
     "suggest",
     "joytag",
-    "internlm",
     "uform",
     "kosmos2",
     "audioldm2",
