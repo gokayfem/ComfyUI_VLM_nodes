@@ -2,7 +2,7 @@ accelerate>=1.0
 bitsandbytes
 cffi
 decord
-diffusers >=30
+diffusers >=0.31.0
 diskcache
 einops>=0.7.0
 gitpython
