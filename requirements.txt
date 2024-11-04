@@ -1,13 +1,15 @@
-accelerate>=0.27.0
+accelerate>=1.0
 bitsandbytes
 cffi
 decord
-diffusers
+diffusers >=30
 diskcache
 einops>=0.7.0
 gitpython
-huggingface-hub>=0.20.3
+huggingface-hub>=0.26.2
+matplotlib
 moviepy
+numpy>=1.26.4,<2.0.0
 openai>=0.27.8
 opencv-python
 optimum>=1.17.0
@@ -21,7 +23,7 @@ scikit-build
 six
 soundfile
 symusic
-torch>=2.0.1,<3.0.0
+torch>=2.0.1
 torchvision>=0.15.2
-transformers>=4.38.2
+transformers>=4.46
 typing
