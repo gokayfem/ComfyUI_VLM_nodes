@@ -54,6 +54,7 @@ node_list = [
     "llavaloader",
     "mcllava",
     "minicpm",
+    "molmo",
     "moondream2",
     "moondream_script",
     "paligemma",
