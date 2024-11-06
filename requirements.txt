@@ -1,4 +1,4 @@
-accelerate>=1.0
+accelerate>=0.32.1
 bitsandbytes
 cffi
 decord
