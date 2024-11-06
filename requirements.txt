@@ -9,7 +9,7 @@ gitpython
 huggingface-hub>=0.26.2
 matplotlib
 moviepy
-numpy>=1.26.4,<2.0.0
+numpy>=1.22.4,<2.0.0
 openai>=0.27.8
 opencv-python
 optimum>=1.17.0
