@@ -156,25 +156,20 @@ class Qwen2VLPredictor:
             # Get memory configuration
             config = MEMORY_EFFICIENT_CONFIGS[memory_mode]
             
-            # Setup quantization config if needed
-            quantization_config = None
-            if config["load_in_8bit"] or config["load_in_4bit"]:
-                quantization_config = BitsAndBytesConfig(
-                    load_in_8bit=config["load_in_8bit"],
-                    load_in_4bit=config["load_in_4bit"],
-                    bnb_4bit_compute_dtype=torch.float16,
-                    bnb_4bit_use_double_quant=True,
-                )
-            
-            # Setup device map for CPU offloading
-            device_map = "auto" if config["cpu_offload"] else None
-            
             # Base model kwargs
             model_kwargs = {
                 "trust_remote_code": True,
-                "device_map": device_map,
-                "quantization_config": quantization_config,
+                "device_map": "auto" if config["cpu_offload"] else None,
             }
+            
+            # Setup quantization config if needed
+            if config["load_in_8bit"] or config["load_in_4bit"]:
+                model_kwargs.update({
+                    "load_in_8bit": config["load_in_8bit"],
+                    "load_in_4bit": config["load_in_4bit"],
+                    "bnb_4bit_compute_dtype": torch.float16,
+                    "bnb_4bit_use_double_quant": True,
+                })
             
             # Add attention optimization if specified and available
             if config["attention_mode"]:
@@ -183,7 +178,7 @@ class Qwen2VLPredictor:
                 except Exception as e:
                     print(f"Warning: Flash Attention 2 requested but not available: {str(e)}")
             
-            # Load model with appropriate settings based on model type
+            # Set appropriate dtype based on model type
             if "GPTQ" in model_name or "AWQ" in model_name:
                 model_kwargs["torch_dtype"] = "auto"
             else:
