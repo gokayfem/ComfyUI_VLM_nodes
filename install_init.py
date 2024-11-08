@@ -103,6 +103,19 @@ def get_system_info():
 
     return system_info
 
+def install_mistral_packages():
+    """Install Mistral packages without dependencies."""
+    try:
+        print("Installing Mistral packages...")
+        # Fixed: Separate the package name from the pip arguments
+        install_package("mistral-common", "--upgrade --no-deps")
+        install_package("mistral-inference", "--upgrade --no-deps")
+        print("Successfully installed Mistral packages")
+        return True
+    except Exception as e:
+        print(f"Failed to install Mistral packages: {e}")
+        return False
+
 def latest_lamacpp():
     """Fetch the latest version of llama-cpp-python, with fallback."""
     try:        
@@ -132,6 +145,9 @@ def install_llama(system_info):
 
     if not verify_pypy_support(system_info):
         print("WARNING: Unsupported PyPy configuration")
+
+    # Install Mistral packages first
+    install_mistral_packages()
 
     imported = package_is_installed("llama-cpp-python") or package_is_installed("llama_cpp")
     if imported:
@@ -166,7 +182,7 @@ def install_llama(system_info):
         print(f"GitHub wheel installation failed: {e}")
         print("Attempting source build with acceleration...")
 
-# Build from source with appropriate acceleration
+    # Build from source with appropriate acceleration
     try:
         if system_info.get('metal', False):
             print("Building llama-cpp-python from source with Metal support")
