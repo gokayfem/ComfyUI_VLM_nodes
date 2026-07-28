@@ -1,10 +1,11 @@
 # ComfyUI VLM Nodes
 
 Production-oriented vision-language, structured prompting, audio, and utility
-nodes for ComfyUI. Version 2.2 supports ComfyUI's selected NVIDIA CUDA, AMD
+nodes for ComfyUI. Version 2.3 supports ComfyUI's selected NVIDIA CUDA, AMD
 ROCm, Apple Metal, Intel XPU, and CPU device without replacing its PyTorch
 build. It removes startup installers and global accelerator cache flushes,
-adds real image/video batches, and uses ComfyUI model residency and offloading.
+adds real image/video batches and live token streaming, and uses ComfyUI model
+residency and offloading.
 
 ## Modern model coverage
 
@@ -30,6 +31,15 @@ Curated models use native Transformers implementations; remote repository code
 is enabled only when the explicit custom-model option requires it. Florence-2
 uses the Transformers-native converted checkpoints instead of Microsoft’s
 legacy repository code.
+
+## Live text output
+
+`Modern VLM` streams decoded text through ComfyUI's native `progress_text`
+WebSocket channel by default. A connected `ViewText` node updates while tokens
+arrive, shows the final response after execution, and restores the last result
+when ComfyUI rehydrates workflow output history. Disable `stream_output` for
+API-only or headless runs that do not need incremental UI updates. Streaming is
+best-effort and never changes the final `STRING` output or makes inference fail.
 
 Specialized nodes remain available where a generic chat node would discard
 useful model capabilities:

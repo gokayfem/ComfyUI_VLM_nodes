@@ -1,6 +1,6 @@
 [project]
 name = "comfyui_vlm_nodes"
-version = "2.2.0"
+version = "2.3.0"
 description = "Production-ready local and API vision-language nodes for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -1,6 +1,7 @@
 import base64
 import inspect
 import io
+from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -444,6 +445,74 @@ def test_modern_video_is_primary_input_and_thinking_is_explicit():
     assert captured["enable_thinking"] is True
     assert captured["video_metadata"]["fps"] == 2.0
     assert captured["video_metadata"]["frames_indices"] == [0, 1, 2, 3]
+
+
+def test_modern_vlm_streams_cumulative_text_without_changing_final_output(
+    monkeypatch,
+):
+    class FakeStreamer:
+        def __init__(self, _tokenizer, **kwargs):
+            assert kwargs["skip_prompt"] is True
+            self.chunks = ["Hello ", "from ", "the VLM."]
+
+        def __iter__(self):
+            return iter(self.chunks)
+
+        def end(self):
+            pass
+
+    class FakeModel:
+        def generate(self, **kwargs):
+            assert isinstance(kwargs["streamer"], FakeStreamer)
+            return torch.tensor([[10, 11, 12]], dtype=torch.long)
+
+    class FakeProcessor:
+        tokenizer = object()
+
+        def batch_decode(self, *_args, **_kwargs):
+            return ["fallback"]
+
+    predictor = modern_vlm.ModernVLMPredictor.__new__(
+        modern_vlm.ModernVLMPredictor
+    )
+    predictor.spec = modern_vlm.ModelSpec("test/model", "Test", 1.0)
+    predictor.dtype = torch.float32
+    predictor.processor = FakeProcessor()
+    predictor.streamer_class = FakeStreamer
+    predictor.handle = SimpleNamespace(ensure_loaded=lambda: FakeModel())
+    predictor._inputs = lambda *_args, **_kwargs: {
+        "input_ids": torch.tensor([[1, 2]], dtype=torch.long)
+    }
+
+    monkeypatch.setattr(modern_vlm, "model_device", lambda _model: torch.device("cpu"))
+    monkeypatch.setattr(modern_vlm, "move_inputs", lambda inputs, _device: inputs)
+    monkeypatch.setattr(
+        modern_vlm,
+        "inference_context",
+        lambda *_args: nullcontext(),
+    )
+    partials = []
+    result = predictor.generate(
+        torch.zeros((1, 8, 8, 3), dtype=torch.float32),
+        "Describe it.",
+        "",
+        16,
+        0.0,
+        0.9,
+        stream_callback=partials.append,
+    )
+
+    assert result == "Hello from the VLM."
+    assert partials == ["Hello", "Hello from", "Hello from the VLM."]
+
+
+def test_view_text_frontend_rehydrates_and_uses_native_progress_channel():
+    source = (
+        Path(package.__file__).parent / "web" / "js" / "viewText.js"
+    ).read_text(encoding="utf-8")
+    assert 'api.addEventListener("progress_text"' in source
+    assert "onNodeOutputsUpdated(nodeOutputs)" in source
+    assert "connectedViewTextNodes(source)" in source
 
 
 def test_internvl_video_uses_an_even_vision_patch_grid():

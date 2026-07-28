@@ -7,8 +7,9 @@ small and large VLM families while keeping downloads and VRAM allocation lazy.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 import torch
 
@@ -198,6 +199,32 @@ MEMORY_MODES = (
 ATTENTION_MODES = ("Auto (SDPA)", "Flash Attention 2", "Eager")
 
 
+def _progress_text_sender(node_id: str | None) -> Callable[[str], None] | None:
+    """Return a best-effort sender for ComfyUI's native progress-text channel."""
+
+    if node_id is None:
+        return None
+    try:
+        from server import PromptServer
+
+        server = PromptServer.instance
+    except (ImportError, AttributeError):
+        return None
+
+    def send(text: str) -> None:
+        try:
+            server.send_progress_text(
+                text,
+                str(node_id),
+                server.client_id,
+            )
+        except Exception:
+            # Streaming is a UI enhancement and must never fail inference.
+            return
+
+    return send
+
+
 def _model_class(transformers):
     for name in ("AutoModelForImageTextToText", "AutoModelForMultimodalLM"):
         model_class = getattr(transformers, name, None)
@@ -218,6 +245,7 @@ class ModernVLMPredictor:
         attention_mode: str,
     ) -> None:
         transformers = require_module("transformers")
+        self.streamer_class = getattr(transformers, "TextIteratorStreamer", None)
         spec = MODEL_CATALOG[model_label]
         repo_id = (
             normalize_hf_model_id(custom_model_id)
@@ -416,6 +444,7 @@ class ModernVLMPredictor:
         video_frames=None,
         fps: float = 1.0,
         enable_thinking: bool = False,
+        stream_callback: Callable[[str], None] | None = None,
     ) -> str:
         primary_images = (
             tensor_batch_to_pil(images) if images is not None else []
@@ -490,16 +519,78 @@ class ModernVLMPredictor:
                 generation.update(
                     temperature=float(temperature), top_p=float(top_p)
                 )
-            with torch.inference_mode(), inference_context(device, self.dtype):
-                output = model.generate(**inputs, **generation)
-            new_tokens = output[:, input_length:]
-            results.append(
-                self.processor.batch_decode(
-                    new_tokens,
+            streamer_class = self.streamer_class
+            tokenizer = getattr(self.processor, "tokenizer", self.processor)
+            if stream_callback is not None and streamer_class is not None:
+                streamer = streamer_class(
+                    tokenizer,
+                    skip_prompt=True,
                     skip_special_tokens=True,
                     clean_up_tokenization_spaces=False,
-                )[0].strip()
-            )
+                )
+                generated = []
+                errors: list[BaseException] = []
+
+                def generate_in_background() -> None:
+                    try:
+                        with (
+                            torch.inference_mode(),
+                            inference_context(device, self.dtype),
+                        ):
+                            generated.append(
+                                model.generate(
+                                    **inputs,
+                                    **generation,
+                                    streamer=streamer,
+                                )
+                            )
+                    except BaseException as exc:
+                        errors.append(exc)
+                        # Unblock TextIteratorStreamer if generation exits
+                        # before it can publish its normal stop signal.
+                        streamer.end()
+
+                worker = threading.Thread(
+                    target=generate_in_background,
+                    name="ComfyUI-VLM-token-stream",
+                    daemon=True,
+                )
+                worker.start()
+                chunks = []
+                for chunk in streamer:
+                    chunks.append(chunk)
+                    current = batch_text(
+                        [*results, "".join(chunks).strip()]
+                    )
+                    if current:
+                        stream_callback(current)
+                worker.join()
+                if errors:
+                    raise errors[0]
+
+                decoded = "".join(chunks).strip()
+                if not decoded and generated:
+                    new_tokens = generated[0][:, input_length:]
+                    decoded = self.processor.batch_decode(
+                        new_tokens,
+                        skip_special_tokens=True,
+                        clean_up_tokenization_spaces=False,
+                    )[0].strip()
+                results.append(decoded)
+            else:
+                with (
+                    torch.inference_mode(),
+                    inference_context(device, self.dtype),
+                ):
+                    output = model.generate(**inputs, **generation)
+                new_tokens = output[:, input_length:]
+                results.append(
+                    self.processor.batch_decode(
+                        new_tokens,
+                        skip_special_tokens=True,
+                        clean_up_tokenization_spaces=False,
+                    )[0].strip()
+                )
         return batch_text(results)
 
 
@@ -557,7 +648,18 @@ class ModernVLM(CachedModelNode):
                 ),
                 "enable_thinking": ("BOOLEAN", {"default": False}),
                 "unload_after": ("BOOLEAN", {"default": False}),
+                "stream_output": (
+                    "BOOLEAN",
+                    {
+                        "default": True,
+                        "tooltip": (
+                            "Stream generated text through ComfyUI's native "
+                            "progress-text WebSocket while inference runs."
+                        ),
+                    },
+                ),
             },
+            "hidden": {"unique_id": "UNIQUE_ID"},
         }
 
     RETURN_TYPES = ("STRING",)
@@ -580,7 +682,14 @@ class ModernVLM(CachedModelNode):
         attention_mode="Auto (SDPA)",
         enable_thinking=False,
         unload_after=False,
+        stream_output=True,
+        unique_id=None,
     ):
+        stream_callback = (
+            _progress_text_sender(unique_id) if stream_output else None
+        )
+        if stream_callback is not None:
+            stream_callback("Preparing model…")
         effective_custom_id = (
             normalize_hf_model_id(custom_model_id)
             if model == "Custom Hugging Face model"
@@ -605,6 +714,7 @@ class ModernVLM(CachedModelNode):
                     video_frames,
                     fps,
                     enable_thinking,
+                    stream_callback,
                 ),
             )
         finally:
