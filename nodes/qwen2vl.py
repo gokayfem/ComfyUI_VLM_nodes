@@ -26,16 +26,23 @@ QWEN2_VL_MODELS = {
     "Qwen2-VL-2B": "Qwen/Qwen2-VL-2B-Instruct",
     "Qwen2-VL-7B": "Qwen/Qwen2-VL-7B-Instruct",
     "Qwen2-VL-72B": "Qwen/Qwen2-VL-72B-Instruct",
-    "Qwen2-VL-2B-AWQ": "Qwen/Qwen2-VL-2B-Instruct-AWQ",
-    "Qwen2-VL-2B-GPTQ-Int4": "Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int4",
-    "Qwen2-VL-2B-GPTQ-Int8": "Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8",
-    "Qwen2-VL-7B-AWQ": "Qwen/Qwen2-VL-7B-Instruct-AWQ",
-    "Qwen2-VL-7B-GPTQ-Int4": "Qwen/Qwen2-VL-7B-Instruct-GPTQ-Int4",
-    "Qwen2-VL-7B-GPTQ-Int8": "Qwen/Qwen2-VL-7B-Instruct-GPTQ-Int8",
-    "Qwen2-VL-72B-AWQ": "Qwen/Qwen2-VL-72B-Instruct-AWQ",
-    "Qwen2-VL-72B-GPTQ-Int4": "Qwen/Qwen2-VL-72B-Instruct-GPTQ-Int4",
-    "Qwen2-VL-72B-GPTQ-Int8": "Qwen/Qwen2-VL-72B-Instruct-GPTQ-Int8",
 }
+# Old workflows used separate AWQ/GPTQ repositories whose integration breaks
+# across Transformers/AutoGPTQ releases. Resolve those labels to the same base
+# weights and the maintained bitsandbytes path instead.
+LEGACY_QUANTIZED_ALIASES = {
+    f"Qwen2-VL-{size}-{quant}": (
+        f"Qwen2-VL-{size}",
+        (
+            "Balanced (8-bit)"
+            if quant.endswith("Int8")
+            else "Maximum Savings (4-bit)"
+        ),
+    )
+    for size in ("2B", "7B", "72B")
+    for quant in ("AWQ", "GPTQ-Int4", "GPTQ-Int8")
+}
+QWEN2_VL_CHOICES = ("Qwen2-VL-2B", "Qwen2-VL-7B")
 
 MEMORY_MODES = [
     "ComfyUI managed (BF16)",
@@ -84,6 +91,8 @@ class Qwen2VLPredictor:
         max_pixels: int,
     ):
         transformers = require_module("transformers")
+        if model_name in LEGACY_QUANTIZED_ALIASES:
+            model_name, memory_mode = LEGACY_QUANTIZED_ALIASES[model_name]
         repo_id = QWEN2_VL_MODELS[model_name]
         model_path = snapshot_download(
             repo_id,
@@ -100,8 +109,7 @@ class Qwen2VLPredictor:
             "torch_dtype": self.dtype,
             "attn_implementation": _attention_value(attention_mode),
         }
-        is_prequantized = "AWQ" in model_name or "GPTQ" in model_name
-        external = is_prequantized or memory_mode in {
+        external = memory_mode in {
             "Balanced (8-bit)",
             "Maximum Savings (4-bit)",
             "CPU Offload",
@@ -234,21 +242,28 @@ class Qwen2VLPredictor:
         top_p,
         fps,
     ) -> str:
+        # The still IMAGE socket is required by ComfyUI for backwards
+        # compatibility, but a connected frame batch is the visual source for
+        # video inference. Mixing both causes small VLMs to answer from the
+        # still and ignore temporal content.
+        del primary_image
         frame_list = tensor_batch_to_pil(frames)
         messages = [
             {
                 "role": "user",
                 "content": [
                     {
-                        "type": "image",
-                        "image": tensor_batch_to_pil(primary_image)[0],
-                    },
-                    {
                         "type": "video",
                         "video": frame_list,
                         "fps": float(fps),
                     },
-                    {"type": "text", "text": prompt},
+                    {
+                        "type": "text",
+                        "text": (
+                            f"The video frames are sampled at {float(fps):g} "
+                            f"FPS.\n\n{prompt}"
+                        ),
+                    },
                 ],
             }
         ]
@@ -265,7 +280,6 @@ class Qwen2VLNode(CachedModelNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "image": ("IMAGE",),
                 "text_input": (
                     "STRING",
                     {
@@ -273,7 +287,7 @@ class Qwen2VLNode(CachedModelNode):
                         "default": "Describe this image in detail.",
                     },
                 ),
-                "model_name": (list(QWEN2_VL_MODELS),),
+                "model_name": (list(QWEN2_VL_CHOICES),),
                 "memory_mode": (
                     MEMORY_MODES,
                     {"default": "ComfyUI managed (BF16)"},
@@ -292,6 +306,7 @@ class Qwen2VLNode(CachedModelNode):
                 ),
             },
             "optional": {
+                "image": ("IMAGE",),
                 "video_frames": ("IMAGE",),
                 "fps": (
                     "FLOAT",
@@ -319,13 +334,13 @@ class Qwen2VLNode(CachedModelNode):
 
     def generate(
         self,
-        image,
         text_input,
         model_name,
         memory_mode="ComfyUI managed (BF16)",
         max_new_tokens=512,
         temperature=0.2,
         top_p=0.9,
+        image=None,
         video_frames=None,
         fps=1.0,
         attention_mode="Auto (SDPA)",
@@ -335,6 +350,8 @@ class Qwen2VLNode(CachedModelNode):
     ):
         if min_pixels > max_pixels:
             raise ValueError("min_pixels cannot be greater than max_pixels.")
+        if image is None and video_frames is None:
+            raise ValueError("Connect either image or video_frames.")
         key = (
             model_name,
             memory_mode,

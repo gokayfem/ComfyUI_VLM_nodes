@@ -1,6 +1,6 @@
 [project]
 name = "comfyui_vlm_nodes"
-version = "2.0.0"
+version = "2.0.1"
 description = "Production-ready local and API vision-language nodes for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -11,6 +11,7 @@ dependencies = [
   "diffusers>=0.34,<1",
   "einops>=0.7",
   "huggingface-hub>=0.34,<2",
+  "num2words>=0.5.14",
   "openai>=1.30,<3",
   "pydantic>=2.7,<3",
   "qwen-vl-utils>=0.0.14",

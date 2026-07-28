@@ -9,7 +9,13 @@ import torch
 from PIL import Image
 
 import ComfyUI_VLM_nodes as package
-from ComfyUI_VLM_nodes.nodes import audioldm2, florence2, modern_vlm, paligemma
+from ComfyUI_VLM_nodes.nodes import (
+    audioldm2,
+    florence2,
+    modern_vlm,
+    paligemma,
+    qwen2vl,
+)
 from ComfyUI_VLM_nodes.nodes.runtime import (
     image_data_uri,
     pil_mask_to_tensor,
@@ -92,10 +98,116 @@ def test_florence_rendering_supports_boxes_quads_and_nested_polygons():
 
 def test_modern_catalog_has_current_quality_and_low_vram_tiers():
     repositories = {spec.repo_id for spec in modern_vlm.MODEL_CATALOG.values()}
+    small_fast = [
+        spec for spec in modern_vlm.MODEL_CATALOG.values() if spec.small_fast
+    ]
+    assert 10 <= len(small_fast) <= 20
+    assert all(
+        not spec.trust_remote_code
+        for spec in modern_vlm.MODEL_CATALOG.values()
+        if spec.family != "Custom"
+    )
+    assert modern_vlm.MODEL_CATALOG[
+        "Custom Hugging Face model"
+    ].trust_remote_code
     assert "Qwen/Qwen3.5-4B" in repositories
+    assert "Qwen/Qwen3.5-35B-A3B" in repositories
+    assert "Qwen/Qwen3.6-27B" in repositories
     assert "Qwen/Qwen3-VL-8B-Instruct" in repositories
+    assert "Qwen/Qwen2.5-VL-3B-Instruct" in repositories
     assert "google/gemma-3-4b-it" in repositories
+    assert "HuggingFaceTB/SmolVLM2-256M-Video-Instruct" in repositories
     assert "HuggingFaceTB/SmolVLM2-500M-Video-Instruct" in repositories
+    assert "LiquidAI/LFM2.5-VL-450M" in repositories
+    assert "LiquidAI/LFM2.5-VL-1.6B" in repositories
+    assert "OpenGVLab/InternVL3_5-1B-HF" in repositories
+    assert "OpenGVLab/InternVL3_5-2B-HF" in repositories
+    assert "ibm-granite/granite-vision-3.3-2b" in repositories
+    assert "ibm-granite/granite-vision-4.1-4b" in repositories
+
+
+def test_modern_video_is_primary_input_and_thinking_is_explicit():
+    assert "image" in modern_vlm.ModernVLM.INPUT_TYPES()["optional"]
+    assert "image" in qwen2vl.Qwen2VLNode.INPUT_TYPES()["optional"]
+    predictor = modern_vlm.ModernVLMPredictor.__new__(
+        modern_vlm.ModernVLMPredictor
+    )
+    predictor.spec = modern_vlm.ModelSpec(
+        "test/model", "Qwen 3.5", 1.0, video=True
+    )
+    captured = {}
+
+    def capture(messages, enable_thinking=False, **kwargs):
+        captured["messages"] = messages
+        captured["enable_thinking"] = enable_thinking
+        captured.update(kwargs)
+        raise RuntimeError("captured before inference")
+
+    predictor._inputs = capture
+    frames = torch.zeros((4, 8, 8, 3), dtype=torch.float32)
+    with pytest.raises(RuntimeError, match="captured before inference"):
+        predictor.generate(
+            None,
+            "What moves?",
+            "",
+            8,
+            0.0,
+            0.9,
+            frames,
+            2.0,
+            True,
+        )
+
+    content = captured["messages"][-1]["content"]
+    assert [part["type"] for part in content] == ["video", "text"]
+    assert len(content[0]["video"]) == 4
+    assert "2 FPS" in content[1]["text"]
+    assert captured["enable_thinking"] is True
+    assert captured["video_metadata"]["fps"] == 2.0
+    assert captured["video_metadata"]["frames_indices"] == [0, 1, 2, 3]
+
+
+def test_internvl_video_uses_an_even_vision_patch_grid():
+    predictor = modern_vlm.ModernVLMPredictor.__new__(
+        modern_vlm.ModernVLMPredictor
+    )
+    predictor.spec = modern_vlm.ModelSpec(
+        "test/model", "InternVL 3.5", 1.0, video=True
+    )
+    captured = {}
+
+    class ImageProcessor:
+        size = {"height": 448, "width": 448}
+
+    class Processor:
+        image_processor = ImageProcessor()
+
+        def apply_chat_template(self, _messages, **kwargs):
+            captured.update(kwargs)
+            return {"input_ids": torch.ones((1, 1), dtype=torch.long)}
+
+    predictor.processor = Processor()
+    predictor._inputs(
+        [{"role": "user", "content": [{"type": "text", "text": "test"}]}],
+        video_metadata={"fps": 2.0},
+    )
+    assert captured["processor_kwargs"]["size"] == {
+        "height": 448,
+        "width": 448,
+    }
+
+
+def test_qwen2_legacy_quantized_labels_use_maintained_backends():
+    assert list(qwen2vl.QWEN2_VL_CHOICES) == [
+        "Qwen2-VL-2B",
+        "Qwen2-VL-7B",
+    ]
+    assert qwen2vl.LEGACY_QUANTIZED_ALIASES[
+        "Qwen2-VL-7B-GPTQ-Int8"
+    ] == ("Qwen2-VL-7B", "Balanced (8-bit)")
+    assert qwen2vl.LEGACY_QUANTIZED_ALIASES[
+        "Qwen2-VL-7B-AWQ"
+    ] == ("Qwen2-VL-7B", "Maximum Savings (4-bit)")
 
 
 def test_audioldm_keeps_legacy_outputs_and_adds_standard_audio(monkeypatch):

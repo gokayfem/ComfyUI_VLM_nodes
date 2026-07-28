@@ -23,8 +23,10 @@ from .runtime import (
 )
 
 MODELS = {
-    "Florence-2 base FT (fast)": "microsoft/Florence-2-base-ft",
-    "Florence-2 large FT (recommended)": "microsoft/Florence-2-large-ft",
+    "Florence-2 base FT (fast)": "florence-community/Florence-2-base-ft",
+    "Florence-2 large FT (recommended)": (
+        "florence-community/Florence-2-large-ft"
+    ),
 }
 TASKS = {
     "Caption": "<CAPTION>",
@@ -50,17 +52,12 @@ class FlorencePredictor:
             ignore_patterns=["*.bin"],
         )
         self.dtype = torch_dtype("float16")
-        self.processor = transformers.AutoProcessor.from_pretrained(
-            path, trust_remote_code=True
+        self.processor = transformers.Florence2Processor.from_pretrained(path)
+        model = transformers.Florence2ForConditionalGeneration.from_pretrained(
+            path,
+            dtype=self.dtype,
         )
-        model_class = getattr(
-            transformers,
-            "AutoModelForMultimodalLM",
-            transformers.AutoModelForCausalLM,
-        )
-        model = model_class.from_pretrained(
-            path, dtype=self.dtype, trust_remote_code=True
-        ).eval()
+        model.eval()
         self.handle = ManagedTorchModel(model, processor=self.processor)
 
     def close(self):

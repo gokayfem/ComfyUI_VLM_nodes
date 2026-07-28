@@ -1,9 +1,8 @@
 """Modern, chat-template based vision-language models.
 
 This node intentionally uses the Transformers multimodal auto classes instead
-of model-specific glue.  It provides one stable ComfyUI surface for current
-Qwen, Gemma and SmolVLM checkpoints while keeping downloads and VRAM allocation
-lazy.
+of model-specific glue. It provides one stable ComfyUI surface for current
+small and large VLM families while keeping downloads and VRAM allocation lazy.
 """
 
 from __future__ import annotations
@@ -37,27 +36,58 @@ class ModelSpec:
     estimated_gib: float
     gated: bool = False
     video: bool = False
+    small_fast: bool = False
+    trust_remote_code: bool = False
 
 
 # Deliberately curated: these are useful tiers, not every redundant checkpoint.
 MODEL_CATALOG = {
     "Qwen 3.5 0.8B (fastest current)": ModelSpec(
-        "Qwen/Qwen3.5-0.8B", "Qwen 3.5", 2.0, video=True
+        "Qwen/Qwen3.5-0.8B",
+        "Qwen 3.5",
+        2.0,
+        video=True,
+        small_fast=True,
     ),
     "Qwen 3.5 2B": ModelSpec(
-        "Qwen/Qwen3.5-2B", "Qwen 3.5", 4.5, video=True
+        "Qwen/Qwen3.5-2B",
+        "Qwen 3.5",
+        4.5,
+        video=True,
+        small_fast=True,
     ),
     "Qwen 3.5 4B (recommended)": ModelSpec(
-        "Qwen/Qwen3.5-4B", "Qwen 3.5", 8.5, video=True
+        "Qwen/Qwen3.5-4B",
+        "Qwen 3.5",
+        8.5,
+        video=True,
+        small_fast=True,
     ),
     "Qwen 3.5 9B": ModelSpec(
         "Qwen/Qwen3.5-9B", "Qwen 3.5", 19.0, video=True
     ),
+    "Qwen 3.5 27B (4-bit recommended)": ModelSpec(
+        "Qwen/Qwen3.5-27B", "Qwen 3.5", 55.0, video=True
+    ),
+    "Qwen 3.5 35B-A3B (4-bit recommended)": ModelSpec(
+        "Qwen/Qwen3.5-35B-A3B", "Qwen 3.5", 72.0, video=True
+    ),
+    "Qwen 3.6 27B (4-bit recommended)": ModelSpec(
+        "Qwen/Qwen3.6-27B", "Qwen 3.6", 55.0, video=True
+    ),
     "Qwen 3 VL 2B Instruct": ModelSpec(
-        "Qwen/Qwen3-VL-2B-Instruct", "Qwen 3 VL", 5.0, video=True
+        "Qwen/Qwen3-VL-2B-Instruct",
+        "Qwen 3 VL",
+        5.0,
+        video=True,
+        small_fast=True,
     ),
     "Qwen 3 VL 4B Instruct": ModelSpec(
-        "Qwen/Qwen3-VL-4B-Instruct", "Qwen 3 VL", 9.0, video=True
+        "Qwen/Qwen3-VL-4B-Instruct",
+        "Qwen 3 VL",
+        9.0,
+        video=True,
+        small_fast=True,
     ),
     "Qwen 3 VL 8B Instruct": ModelSpec(
         "Qwen/Qwen3-VL-8B-Instruct", "Qwen 3 VL", 18.0, video=True
@@ -65,8 +95,22 @@ MODEL_CATALOG = {
     "Qwen 3 VL 30B-A3B Instruct (4-bit recommended)": ModelSpec(
         "Qwen/Qwen3-VL-30B-A3B-Instruct", "Qwen 3 VL", 61.0, video=True
     ),
+    "Qwen 2.5 VL 3B Instruct (legacy workflows)": ModelSpec(
+        "Qwen/Qwen2.5-VL-3B-Instruct",
+        "Qwen 2.5 VL",
+        7.0,
+        video=True,
+        small_fast=True,
+    ),
+    "Qwen 2.5 VL 7B Instruct (legacy workflows)": ModelSpec(
+        "Qwen/Qwen2.5-VL-7B-Instruct", "Qwen 2.5 VL", 16.0, video=True
+    ),
     "Gemma 3 4B IT (license acceptance required)": ModelSpec(
-        "google/gemma-3-4b-it", "Gemma 3", 9.0, gated=True
+        "google/gemma-3-4b-it",
+        "Gemma 3",
+        9.0,
+        gated=True,
+        small_fast=True,
     ),
     "Gemma 3 12B IT (license acceptance required)": ModelSpec(
         "google/gemma-3-12b-it", "Gemma 3", 25.0, gated=True
@@ -74,19 +118,71 @@ MODEL_CATALOG = {
     "Gemma 3 27B IT (4-bit recommended, gated)": ModelSpec(
         "google/gemma-3-27b-it", "Gemma 3", 55.0, gated=True
     ),
+    "SmolVLM2 256M Video (smallest)": ModelSpec(
+        "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
+        "SmolVLM2",
+        1.4,
+        video=True,
+        small_fast=True,
+    ),
     "SmolVLM2 500M Video (low VRAM)": ModelSpec(
         "HuggingFaceTB/SmolVLM2-500M-Video-Instruct",
         "SmolVLM2",
         1.8,
         video=True,
+        small_fast=True,
     ),
     "SmolVLM2 2.2B Video": ModelSpec(
         "HuggingFaceTB/SmolVLM2-2.2B-Instruct",
         "SmolVLM2",
         5.2,
         video=True,
+        small_fast=True,
     ),
-    "Custom Hugging Face model": ModelSpec("", "Custom", 8.0),
+    "LFM2.5 VL 450M (edge)": ModelSpec(
+        "LiquidAI/LFM2.5-VL-450M",
+        "LFM2.5 VL",
+        1.5,
+        small_fast=True,
+    ),
+    "LFM2.5 VL 1.6B": ModelSpec(
+        "LiquidAI/LFM2.5-VL-1.6B",
+        "LFM2.5 VL",
+        4.0,
+        small_fast=True,
+    ),
+    "InternVL 3.5 1B HF": ModelSpec(
+        "OpenGVLab/InternVL3_5-1B-HF",
+        "InternVL 3.5",
+        2.5,
+        video=True,
+        small_fast=True,
+    ),
+    "InternVL 3.5 2B HF": ModelSpec(
+        "OpenGVLab/InternVL3_5-2B-HF",
+        "InternVL 3.5",
+        5.0,
+        video=True,
+        small_fast=True,
+    ),
+    "Granite Vision 3.3 2B (documents/OCR)": ModelSpec(
+        "ibm-granite/granite-vision-3.3-2b",
+        "Granite Vision 3.3",
+        6.5,
+        small_fast=True,
+    ),
+    "Granite Vision 4.1 4B (structured documents)": ModelSpec(
+        "ibm-granite/granite-vision-4.1-4b",
+        "Granite Vision 4.1",
+        9.0,
+        small_fast=True,
+    ),
+    "Custom Hugging Face model": ModelSpec(
+        "",
+        "Custom",
+        8.0,
+        trust_remote_code=True,
+    ),
 }
 
 MEMORY_MODES = (
@@ -126,37 +222,66 @@ class ModernVLMPredictor:
         )
         self.spec = spec
         self.dtype = torch_dtype("bfloat16")
-        model_path = snapshot_download(
-            repo_id,
-            f"modern-vlm/{repo_id.replace('/', '--')}",
-            ignore_patterns=["*.bin", "*.msgpack", "*.h5", "*.onnx"],
-        )
+        try:
+            model_path = snapshot_download(
+                repo_id,
+                f"modern-vlm/{repo_id.replace('/', '--')}",
+                ignore_patterns=["*.bin", "*.msgpack", "*.h5", "*.onnx"],
+            )
+        except Exception as exc:
+            if spec.gated:
+                raise RuntimeError(
+                    f"{repo_id} is gated. Accept its Hugging Face license and "
+                    "set HF_TOKEN before running this node."
+                ) from exc
+            raise
         self.processor = transformers.AutoProcessor.from_pretrained(
-            model_path, trust_remote_code=True
+            model_path,
+            trust_remote_code=spec.trust_remote_code,
         )
 
         attention = {
-            "Auto (SDPA)": "sdpa",
+            # Let each architecture choose its maintained native kernel. Most
+            # current PyTorch models select SDPA here, while hybrid edge models
+            # can retain their own attention implementation.
+            "Auto (SDPA)": None,
             "Flash Attention 2": "flash_attention_2",
             "Eager": "eager",
         }[attention_mode]
         kwargs: dict[str, Any] = {
             "dtype": self.dtype,
-            "trust_remote_code": True,
-            "attn_implementation": attention,
+            "trust_remote_code": spec.trust_remote_code,
         }
+        if attention is not None:
+            kwargs["attn_implementation"] = attention
         external = memory_mode != "ComfyUI managed (BF16)"
         if memory_mode in {"4-bit NF4 (bitsandbytes)", "8-bit (bitsandbytes)"}:
             require_module("bitsandbytes")
             require_module("accelerate")
+            if not torch.cuda.is_available():
+                raise RuntimeError(
+                    f"{memory_mode} requires a CUDA GPU. Select CPU for "
+                    "CPU-only inference."
+                )
+            needs_offload = spec.estimated_gib >= 40.0
             kwargs["quantization_config"] = transformers.BitsAndBytesConfig(
                 load_in_4bit=memory_mode.startswith("4-bit"),
                 load_in_8bit=memory_mode.startswith("8-bit"),
                 bnb_4bit_compute_dtype=self.dtype,
                 bnb_4bit_quant_type="nf4",
                 bnb_4bit_use_double_quant=True,
+                llm_int8_enable_fp32_cpu_offload=needs_offload,
             )
-            kwargs["device_map"] = "auto"
+            if needs_offload:
+                # Leave activation headroom on consumer GPUs. If Accelerate
+                # needs disk after CPU RAM, it stays in the model's D-backed
+                # ComfyUI directory instead of an OS temporary directory.
+                kwargs["device_map"] = "auto"
+                kwargs["offload_folder"] = str(model_path / ".offload")
+            else:
+                # Small quantized models avoid unsupported accidental CPU
+                # dispatch and stay on ComfyUI's active CUDA device.
+                kwargs["device_map"] = {"": torch.cuda.current_device()}
             divisor = 4 if memory_mode.startswith("4-bit") else 2
             reserve_external_vram(int(spec.estimated_gib * 1024**3 / divisor))
         elif memory_mode == "CPU":
@@ -191,9 +316,39 @@ class ModernVLMPredictor:
         self.handle.close()
         self.processor = None
 
-    def _inputs(self, messages):
+    def _inputs(
+        self,
+        messages,
+        enable_thinking: bool = False,
+        *,
+        video_metadata: dict[str, Any] | None = None,
+    ):
         """Use the standard multimodal template, with an older-template fallback."""
 
+        template_kwargs = (
+            {"enable_thinking": bool(enable_thinking)}
+            if self.spec.family in {"Qwen 3.5", "Qwen 3.6"}
+            else {}
+        )
+        processor_kwargs = (
+            {
+                "video_metadata": [[video_metadata]],
+                # ComfyUI already supplied the selected frames as a batch.
+                "do_sample_frames": False,
+            }
+            if video_metadata is not None
+            else None
+        )
+        if processor_kwargs is not None and self.spec.family == "InternVL 3.5":
+            # The published InternVL 3.5 video preprocessor uses 384px, which
+            # makes a 27x27 patch grid with its 14px vision patches. The
+            # model's 0.5 pixel shuffle requires even spatial dimensions.
+            image_size = getattr(self.processor.image_processor, "size", None)
+            processor_kwargs["size"] = (
+                dict(image_size)
+                if image_size is not None
+                else {"height": 448, "width": 448}
+            )
         try:
             return self.processor.apply_chat_template(
                 messages,
@@ -201,6 +356,8 @@ class ModernVLMPredictor:
                 tokenize=True,
                 return_dict=True,
                 return_tensors="pt",
+                processor_kwargs=processor_kwargs,
+                **template_kwargs,
             )
         except (TypeError, ValueError, KeyError):
             media = []
@@ -223,6 +380,7 @@ class ModernVLMPredictor:
                 portable_messages,
                 add_generation_prompt=True,
                 tokenize=False,
+                **template_kwargs,
             )
             return self.processor(
                 text=[prompt], images=media, return_tensors="pt"
@@ -238,13 +396,18 @@ class ModernVLMPredictor:
         top_p: float,
         video_frames=None,
         fps: float = 1.0,
+        enable_thinking: bool = False,
     ) -> str:
-        primary_images = tensor_batch_to_pil(images)
+        primary_images = (
+            tensor_batch_to_pil(images) if images is not None else []
+        )
         video = (
             tensor_batch_to_pil(video_frames)
             if video_frames is not None
             else None
         )
+        if video is None and not primary_images:
+            raise ValueError("Connect either image or video_frames.")
         if video is not None and not self.spec.video:
             raise ValueError(
                 f"{self.spec.family} does not advertise video support. "
@@ -252,7 +415,10 @@ class ModernVLMPredictor:
             )
 
         results = []
-        runs = [primary_images[0]] if video is not None else primary_images
+        # A connected video is the primary visual input. Including ComfyUI's
+        # required still image as well makes small video models attend to the
+        # still and silently ignore the frames.
+        runs = [None] if video is not None else primary_images
         for image in runs:
             messages = []
             if system_prompt.strip():
@@ -264,15 +430,35 @@ class ModernVLMPredictor:
                         ],
                     }
                 )
-            content = [{"type": "image", "image": image}]
-            if video is not None:
-                content.append(
-                    {"type": "video", "video": video, "fps": float(fps)}
-                )
-            content.append({"type": "text", "text": prompt})
+            content = (
+                [{"type": "video", "video": video}]
+                if video is not None
+                else [{"type": "image", "image": image}]
+            )
+            effective_prompt = (
+                f"The video frames are sampled at {float(fps):g} FPS.\n\n{prompt}"
+                if video is not None
+                else prompt
+            )
+            content.append({"type": "text", "text": effective_prompt})
             messages.append({"role": "user", "content": content})
 
-            inputs = self._inputs(messages)
+            metadata = None
+            if video is not None:
+                frame_rate = float(fps)
+                metadata = {
+                    "total_num_frames": len(video),
+                    "fps": frame_rate,
+                    "duration": len(video) / frame_rate,
+                    "frames_indices": list(range(len(video))),
+                    "width": video[0].width,
+                    "height": video[0].height,
+                }
+            inputs = self._inputs(
+                messages,
+                enable_thinking,
+                video_metadata=metadata,
+            )
             model = self.handle.ensure_loaded()
             device = model_device(model)
             inputs = move_inputs(inputs, device)
@@ -303,7 +489,6 @@ class ModernVLM(CachedModelNode):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "image": ("IMAGE",),
                 "prompt": (
                     "STRING",
                     {
@@ -313,7 +498,7 @@ class ModernVLM(CachedModelNode):
                 ),
                 "model": (
                     list(MODEL_CATALOG),
-                    {"default": "Qwen 3.5 4B (recommended)"},
+                    {"default": "Qwen 3 VL 2B Instruct"},
                 ),
                 "custom_model_id": ("STRING", {"default": ""}),
                 "memory_mode": (
@@ -334,6 +519,7 @@ class ModernVLM(CachedModelNode):
                 ),
             },
             "optional": {
+                "image": ("IMAGE",),
                 "system_prompt": (
                     "STRING",
                     {
@@ -350,6 +536,7 @@ class ModernVLM(CachedModelNode):
                     ATTENTION_MODES,
                     {"default": "Auto (SDPA)"},
                 ),
+                "enable_thinking": ("BOOLEAN", {"default": False}),
                 "unload_after": ("BOOLEAN", {"default": False}),
             },
         }
@@ -360,7 +547,6 @@ class ModernVLM(CachedModelNode):
 
     def run(
         self,
-        image,
         prompt,
         model,
         custom_model_id,
@@ -368,10 +554,12 @@ class ModernVLM(CachedModelNode):
         max_new_tokens,
         temperature,
         top_p,
+        image=None,
         system_prompt="You are an expert visual analyst.",
         video_frames=None,
         fps=1.0,
         attention_mode="Auto (SDPA)",
+        enable_thinking=False,
         unload_after=False,
     ):
         effective_custom_id = (
@@ -397,6 +585,7 @@ class ModernVLM(CachedModelNode):
                     top_p,
                     video_frames,
                     fps,
+                    enable_thinking,
                 ),
             )
         finally:
@@ -405,5 +594,7 @@ class ModernVLM(CachedModelNode):
 
 NODE_CLASS_MAPPINGS = {"ModernVLM": ModernVLM}
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ModernVLM": "Modern VLM (Qwen 3.5 / Qwen 3 VL / Gemma 3 / SmolVLM2)"
+    "ModernVLM": (
+        "Modern VLM (Qwen / SmolVLM2 / LFM / InternVL / Granite / Gemma)"
+    )
 }

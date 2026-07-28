@@ -9,11 +9,26 @@ ordinary PyTorch model residency and offloading.
 
 The **Modern VLM** node provides one stable interface for:
 
-- Qwen 3.5 0.8B, 2B, 4B, and 9B
+- Qwen 3.5 0.8B, 2B, 4B, 9B, 27B, and 35B-A3B
+- Qwen 3.6 27B
 - Qwen 3 VL 2B, 4B, 8B, and 30B-A3B Instruct
+- Qwen 2.5 VL 3B and 7B for existing workflows
 - Gemma 3 4B, 12B, and 27B IT
-- SmolVLM2 500M and 2.2B video models
+- SmolVLM2 256M, 500M, and 2.2B video models
+- Liquid LFM2.5-VL 450M and 1.6B edge models
+- InternVL 3.5 1B and 2B standard Hugging Face checkpoints
+- Granite Vision 3.3 2B and 4.1 4B for documents, charts, and OCR
 - a compatible custom Hugging Face image-to-text repository
+
+Sixteen curated sub-4B/low-VRAM choices are marked internally as the
+small-and-fast tier. The default is Qwen 3 VL 2B: it is much quicker to load
+than larger checkpoints while retaining broad image and video understanding.
+The catalog intentionally uses official model repositories and maintained
+Transformers interfaces rather than unverified community quantizations.
+Curated models use native Transformers implementations; remote repository code
+is enabled only when the explicit custom-model option requires it. Florence-2
+uses the Transformers-native converted checkpoints instead of Microsoft’s
+legacy repository code.
 
 Specialized nodes remain available where a generic chat node would discard
 useful model capabilities:
@@ -22,7 +37,9 @@ useful model capabilities:
   expression segmentation, with structured JSON, mask, and overlay outputs.
 - **PaLI-Gemma**: caption/VQA plus the official 16-token VQ-VAE segmentation
   decoder; segmentation tokens are no longer misinterpreted as polygon points.
-- **Moondream2**: current stable model API and revision.
+- **Moondream2**: pinned query API with explicit decoding controls. Its current
+  checkpoint is not marked passed on the tested Torch/Transformers stack; use a
+  small Modern VLM preset for production.
 - **Qwen2-VL**: image batches and real video-frame batches.
 - **Molmo, Kosmos-2, UForm, MCLLaVA, JoyTag, and MiniCPM-V 2.6 GGUF**.
 - **llama.cpp LLaVA/GGUF**, structured prompt suggestions, OpenAI-compatible
@@ -44,6 +61,14 @@ installer:
 python -m pip install -r ComfyUI/custom_nodes/ComfyUI_VLM_nodes/requirements-llama-cpp.txt
 ```
 
+For Python 3.12 with a CUDA 12.x driver, the official prebuilt CUDA 12.4 wheel
+avoids a local compiler toolchain:
+
+```bash
+python -m pip install llama-cpp-python==0.3.15 \
+  --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
+```
+
 Models are downloaded only when their node first executes and are stored below
 `ComfyUI/models/LLavacheckpoints`. Hugging Face downloads respect `HF_TOKEN`.
 Gemma 3 and PaLI-Gemma require accepting their model licenses on Hugging Face.
@@ -55,14 +80,25 @@ Gemma 3 and PaLI-Gemma require accepting their model licenses on Hugging Face.
   normal VRAM manager.
 - **4-bit/8-bit** models and llama.cpp own external allocators. Before loading,
   the nodes ask ComfyUI to free the required space; unloading closes the exact
-  owned model and then requests a soft cache cleanup.
+  owned model and then requests a soft cache cleanup. Small quantized models
+  stay together on ComfyUI's active CUDA device. The 27B+ catalog entries use
+  Accelerate placement so generation retains GPU headroom; any required disk
+  offload remains inside the model's ComfyUI directory.
 - `unload_after=false` caches one model per node instance for fast repeated
   queues. Turn it on for maximum reclamation between prompts.
+- A connected `video_frames` batch becomes the primary visual input. The
+  optional still-image socket is ignored for video inference so smaller models
+  cannot silently answer from the wrong media.
+- Qwen 3.5/3.6 thinking is off by default for lower latency and predictable
+  output length; enable it explicitly for tasks that benefit from visual
+  reasoning.
 - Visualization-only companion repositories do not allocate CUDA memory.
 
 Avoid placing several independently quantized VLMs in one workflow unless the
-GPU can hold them. On a 24 GB card, Qwen 3.5 4B or Qwen 3 VL 8B in BF16 and the
-larger models in NF4 are practical starting points.
+GPU can hold them. On a 24 GB card, Qwen 3 VL 2B is the fast default,
+Qwen 3 VL 8B fits in BF16, and larger models should use NF4. Qwen 3.5/3.6 can
+be substantially slower when their optional optimized linear-attention kernels
+are not available for the installed PyTorch/CUDA combination.
 
 ## API nodes
 
@@ -86,6 +122,16 @@ Run local checks with:
 ```bash
 PYTHONPATH=/path/to:/path/to/ComfyUI python -m pytest -q
 ```
+
+Real-weight checks are opt-in because they download multi-gigabyte checkpoints:
+
+```bash
+python tests/manual_model_smoke.py --model "Qwen 3 VL 4B Instruct"
+python tests/manual_specialized_smoke.py --backend florence-large
+```
+
+See [MODEL_VALIDATION.md](MODEL_VALIDATION.md) for the exact real-weight and
+catalog-only evidence matrix.
 
 Please report reproducible bugs at the
 [issue tracker](https://github.com/gokayfem/ComfyUI_VLM_nodes/issues).
