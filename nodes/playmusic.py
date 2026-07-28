@@ -14,8 +14,8 @@ class PlayMusic:
         return {"required": {
             "mode": (["always", "on empty queue"], {}),
             "volume": ("FLOAT", {"min": 0, "max": 1, "step": 0.1, "default": 0.5}),
-            "wave_form": ([], {"forceInput": True}),
-            "sample_rate": ("INT", {"forceInput": True}),
+            "wave_form": (any,),
+            "sample_rate": ("INT",),
         }}
 
     FUNCTION = "nop"
@@ -30,7 +30,7 @@ class PlayMusic:
         return float("NaN")
 
     def nop(self, mode, volume, wave_form, sample_rate):
-        return {"ui": {"a": wave_form, "b": sample_rate}, "result": (any,)}
+        return {"ui": {"a": wave_form, "b": sample_rate}, "result": (wave_form,)}
 
 
 NODE_CLASS_MAPPINGS = {

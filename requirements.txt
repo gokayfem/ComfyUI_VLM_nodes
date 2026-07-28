@@ -1,28 +1,14 @@
+# ComfyUI provides torch, torchvision, numpy and Pillow.
+# Keep this list resolver-friendly; no package is installed during node import.
 accelerate>=1.0
-bitsandbytes
-cffi
-decord
-diffusers >=0.31.0
-diskcache
-einops>=0.7.0
-gitpython
-huggingface-hub>=0.26.2
-matplotlib
-moviepy
-numpy>=1.26.4,<2.0.0
-openai>=0.27.8
-opencv-python
-optimum>=1.17.0
-pillow>=9.4.0
-py-cpuinfo>=3.3.0
-python-dateutil>=2.7.0
-pytz
-qwen-vl-utils
-safetensors>=0.4.1
-scikit-build
-six
-soundfile
-symusic
-torch>=2.0.1
-torchvision>=0.15.2
-transformers>=4.46
+bitsandbytes>=0.46
+diffusers>=0.34,<1
+einops>=0.7
+huggingface-hub>=0.34,<2
+openai>=1.30,<3
+pydantic>=2.7,<3
+qwen-vl-utils>=0.0.14
+safetensors>=0.4
+soundfile>=0.12
+symusic>=0.5
+transformers>=5.4,<6

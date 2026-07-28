@@ -1,314 +1,485 @@
-import folder_paths
-import os
-from llama_cpp import Llama, LlamaGrammar
-from .prompts import system_msg_prompts
-from pydantic import BaseModel, Field, validator 
-from llama_cpp_agent.llm_agent import LlamaCppAgent
-from llama_cpp_agent.gbnf_grammar_generator.gbnf_grammar_from_pydantic_models import generate_gbnf_grammar_and_documentation
+"""Text, structured-output, API, and music nodes.
+
+llama-cpp-agent was intentionally removed.  llama-cpp-python has native JSON
+Schema support, which avoids the dependency's unstable wrapper API while
+producing stricter output.
+"""
+
+from __future__ import annotations
+
 import json
-from .prompts import system_msg_prompts
-from .prompts import system_msg_simple
-from typing import List, Optional
+import os
 import re
-from string import Template
-from typing import Any, List
-from pydantic import BaseModel, Field, create_model
-from typing_extensions import Literal
+from typing import Any, Literal, Optional
+
 import torch
-import gc
- 
+from pydantic import BaseModel, Field
 
-supported_LLava_extensions = set(['.gguf'])
+import folder_paths
 
-try:
-    folder_paths.folder_names_and_paths["LLavacheckpoints"] = (folder_paths.folder_names_and_paths["LLavacheckpoints"][0], supported_LLava_extensions)
-except:
-    # check if LLavacheckpoints exists otherwise create
-    if not os.path.isdir(os.path.join(folder_paths.models_dir, "LLavacheckpoints")):
-        os.mkdir(os.path.join(folder_paths.models_dir, "LLavacheckpoints"))
-        
-    folder_paths.folder_names_and_paths["LLavacheckpoints"] = ([os.path.join(folder_paths.models_dir, "LLavacheckpoints")], supported_LLava_extensions)
+from .prompts import system_msg_prompts, system_msg_simple
+from .runtime import (
+    LlamaHandle,
+    close_handle,
+    require_module,
+    resolve_model_path,
+    unwrap_llm,
+)
+
 
 class AnyType(str):
-    def __ne__(self, __value: object) -> bool:
+    def __ne__(self, value: object) -> bool:
         return False
 
 
-# Our any instance wants to be a wildcard string
-any = AnyType("*")
+ANY = AnyType("*")
+
 
 class Analysis(BaseModel):
-    """
-    Represents entries about an analysis.
-    """
-    main_character: List[str] = Field(..., description="Description of the main objects of the analysis")
-    artform: List[str]  = Field(..., description="List of Artforms of the analysis")
-    photo_type: List[str]  = Field(..., description="List of Types of the photo used in the analysis")
-    color_with_objects: List[str]  = Field(..., description="List of objects and their colors of the analysis")
-    digital_artform: List[str]  = Field(..., description="List of Digital artforms of the analysis")
-    background: List[str]  = Field(..., description="List of Background of the analysis") 
-    lighting: List[str]  = Field(..., description="List of Lighting settings of the analysis.")
+    main_character: list[str] = Field(
+        ..., description="Main subjects and objects."
+    )
+    artform: list[str] = Field(..., description="Art forms present.")
+    photo_type: list[str] = Field(..., description="Photographic genres.")
+    color_with_objects: list[str] = Field(
+        ..., description="Objects paired with their colors."
+    )
+    digital_artform: list[str] = Field(
+        ..., description="Digital art techniques."
+    )
+    background: list[str] = Field(..., description="Background details.")
+    lighting: list[str] = Field(..., description="Lighting details.")
+
 
 class PromptGen(BaseModel):
-    """
-    Represents an entry about a prompt.
-    """
-    prompt : str = Field(..., description="Prompt for the analysis")
+    prompt: str = Field(..., description="A production-ready image prompt.")
+
 
 class Suggestion(BaseModel):
-    """
-    Represents an entry about a suggestion.
-    """
-    suggestion1 : str = Field(..., description="new Suggestion based on the inputs")
-    suggestion2 : str = Field(..., description="new Suggestion based on the inputs")
-    suggestion3 : str = Field(..., description="new Suggestion based on the inputs")
-    suggestion4 : str = Field(..., description="new Suggestion based on the inputs")
-    suggestion5 : str = Field(..., description="new Suggestion based on the inputs")
+    suggestion1: str
+    suggestion2: str
+    suggestion3: str
+    suggestion4: str
+    suggestion5: str
+
 
 class ArtisticTechniques(BaseModel):
-    preferred: List[str] = Field(
-        ...,
-        description="Long description of Techniques and tools favored for creating the artwork, emphasizing cutting-edge or specialized modern or traditional techniques."
-    )
-    
-    avoided: List[str] = Field(
-        ...,
-        description="Long description of Techniques and tools favored for creating the artwork, emphasizing cutting-edge or specialized modern or traditional techniques."
-    )
+    preferred: list[str]
+    avoided: list[str]
+
 
 class ImageryTheme(BaseModel):
-    core_subject: str = Field(
-        ...,
-        description="Long description of Core subject or theme of the artwork, described vividly to evoke a strong image or emotion."
-    )
-    additional_elements: Optional[List[str]] = Field(
-        default=None,
-        description="Long description of Additional elements or motifs to include, enhancing the core theme with specific details or themes for a more immersive and detailed scene."
-    )
+    core_subject: str
+    additional_elements: Optional[list[str]] = None
+
 
 class VisualStyle(BaseModel):
-    desired: List[str] = Field(
-        ...,
-        description="Long description of Desired visual styles and aesthetic qualities, such as realistic, stylized, or rich artwork."
-    )
-    undesired: List[str] = Field(
-        ...,
-        description="Long description of Styles and aesthetic qualities to avoid."
-    )
+    desired: list[str]
+    undesired: list[str]
 
 
 class ArtInspirationNarrative(BaseModel):
     description: str
 
+
 class ArtPromptSpecification(BaseModel):
     techniques: ArtisticTechniques
     theme: ImageryTheme
     style: VisualStyle
-    creative_descriptions: List[ArtInspirationNarrative] = []
+    creative_descriptions: list[ArtInspirationNarrative] = Field(
+        default_factory=list
+    )
 
-    @validator('creative_descriptions', always=True)
-    def generate_creative_descriptions(cls, v, values):
-        if not values.get('techniques') or not values.get('theme') or not values.get('style'):
-            return v  # Ensures prerequisites are met
 
-        # Synthesizing the description
-        technique_str = " and ".join(values['techniques'].preferred)
-        theme_description = values['theme'].core_subject
-        style_description = " and ".join(values['style'].desired)
-        additional_elements = ", ".join(values['theme'].additional_elements) if values['theme'].additional_elements else "enriching details"
+def _schema(model_class: type[BaseModel]) -> dict[str, Any]:
+    if hasattr(model_class, "model_json_schema"):
+        return model_class.model_json_schema()
+    return model_class.schema()
 
-        # Constructing the integrated creative description
-        integrated_description = f"Envision an artwork that utilizes {technique_str}. The essence revolves around '{theme_description}', adorned with {additional_elements}. The visual pursuit should mirror styles such as {style_description}, bringing the concept to life with depth and emotion."
 
-        return [ArtInspirationNarrative(description=integrated_description)]
-    
-def _parse_text(text):
-    lines = text.split("\n")
-    lines = [line for line in lines if line != ""]
-    count = 0
-    for i, line in enumerate(lines):
-        if "```" in line:
-            count += 1
-            items = line.split("`")
-            if count % 2 == 1:
-                lines[i] = f'<pre><code class="language-{items[-1]}">'
-            else:
-                lines[i] = f"<br></code></pre>"
-        else:
-            if i > 0:
-                if count % 2 == 1:
-                    line = line.replace("`", r"\`")
-                    line = line.replace("<", "&lt;")
-                    line = line.replace(">", "&gt;")
-                    line = line.replace(" ", "&nbsp;")
-                    line = line.replace("*", "&ast;")
-                    line = line.replace("_", "&lowbar;")
-                    line = line.replace("-", "&#45;")
-                    line = line.replace(".", "&#46;")
-                    line = line.replace("!", "&#33;")
-                    line = line.replace("(", "&#40;")
-                    line = line.replace(")", "&#41;")
-                    line = line.replace("$", "&#36;")
-                lines[i] = "<br>" + line
-    text = "".join(lines)
-    return text
+def _response_content(response: dict[str, Any]) -> str:
+    try:
+        return str(response["choices"][0]["message"]["content"])
+    except (KeyError, IndexError, TypeError) as exc:
+        raise RuntimeError(
+            f"The model returned an unexpected response: {response!r}"
+        ) from exc
+
+
+def _chat(
+    model: Any,
+    *,
+    prompt: str,
+    system: str,
+    max_tokens: int = 512,
+    temperature: float = 0.2,
+    top_p: float = 0.95,
+    top_k: int = 40,
+    frequency_penalty: float = 0.0,
+    presence_penalty: float = 0.0,
+    repeat_penalty: float = 1.1,
+    seed: int = 42,
+    response_format: dict[str, Any] | None = None,
+) -> str:
+    llm = unwrap_llm(model)
+    kwargs: dict[str, Any] = {
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "top_p": top_p,
+        "top_k": top_k,
+        "frequency_penalty": frequency_penalty,
+        "presence_penalty": presence_penalty,
+        "repeat_penalty": repeat_penalty,
+        "seed": seed,
+    }
+    if response_format is not None:
+        kwargs["response_format"] = response_format
+    return _response_content(llm.create_chat_completion(**kwargs))
+
+
+def _structured_chat(
+    model: Any,
+    *,
+    prompt: str,
+    system: str,
+    schema: dict[str, Any],
+    temperature: float,
+    max_tokens: int = 512,
+) -> tuple[str, Any]:
+    raw = _chat(
+        model,
+        prompt=prompt,
+        system=system,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        response_format={"type": "json_object", "schema": schema},
+    )
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"The model did not return valid JSON: {raw[:500]}"
+        ) from exc
+    return raw, parsed
+
+
+API_MODELS = [
+    "GPT-5.6 Terra",
+    "GPT-5.6 Sol",
+    "GPT-5.6 Luna",
+    "DeepSeek",
+    "Custom / OpenAI-compatible",
+    # Kept so saved workflows continue to deserialize without substitutions.
+    "ChatGPT-3.5",
+    "ChatGPT-4",
+    "gpt-3.5-turbo",
+    "gpt-3.5-turbo-0125",
+    "gpt-35-turbo",
+    "gpt-3.5-turbo-16k",
+    "gpt-3.5-turbo-16k-0613",
+    "gpt-4-0613",
+    "gpt-4-1106-preview",
+    "glm-4",
+]
+
+API_ROUTES = {
+    "GPT-5.6 Sol": ("gpt-5.6-sol", None, "Responses"),
+    "GPT-5.6 Terra": ("gpt-5.6-terra", None, "Responses"),
+    "GPT-5.6 Luna": ("gpt-5.6-luna", None, "Responses"),
+    "DeepSeek": ("deepseek-chat", "https://api.deepseek.com/v1", "Chat Completions"),
+    "ChatGPT-3.5": ("gpt-3.5-turbo", None, "Chat Completions"),
+    "ChatGPT-4": ("gpt-4", None, "Chat Completions"),
+    "gpt-35-turbo": ("gpt-35-turbo", None, "Chat Completions"),
+    "glm-4": ("glm-4", None, "Chat Completions"),
+}
+
+
 class PromptGenerateAPI:
     def __init__(self):
-        self.session_history = []  
-        self.system_msg_prompts = "You are an advanced AI, please assist with the following request."
-        self.system_msg_simple = "Simple chat mode activated."
+        self.session_history: list[dict[str, str]] = []
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "model_name": (
-                    ["ChatGPT-3.5", "ChatGPT-4", "DeepSeek", "gpt-3.5-turbo", "gpt-3.5-turbo-0125", "gpt-35-turbo", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613", "gpt-4-0613", "gpt-4-1106-preview", "glm-4"],
+                "model_name": (API_MODELS, {"default": "GPT-5.6 Terra"}),
+                "chat_type": (
+                    "BOOLEAN",
                     {
-                        "default" : "ChatGPT-3.5"
-                    }
-                ), 
-                "chat_type": 
-                    ("BOOLEAN", 
-                    {
-                        "default": True, "label_on": "PromptGenerator", "label_off": "SimpleChat"
-                    }
-                ),        
+                        "default": True,
+                        "label_on": "Prompt Generator",
+                        "label_off": "Simple Chat",
+                    },
+                ),
                 "api_key": (
                     "STRING",
                     {
-                        "multiline": True,
                         "default": "",
+                        "tooltip": (
+                            "Leave blank to use OPENAI_API_KEY, DEEPSEEK_API_KEY, "
+                            "or VLM_API_KEY."
+                        ),
                     },
                 ),
                 "description": (
                     "STRING",
-                    {
-                        "multiline": True,
-                        "default": "",
-                    }
+                    {"multiline": True, "default": ""},
                 ),
                 "question": (
                     "STRING",
-                    {
-                        "multiline": True,
-                        "default": "",
-                    },
-                ),                    
+                    {"multiline": True, "default": ""},
+                ),
                 "context_size": (
-                    "INT", 
-                    {
-                        "default": 5, 
-                        "min": 0, 
-                        "max": 30, 
-                        "step": 1
-                    }
+                    "INT",
+                    {"default": 5, "min": 0, "max": 30, "step": 1},
                 ),
                 "seed": (
-                    "INT", 
+                    "INT",
                     {
-                        "default": 0, 
-                        "min": 0, 
-                        "max": 0xffffffffffffffff, 
-                        "step": 1
-                    }
+                        "default": 0,
+                        "min": 0,
+                        "max": 0xFFFFFFFFFFFFFFFF,
+                        "step": 1,
+                    },
+                ),
+            },
+            "optional": {
+                "base_url": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "tooltip": (
+                            "OpenAI-compatible base URL, e.g. "
+                            "http://127.0.0.1:8000/v1."
+                        ),
+                    },
+                ),
+                "model_override": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "tooltip": "Exact provider model ID. Overrides the picker.",
+                    },
+                ),
+                "api_mode": (
+                    ["Auto", "Responses", "Chat Completions"],
+                    {"default": "Auto"},
+                ),
+                "timeout_seconds": (
+                    "FLOAT",
+                    {"default": 120.0, "min": 1.0, "max": 1800.0},
+                ),
+                "reasoning_effort": (
+                    ["none", "low", "medium", "high", "xhigh", "max"],
+                    {"default": "none"},
                 ),
             },
         }
+
     RETURN_TYPES = ("STRING",)
-
     FUNCTION = "generate_prompt"
-
     CATEGORY = "VLM Nodes/LLM"
 
-    def generate_prompt(self, model_name, chat_type, api_key, description, question, context_size, seed): 
-        from openai import OpenAI      
-        if chat_type == True:
-            system_msg = self.system_msg_prompts
-        elif chat_type == False:
-            system_msg = self.system_msg_simple
+    def _route(
+        self, model_name, model_override, base_url, api_mode
+    ) -> tuple[str, str | None, str]:
+        route = API_ROUTES.get(model_name)
+        if route is None:
+            if model_name in API_MODELS and model_name not in {
+                "Custom / OpenAI-compatible"
+            }:
+                route = (model_name, None, "Chat Completions")
+            else:
+                route = ("", None, "Chat Completions")
+        model, route_url, route_mode = route
+        model = (model_override or model).strip()
+        if not model:
+            raise ValueError(
+                "A model ID is required for Custom / OpenAI-compatible."
+            )
+        effective_url = (base_url or route_url or "").strip() or None
+        mode = route_mode if api_mode == "Auto" else api_mode
+        return model, effective_url, mode
 
+    def generate_prompt(
+        self,
+        model_name,
+        chat_type,
+        api_key,
+        description,
+        question,
+        context_size,
+        seed,
+        base_url="",
+        model_override="",
+        api_mode="Auto",
+        timeout_seconds=120.0,
+        reasoning_effort="none",
+    ):
+        openai = require_module("openai", "openai")
+        model, effective_url, mode = self._route(
+            model_name, model_override, base_url, api_mode
+        )
+        key = (
+            api_key.strip()
+            or (
+                os.getenv("DEEPSEEK_API_KEY", "")
+                if model_name == "DeepSeek"
+                else ""
+            )
+            or os.getenv("VLM_API_KEY", "")
+            or os.getenv("OPENAI_API_KEY", "")
+        )
+        if not key:
+            raise ValueError(
+                "No API key was supplied. Set OPENAI_API_KEY, "
+                "DEEPSEEK_API_KEY, or VLM_API_KEY, or enter the key in the node."
+            )
 
-        user_msg = f"""
-        Description: {description}
-        Optional Question: {question}
+        client_kwargs: dict[str, Any] = {
+            "api_key": key,
+            "timeout": float(timeout_seconds),
+            "max_retries": 2,
+        }
+        if effective_url:
+            client_kwargs["base_url"] = effective_url
+        client = openai.OpenAI(**client_kwargs)
 
-        Output: 
-        """
-
-
-        self.session_history = self.session_history[-context_size:]
-
-
-        messages = [{"role": "system", "content": system_msg}] + self.session_history + [{"role": "user", "content": user_msg}]
-
-        if model_name == "DeepSeek":
-            model = "deepseek-chat"
-            base_url = "https://api.deepseek.com/v1"
-        elif model_name in ["ChatGPT-3.5", "gpt-3.5-turbo", "gpt-3.5-turbo-0125", "gpt-35-turbo", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613"]:
-            model = "gpt-3.5-turbo"
-            base_url = None
-        elif model_name in ["ChatGPT-4", "gpt-4-0613", "gpt-4-1106-preview"]:
-            model = "gpt-4"
-            base_url = None
-        elif model_name == "glm-4":
-            model = "glm-4"
-            base_url = None
-
-        client = OpenAI(api_key=api_key, base_url=base_url)
-
-
-        completion = client.chat.completions.create(
-            model=model,
-            messages=messages,  
-            seed=seed  
+        system = system_msg_prompts if chat_type else system_msg_simple
+        user_message = (
+            f"Description:\n{description.strip()}\n\n"
+            f"Optional question:\n{question.strip()}"
+        ).strip()
+        history_limit = max(0, int(context_size)) * 2
+        history = (
+            self.session_history[-history_limit:] if history_limit else []
         )
 
-        prompt = completion.choices[0].message.content
+        if mode == "Responses":
+            response = client.responses.create(
+                model=model,
+                instructions=system,
+                input=history + [{"role": "user", "content": user_message}],
+                reasoning={"effort": reasoning_effort},
+            )
+            result = response.output_text
+        else:
+            messages = (
+                [{"role": "system", "content": system}]
+                + history
+                + [{"role": "user", "content": user_message}]
+            )
+            request: dict[str, Any] = {
+                "model": model,
+                "messages": messages,
+                "seed": int(seed),
+            }
+            if model.startswith("gpt-5.6"):
+                request["reasoning_effort"] = reasoning_effort
+            completion = client.chat.completions.create(**request)
+            result = completion.choices[0].message.content or ""
 
-        self.session_history += [{"role": "user", "content": user_msg}, {'role': 'assistant', "content": prompt}]
+        self.session_history.extend(
+            [
+                {"role": "user", "content": user_message},
+                {"role": "assistant", "content": result},
+            ]
+        )
+        return (result,)
 
-        return (prompt,)
-    
+
 class LLMLoader:
     @classmethod
-    def INPUT_TYPES(s):
-        return {"required": { 
-              "ckpt_name": (folder_paths.get_filename_list("LLavacheckpoints"), ),   
-              "max_ctx": ("INT", {"default": 2048, "min": 128, "max": 128000, "step": 64}),
-              "gpu_layers": ("INT", {"default": 27, "min": 0, "max": 100, "step": 1}),
-              "n_threads": ("INT", {"default": 8, "min": 1, "max": 100, "step": 1}),
-                            }
-                }
-                
-    
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "ckpt_name": (
+                    folder_paths.get_filename_list("LLavacheckpoints"),
+                ),
+                "max_ctx": (
+                    "INT",
+                    {"default": 2048, "min": 128, "max": 131072, "step": 64},
+                ),
+                "gpu_layers": (
+                    "INT",
+                    {"default": 27, "min": -1, "max": 1000, "step": 1},
+                ),
+                "n_threads": (
+                    "INT",
+                    {"default": 8, "min": 1, "max": 256, "step": 1},
+                ),
+            },
+            "optional": {
+                "chat_format": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "tooltip": (
+                            "Leave blank to use the chat template embedded in GGUF."
+                        ),
+                    },
+                )
+            },
+        }
+
     RETURN_TYPES = ("CUSTOM",)
     RETURN_NAMES = ("model",)
     FUNCTION = "load_llm_checkpoint"
-
     CATEGORY = "VLM Nodes/LLM"
-    def load_llm_checkpoint(self, ckpt_name, max_ctx, gpu_layers, n_threads):
-        ckpt_path = folder_paths.get_full_path("LLavacheckpoints", ckpt_name)
-        llm = Llama(model_path = ckpt_path, chat_format="chatml", offload_kqv=True, f16_kv=True, use_mlock=False, embedding=False, n_batch=1024, last_n_tokens_size=1024, verbose=True, seed=42, n_ctx = max_ctx, n_gpu_layers=gpu_layers, n_threads=n_threads,) 
-        return (llm, ) 
-    
-class LLMPromptGenerator:        
-    def __init__(self):
-        pass
-    
+
+    def load_llm_checkpoint(
+        self, ckpt_name, max_ctx, gpu_layers, n_threads, chat_format=""
+    ):
+        return (
+            LlamaHandle(
+                resolve_model_path(ckpt_name),
+                n_ctx=max_ctx,
+                n_gpu_layers=gpu_layers,
+                n_threads=n_threads,
+                chat_format=chat_format.strip() or None,
+            ),
+        )
+
+
+class LLMPromptGenerator:
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "prompt": ("STRING",{"forceInput": True,"default": ""}),
+                "prompt": (
+                    "STRING",
+                    {"default": "", "multiline": True},
+                ),
                 "model": ("CUSTOM", {"default": ""}),
-                "max_tokens": ("INT", {"default": 512, "min": 1, "max": 2048, "step": 1}),
-                "temperature": ("FLOAT", {"default": 0.2, "min": 0.01, "max": 1.0, "step": 0.01}),
-                "top_p": ("FLOAT", {"default": 0.95, "min": 0.1, "max": 1.0, "step": 0.01}),
-                "top_k": ("INT", {"default": 40, "step": 1}), 
-                "frequency_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "presence_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "repeat_penalty": ("FLOAT", {"default": 1.1, "step": 0.01}),                             
+                "max_tokens": (
+                    "INT",
+                    {"default": 512, "min": 1, "max": 8192, "step": 1},
+                ),
+                "temperature": (
+                    "FLOAT",
+                    {"default": 0.2, "min": 0.0, "max": 2.0, "step": 0.01},
+                ),
+                "top_p": (
+                    "FLOAT",
+                    {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01},
+                ),
+                "top_k": ("INT", {"default": 40, "min": 0, "step": 1}),
+                "frequency_penalty": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -2.0, "max": 2.0, "step": 0.01},
+                ),
+                "presence_penalty": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -2.0, "max": 2.0, "step": 0.01},
+                ),
+                "repeat_penalty": (
+                    "FLOAT",
+                    {"default": 1.1, "min": 0.0, "max": 2.0, "step": 0.01},
+                ),
             }
         }
 
@@ -316,42 +487,78 @@ class LLMPromptGenerator:
     FUNCTION = "generate_text_advanced"
     CATEGORY = "VLM Nodes/LLM"
 
-    def generate_text_advanced(self,prompt, model, max_tokens, temperature, top_p, top_k, frequency_penalty, presence_penalty, repeat_penalty):
-        llm = model
-        response = llm.create_chat_completion(messages=[
-            {"role": "system", "content": system_msg_prompts},
-            {"role": "user", "content": prompt + " Assistant:"},
-        ],
-            max_tokens=max_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
-            repeat_penalty=repeat_penalty,
-            
+    def generate_text_advanced(
+        self,
+        prompt,
+        model,
+        max_tokens,
+        temperature,
+        top_p,
+        top_k,
+        frequency_penalty,
+        presence_penalty,
+        repeat_penalty,
+    ):
+        return (
+            _chat(
+                model,
+                prompt=prompt,
+                system=system_msg_prompts,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                repeat_penalty=repeat_penalty,
+            ),
         )
-        return (f"{response['choices'][0]['message']['content']}", )
-    
-class LLMSampler:        
-    def __init__(self):
-        pass
-    
+
+
+class LLMSampler:
     @classmethod
     def INPUT_TYPES(cls):
+        # Keep this order stable: Comfy serializes widget values by position.
         return {
             "required": {
-                "system_msg": ("STRING",{"default" : "You are an assistant who perfectly describes images."}),
-                "prompt": ("STRING",{"forceInput": True,"default": ""}),
+                "system_msg": (
+                    "STRING",
+                    {
+                        "default": "You are a helpful and accurate assistant.",
+                        "multiline": True,
+                    },
+                ),
+                "prompt": (
+                    "STRING",
+                    {"default": "", "multiline": True},
+                ),
                 "model": ("CUSTOM", {"default": ""}),
-                "max_tokens": ("INT", {"default": 512, "min": 1, "max": 2048, "step": 1}),
-                "temperature": ("FLOAT", {"default": 0.2, "min": 0.01, "max": 1.0, "step": 0.01}),
-                "top_p": ("FLOAT", {"default": 0.95, "min": 0.1, "max": 1.0, "step": 0.01}),
-                "top_k": ("INT", {"default": 40, "step": 1}), 
-                "frequency_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "presence_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "repeat_penalty": ("FLOAT", {"default": 1.1, "step": 0.01}),
-		        "seed": ("INT", {"default": 42, "step": 1})
+                "max_tokens": (
+                    "INT",
+                    {"default": 512, "min": 1, "max": 8192, "step": 1},
+                ),
+                "temperature": (
+                    "FLOAT",
+                    {"default": 0.2, "min": 0.0, "max": 2.0, "step": 0.01},
+                ),
+                "top_p": (
+                    "FLOAT",
+                    {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01},
+                ),
+                "top_k": ("INT", {"default": 40, "min": 0, "step": 1}),
+                "frequency_penalty": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -2.0, "max": 2.0, "step": 0.01},
+                ),
+                "presence_penalty": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -2.0, "max": 2.0, "step": 0.01},
+                ),
+                "repeat_penalty": (
+                    "FLOAT",
+                    {"default": 1.1, "min": 0.0, "max": 2.0, "step": 0.01},
+                ),
+                "seed": ("INT", {"default": 42, "step": 1}),
             }
         }
 
@@ -359,343 +566,115 @@ class LLMSampler:
     FUNCTION = "generate_text_advanced"
     CATEGORY = "VLM Nodes/LLM"
 
-    def generate_text_advanced(self, system_msg, prompt, model, max_tokens, temperature, top_p, top_k, frequency_penalty, presence_penalty, repeat_penalty, seed):
-        llm = model
-        response = llm.create_chat_completion(messages=[
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": prompt + " Assistant:"},
-        ],
-            max_tokens=max_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
-            repeat_penalty=repeat_penalty,
-	    seed=seed
-            
+    def generate_text_advanced(
+        self,
+        system_msg,
+        prompt,
+        model,
+        max_tokens,
+        temperature,
+        top_p,
+        top_k,
+        frequency_penalty,
+        presence_penalty,
+        repeat_penalty,
+        seed,
+    ):
+        return (
+            _chat(
+                model,
+                prompt=prompt,
+                system=system_msg,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                repeat_penalty=repeat_penalty,
+                seed=seed,
+            ),
         )
-        return (f"{response['choices'][0]['message']['content']}", )
 
-class ChatMusician:        
-    def __init__(self):
-        pass
-    
+
+class ChatMusician:
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "prompt": ("STRING",{"forceInput": True,"default": ""}),
+                "prompt": (
+                    "STRING",
+                    {"default": "", "multiline": True},
+                ),
                 "model": ("CUSTOM", {"default": ""}),
-                "max_tokens": ("INT", {"default": 512, "min": 1, "max": 2048, "step": 1}),
-                "temperature": ("FLOAT", {"default": 0.2, "min": 0.01, "max": 1.0, "step": 0.01}),
-                "top_p": ("FLOAT", {"default": 0.90, "min": 0.1, "max": 1.0, "step": 0.01}),
-                "top_k": ("INT", {"default": 40, "step": 1}), 
-                "frequency_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "presence_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "repeat_penalty": ("FLOAT", {"default": 1.1, "step": 0.01}),
-		        "seed": ("INT", {"default": 42, "step": 1}),
-                "sample_rate": ("INT", {"default": 44100, "min": 8000, "max": 48000, "step": 1}),
+                "max_tokens": (
+                    "INT",
+                    {"default": 512, "min": 1, "max": 8192, "step": 1},
+                ),
+                "temperature": (
+                    "FLOAT",
+                    {"default": 0.2, "min": 0.0, "max": 2.0, "step": 0.01},
+                ),
+                "top_p": (
+                    "FLOAT",
+                    {"default": 0.9, "min": 0.0, "max": 1.0, "step": 0.01},
+                ),
+                "top_k": ("INT", {"default": 40, "min": 0, "step": 1}),
+                "frequency_penalty": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -2.0, "max": 2.0, "step": 0.01},
+                ),
+                "presence_penalty": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -2.0, "max": 2.0, "step": 0.01},
+                ),
+                "repeat_penalty": (
+                    "FLOAT",
+                    {"default": 1.1, "min": 0.0, "max": 2.0, "step": 0.01},
+                ),
+                "seed": ("INT", {"default": 42, "step": 1}),
+                "sample_rate": (
+                    "INT",
+                    {"default": 44100, "min": 8000, "max": 192000},
+                ),
             }
         }
 
-    RETURN_NAMES = ("response", "wave_form", "sample_rate", )
-    RETURN_TYPES = ("STRING", any, "INT", )
+    RETURN_NAMES = (
+        "response",
+        "wave_form (legacy)",
+        "sample_rate (legacy)",
+        "audio",
+    )
+    RETURN_TYPES = ("STRING", ANY, "INT", "AUDIO")
     FUNCTION = "chat_musician"
     CATEGORY = "VLM Nodes/Audio"
     OUTPUT_NODE = True
 
-    def chat_musician(self, prompt, model, max_tokens, temperature, top_p, top_k, frequency_penalty, presence_penalty, repeat_penalty, seed, sample_rate):
-        llm = model
-        prompt = _parse_text(prompt)
-        prompt_template = Template("Human: ${inst} </s> Assistant: ")
-        prompt = prompt_template.safe_substitute({"inst": prompt})
-        response = llm.create_chat_completion(messages=[
-            {"role": "user", "content": f"Human: {prompt} </s> Assistant: "},
-        ],
-            max_tokens=max_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
-            repeat_penalty=repeat_penalty,
-	        seed=seed           
-        )
-
-        from symusic import Score, Synthesizer
-
-        abc_pattern = r'(X:\d+\n(?:[^\n]*\n)+)'
-        abc_notation = re.findall(abc_pattern, f"{response['choices'][0]['message']['content']}\n")[0]
-        s = Score.from_abc(abc_notation)
-        audio = Synthesizer().render(s, stereo=True).tolist()[0]
-        
-        return (abc_notation, audio, sample_rate, )
-    
-class KeywordExtraction:        
-    def __init__(self):
-        pass
-    
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "prompt": ("STRING",{"forceInput": True,"default": ""}),
-                "model": ("CUSTOM", {"default": ""}),
-                "temperature": ("FLOAT", {"default": 0.15, "min": 0.01, "max": 1.0, "step": 0.01}),                          
-            }
-        }
-
-    RETURN_TYPES = ("STRING",)
-    FUNCTION = "keyword_extract"
-    CATEGORY = "VLM Nodes/LLM"
-    
-    def keyword_extract(self, prompt, model, temperature):
-        gbnf_grammar, documentation = generate_gbnf_grammar_and_documentation([Analysis])
-        grammar = LlamaGrammar.from_string(gbnf_grammar, verbose=False)
-
-
-        wrapped_model = LlamaCppAgent(model, debug_output=True,
-                                    system_prompt="You are an advanced AI, tasked to create JSON database entries for analysis.\n\n\n" + documentation)
-
-        response = wrapped_model.get_chat_response(prompt, temperature=temperature, grammar=grammar)
-        return (response, )
-    
-class LLavaPromptGenerator:        
-    def __init__(self):
-        pass
-    
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "prompt": ("STRING",{"forceInput": True,"default": ""}),
-                "model": ("CUSTOM", {"default": ""}),
-                "temperature": ("FLOAT", {"default": 0.15, "min": 0.01, "max": 1.0, "step": 0.01}),                           
-            }
-        }
-
-    RETURN_TYPES = ("STRING",)
-    FUNCTION = "generate_prompts"
-    CATEGORY = "VLM Nodes/LLM"
-    
-    def generate_prompts(self, prompt, model, temperature):
-        gbnf_grammar, documentation = generate_gbnf_grammar_and_documentation([PromptGen])
-        grammar = LlamaGrammar.from_string(gbnf_grammar, verbose=False)
-
-        wrapped_model = LlamaCppAgent(model, debug_output=True,
-                                    system_prompt="You are an advanced AI, tasked to create JSON database entries for creative long prompts for image generation. \n\n\n" + documentation)
-        response = wrapped_model.get_chat_response(prompt, temperature=temperature, grammar=grammar, max_tokens=512, repeat_penalty=1.1)
-        return (f"{response}", )
-
-class CreativeArtPromptGenerator:        
-    def __init__(self):
-        pass
-    
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "prompt": ("STRING",{"forceInput": True,"default": ""}),
-                "model": ("CUSTOM", {"default": ""}),
-                "temperature": ("FLOAT", {"default": 0.15, "min": 0.01, "max": 1.0, "step": 0.01}),                           
-            }
-        }
-
-    RETURN_TYPES = ("STRING",)
-    FUNCTION = "create_creative_art_prompts"
-    CATEGORY = "VLM Nodes/LLM"
-    
-    def create_creative_art_prompts(self, prompt, model, temperature):
-        gbnf_grammar, documentation = generate_gbnf_grammar_and_documentation([ArtPromptSpecification])
-        grammar = LlamaGrammar.from_string(gbnf_grammar, verbose=False)
-
-        wrapped_model = LlamaCppAgent(model, debug_output=True,
-                                    system_prompt="You are an advanced AI, tasked to create JSON database entries for creative description for image generation. \n\n\n" + documentation)
-        response = wrapped_model.get_chat_response(prompt, temperature=temperature, grammar=grammar, max_tokens=512, repeat_penalty=1.1)
-        json_response = json.loads(response)
-        final_response = json_response["creative_descriptions"][0]["description"]
-        return (f"{final_response}", )    
-
-class Suggester:        
-    def __init__(self):
-        pass
-    
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "prompt": ("STRING",{"forceInput": True,"default": ""}),
-                "model": ("CUSTOM", {"default": ""}),
-                "temperature": ("FLOAT", {"default": 0.15, "min": 0.01, "max": 1.0, "step": 0.01}),
-                "randomize": ("BOOLEAN", {"default": True, "label_on": "Consistent", "label_off": "Random"}),                           
-            }
-        }
-
-    RETURN_TYPES = ("STRING",)
-    FUNCTION = "generate_suggestions"
-    CATEGORY = "VLM Nodes/LLM"
-    
-    def generate_suggestions(self, prompt, model, temperature, randomize):
-        gbnf_grammar, documentation = generate_gbnf_grammar_and_documentation([Suggestion])
-        grammar = LlamaGrammar.from_string(gbnf_grammar, verbose=False)
-        if randomize: 
-            system_msg_suggester = f"You are an advanced AI, tasked to create JSON database entries for generating extremely similar to the prompt. \n\n\n" + documentation
-        else:
-            #you should suggest variation from prompts
-            prompt = "Generate a prompt like: <A random character> <random action> <random place> <random object> <random color>"  
-            system_msg_suggester = f"You are an advanced AI, tasked to create JSON database entries for suggesting completely different prompts.. \n\n\n" + documentation 
-        wrapped_model = LlamaCppAgent(model, debug_output=True,
-                                    system_prompt=system_msg_suggester)
-        response = wrapped_model.get_chat_response(prompt, temperature=temperature, grammar=grammar, max_tokens=512, repeat_penalty=1.1)
-    
-        return (response, )
-    
-
-class PydanticAttributeSetter:
-    def __init__(self):
-        self.attributes = []
-
-    def add_attribute(self, name: str, type_: Any, description: str, categories: List[str] = None):
-        if type_ == Literal and categories:
-            # Instead of directly using categories, enrich the description to hint at them
-            enriched_description = f"For this {description} you should choose from this categories: {', '.join(categories)}."
-            enriched_description = enriched_description.replace("  ", " ")
-            self.attributes.append((name, str, Field(..., description=enriched_description)))
-        else:
-            self.attributes.append((name, type_, Field(..., description=description)))
-
-    def create_model(self, model_name: str):
-        return create_model(model_name, **{name: (type_, field) for name, type_, field in self.attributes})
-
-class StructuredOutput:
-    def __init__(self):
-        pass
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "prompt": ("STRING", {"forceInput": True, "default": ""}),
-                "model": ("CUSTOM", {"default": ""}),
-                "temperature": ("FLOAT", {"default": 0.15, "min": 0.01, "max": 1.0, "step": 0.01}),
-                "attribute_name": ("STRING", {"default": ""}),
-                "attribute_type": (["str", "int", "float", "bool", "Category"], {"default": "str"}),
-                "attribute_description": ("STRING", {"default": ""}),
-                "categories": ("STRING", {"default": ""}),
-            }
-        }
-
-    RETURN_TYPES = ("STRING",)
-    FUNCTION = "keyword_extract"
-    CATEGORY = "VLM Nodes/LLM"
-
-    def keyword_extract(self, prompt, model, temperature, attribute_name, attribute_type, attribute_description, categories):
-        setter = PydanticAttributeSetter()
-        
-        if attribute_type == "Category":
-            categories = categories.split(",")
-            setter.add_attribute(attribute_name, Literal, attribute_description, categories)
-        else:
-            attribute_type = eval(attribute_type)
-            setter.add_attribute(attribute_name, attribute_type, attribute_description)
-
-        Analysis = setter.create_model("Analysis")
-
-        gbnf_grammar, documentation = generate_gbnf_grammar_and_documentation([Analysis])
-        grammar = LlamaGrammar.from_string(gbnf_grammar, verbose=False)
-
-        wrapped_model = LlamaCppAgent(model, debug_output=True,
-            system_prompt=f"You are an advanced AI, tasked to create JSON database entries for analysis. \n\n\n{documentation}")
-
-        response = wrapped_model.get_chat_response(prompt, temperature=temperature, grammar=grammar)
-        parsed_response = json.loads(response)
-        
-        return (next(iter(parsed_response.values())),)
-    
-class LLMOptionalMemoryFreeSimple:
-    def __init__(self):
-        self.llm = None  # Store the model instance
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "ckpt_name": (folder_paths.get_filename_list("LLavacheckpoints"), ),
-                "max_ctx": ("INT", {"default": 4096, "min": 128, "max": 128000, "step": 64}),
-                "gpu_layers": ("INT", {"default": 27, "min": 0, "max": 100, "step": 1}),
-                "n_threads": ("INT", {"default": 8, "min": 1, "max": 100, "step": 1}),
-                "prompt": ("STRING", {"forceInput": True}),
-                "temperature": ("FLOAT", {"default": 0.1, "min": 0.01, "max": 1.0, "step": 0.01}),
-                "unload": ("BOOLEAN", {"default": False}),  # Add unload parameter
-            }
-        }
-
-    RETURN_TYPES = ("STRING",)
-    FUNCTION = "generate_text"
-    CATEGORY = "VLM Nodes/LLM"
-
-    def generate_text(self, ckpt_name, max_ctx, gpu_layers, n_threads, prompt, temperature, unload):
-        # Load model
-        ckpt_path = folder_paths.get_full_path("LLavacheckpoints", ckpt_name)
-        self.llm = Llama(model_path=ckpt_path, offload_kqv=True, f16_kv=True, use_mlock=False, embedding=False, n_batch=1024, last_n_tokens_size=1024, verbose=True, seed=42, n_ctx=max_ctx, n_gpu_layers=gpu_layers, n_threads=n_threads, logits_all=True, echo=False)
-
-        response = self.llm.create_chat_completion(
-            messages=[
-                {"role": "system", "content": "You are a helpful AI assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=temperature,
-        )
-
-        if unload and self.llm is not None:
-            del self.llm  # Unload the model
-            self.llm = None  # Remove reference to the model
-            gc.collect()
-            torch.cuda.empty_cache()
-
-        return (f"{response['choices'][0]['message']['content']}", )
-
-class LLMOptionalMemoryFreeAdvanced:
-    def __init__(self):
-        self.llm = None  # Store the model instance
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "ckpt_name": (folder_paths.get_filename_list("LLavacheckpoints"), ),
-                "max_ctx": ("INT", {"default": 4096, "min": 128, "max": 128000, "step": 64}),
-                "gpu_layers": ("INT", {"default": 27, "min": 0, "max": 100, "step": 1}),
-                "n_threads": ("INT", {"default": 8, "min": 1, "max": 100, "step": 1}),
-                "system_msg": ("STRING", {"default": "You are a helpful AI assistant."}),
-                "prompt": ("STRING", {"forceInput": True, "default": ""}),
-                "max_tokens": ("INT", {"default": 512, "min": 1, "max": 2048, "step": 1}),
-                "temperature": ("FLOAT", {"default": 0.1, "min": 0.01, "max": 1.0, "step": 0.01}),
-                "top_p": ("FLOAT", {"default": 0.95, "min": 0.1, "max": 1.0, "step": 0.01}),
-                "top_k": ("INT", {"default": 40, "step": 1}),
-                "frequency_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "presence_penalty": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "repeat_penalty": ("FLOAT", {"default": 1.1, "step": 0.01}),
-                "seed": ("INT", {"default": 42, "step": 1}),
-                "unload": ("BOOLEAN", {"default": False}),  # Add unload parameter
-            }
-        }
-
-    RETURN_TYPES = ("STRING",)
-    FUNCTION = "generate_text_advanced"
-    CATEGORY = "VLM Nodes/LLM"
-
-    def generate_text_advanced(self, ckpt_name, max_ctx, gpu_layers, n_threads, system_msg, prompt, max_tokens, temperature, top_p, top_k, frequency_penalty, presence_penalty, repeat_penalty, seed, unload):
-        # Load model
-        ckpt_path = folder_paths.get_full_path("LLavacheckpoints", ckpt_name)
-        self.llm = Llama(model_path=ckpt_path, offload_kqv=True, f16_kv=True, use_mlock=False, embedding=False, n_batch=1024, last_n_tokens_size=1024, verbose=True, seed=seed, n_ctx=max_ctx, n_gpu_layers=gpu_layers, n_threads=n_threads, logits_all=True, echo=False)
-
-        response = self.llm.create_chat_completion(
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": prompt}
-            ],
+    def chat_musician(
+        self,
+        prompt,
+        model,
+        max_tokens,
+        temperature,
+        top_p,
+        top_k,
+        frequency_penalty,
+        presence_penalty,
+        repeat_penalty,
+        seed,
+        sample_rate,
+    ):
+        response = _chat(
+            model,
+            prompt=(
+                "Write exactly one complete ABC notation tune. Begin with X: "
+                "and include headers and body.\n\n" + prompt
+            ),
+            system=(
+                "You are a composer. Return valid ABC notation without a "
+                "Markdown code fence."
+            ),
             max_tokens=max_tokens,
             temperature=temperature,
             top_p=top_p,
@@ -705,14 +684,441 @@ class LLMOptionalMemoryFreeAdvanced:
             repeat_penalty=repeat_penalty,
             seed=seed,
         )
+        match = re.search(r"(?ms)^X:\s*\d+.*", response)
+        if match is None:
+            raise RuntimeError(
+                "The model response did not contain ABC notation beginning with X:."
+            )
+        abc = match.group(0).strip()
 
-        if unload and self.llm is not None:
-            del self.llm  # Unload the model
-            self.llm = None  # Remove reference to the model
-            gc.collect()
-            torch.cuda.empty_cache()
+        symusic = require_module("symusic", "symusic")
+        score = symusic.Score.from_abc(abc)
+        rendered = symusic.Synthesizer(
+            sample_rate=int(sample_rate)
+        ).render(score, stereo=True)
+        waveform = torch.as_tensor(rendered, dtype=torch.float32)
+        if waveform.ndim == 1:
+            waveform = waveform.unsqueeze(0)
+        if waveform.ndim != 2:
+            raise RuntimeError(
+                f"Unexpected synthesizer waveform shape: {tuple(waveform.shape)}"
+            )
+        # Comfy AUDIO is [batch, channels, samples].
+        audio = {
+            "waveform": waveform.unsqueeze(0),
+            "sample_rate": int(sample_rate),
+        }
+        # soundfile-compatible legacy output is [samples, channels].
+        legacy = waveform.transpose(0, 1).contiguous().cpu().numpy()
+        return (abc, legacy, int(sample_rate), audio)
 
-        return (f"{response['choices'][0]['message']['content']}", )
+
+class KeywordExtraction:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": (
+                    "STRING",
+                    {"default": "", "multiline": True},
+                ),
+                "model": ("CUSTOM", {"default": ""}),
+                "temperature": (
+                    "FLOAT",
+                    {"default": 0.15, "min": 0.0, "max": 2.0, "step": 0.01},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "keyword_extract"
+    CATEGORY = "VLM Nodes/LLM"
+
+    def keyword_extract(self, prompt, model, temperature):
+        raw, _ = _structured_chat(
+            model,
+            prompt=prompt,
+            system="Analyze the input and return only the requested JSON object.",
+            schema=_schema(Analysis),
+            temperature=temperature,
+        )
+        return (raw,)
+
+
+class LLavaPromptGenerator:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return KeywordExtraction.INPUT_TYPES()
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "generate_prompts"
+    CATEGORY = "VLM Nodes/LLM"
+
+    def generate_prompts(self, prompt, model, temperature):
+        _, parsed = _structured_chat(
+            model,
+            prompt=prompt,
+            system=(
+                "Create one production-ready image-generation prompt and "
+                "return only the requested JSON object."
+            ),
+            schema=_schema(PromptGen),
+            temperature=temperature,
+        )
+        return (str(parsed["prompt"]),)
+
+
+class CreativeArtPromptGenerator:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return KeywordExtraction.INPUT_TYPES()
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "create_creative_art_prompts"
+    CATEGORY = "VLM Nodes/LLM"
+
+    def create_creative_art_prompts(self, prompt, model, temperature):
+        _, parsed = _structured_chat(
+            model,
+            prompt=prompt,
+            system=(
+                "Develop a coherent visual concept and return only the "
+                "requested JSON object."
+            ),
+            schema=_schema(ArtPromptSpecification),
+            temperature=temperature,
+        )
+        descriptions = parsed.get("creative_descriptions") or []
+        if descriptions:
+            return (str(descriptions[0]["description"]),)
+        techniques = ", ".join(parsed["techniques"]["preferred"])
+        theme = parsed["theme"]["core_subject"]
+        styles = ", ".join(parsed["style"]["desired"])
+        return (
+            f"{theme}. Techniques: {techniques}. Visual style: {styles}.",
+        )
+
+
+class Suggester:
+    @classmethod
+    def INPUT_TYPES(cls):
+        base = KeywordExtraction.INPUT_TYPES()["required"].copy()
+        base["randomize"] = (
+            "BOOLEAN",
+            {
+                "default": True,
+                "label_on": "Similar",
+                "label_off": "Different",
+            },
+        )
+        return {"required": base}
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "generate_suggestions"
+    CATEGORY = "VLM Nodes/LLM"
+
+    def generate_suggestions(self, prompt, model, temperature, randomize):
+        instruction = (
+            "Create five close, useful variations of the input."
+            if randomize
+            else "Create five deliberately different but production-ready ideas."
+        )
+        raw, _ = _structured_chat(
+            model,
+            prompt=prompt,
+            system=instruction + " Return only the requested JSON object.",
+            schema=_schema(Suggestion),
+            temperature=temperature,
+        )
+        return (raw,)
+
+
+class StructuredOutput:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": (
+                    "STRING",
+                    {"default": "", "multiline": True},
+                ),
+                "model": ("CUSTOM", {"default": ""}),
+                "temperature": (
+                    "FLOAT",
+                    {"default": 0.15, "min": 0.0, "max": 2.0, "step": 0.01},
+                ),
+                "attribute_name": ("STRING", {"default": "result"}),
+                "attribute_type": (
+                    ["str", "int", "float", "bool", "Category"],
+                    {"default": "str"},
+                ),
+                "attribute_description": (
+                    "STRING",
+                    {"default": ""},
+                ),
+                "categories": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "tooltip": "Comma-separated values for Category.",
+                    },
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "keyword_extract"
+    CATEGORY = "VLM Nodes/LLM"
+
+    def keyword_extract(
+        self,
+        prompt,
+        model,
+        temperature,
+        attribute_name,
+        attribute_type,
+        attribute_description,
+        categories,
+    ):
+        name = attribute_name.strip()
+        if not name:
+            raise ValueError("attribute_name cannot be empty.")
+        types = {
+            "str": "string",
+            "int": "integer",
+            "float": "number",
+            "bool": "boolean",
+        }
+        property_schema: dict[str, Any] = {
+            "description": attribute_description.strip()
+        }
+        if attribute_type == "Category":
+            values = [
+                value.strip() for value in categories.split(",") if value.strip()
+            ]
+            if not values:
+                raise ValueError(
+                    "Category requires at least one comma-separated value."
+                )
+            property_schema.update({"type": "string", "enum": values})
+        else:
+            property_schema["type"] = types[attribute_type]
+        schema = {
+            "type": "object",
+            "properties": {name: property_schema},
+            "required": [name],
+            "additionalProperties": False,
+        }
+        _, parsed = _structured_chat(
+            model,
+            prompt=prompt,
+            system="Extract the requested value and return only valid JSON.",
+            schema=schema,
+            temperature=temperature,
+        )
+        value = parsed[name]
+        return (
+            value if isinstance(value, str) else json.dumps(value),
+        )
+
+
+class _CachedLLMBase:
+    def __init__(self):
+        self._handle = None
+        self._key = None
+
+    def _model(self, ckpt_name, max_ctx, gpu_layers, n_threads, seed=42):
+        key = (
+            ckpt_name,
+            int(max_ctx),
+            int(gpu_layers),
+            int(n_threads),
+            int(seed),
+        )
+        if self._handle is None or self._key != key:
+            close_handle(self._handle)
+            self._handle = LlamaHandle(
+                resolve_model_path(ckpt_name),
+                n_ctx=max_ctx,
+                n_gpu_layers=gpu_layers,
+                n_threads=n_threads,
+                seed=seed,
+            )
+            self._key = key
+        return self._handle
+
+    def _maybe_unload(self, unload):
+        if unload:
+            close_handle(self._handle)
+            self._handle = None
+            self._key = None
+
+
+class LLMOptionalMemoryFreeSimple(_CachedLLMBase):
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "ckpt_name": (
+                    folder_paths.get_filename_list("LLavacheckpoints"),
+                ),
+                "max_ctx": (
+                    "INT",
+                    {"default": 4096, "min": 128, "max": 131072, "step": 64},
+                ),
+                "gpu_layers": (
+                    "INT",
+                    {"default": 27, "min": -1, "max": 1000, "step": 1},
+                ),
+                "n_threads": (
+                    "INT",
+                    {"default": 8, "min": 1, "max": 256, "step": 1},
+                ),
+                "prompt": (
+                    "STRING",
+                    {"default": "", "multiline": True},
+                ),
+                "temperature": (
+                    "FLOAT",
+                    {"default": 0.1, "min": 0.0, "max": 2.0, "step": 0.01},
+                ),
+                "unload": ("BOOLEAN", {"default": False}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "generate_text"
+    CATEGORY = "VLM Nodes/LLM"
+
+    def generate_text(
+        self,
+        ckpt_name,
+        max_ctx,
+        gpu_layers,
+        n_threads,
+        prompt,
+        temperature,
+        unload,
+    ):
+        model = self._model(
+            ckpt_name, max_ctx, gpu_layers, n_threads
+        )
+        try:
+            return (
+                _chat(
+                    model,
+                    prompt=prompt,
+                    system="You are a helpful AI assistant.",
+                    temperature=temperature,
+                ),
+            )
+        finally:
+            self._maybe_unload(unload)
+
+
+class LLMOptionalMemoryFreeAdvanced(_CachedLLMBase):
+    @classmethod
+    def INPUT_TYPES(cls):
+        required = {
+            "ckpt_name": (
+                folder_paths.get_filename_list("LLavacheckpoints"),
+            ),
+            "max_ctx": (
+                "INT",
+                {"default": 4096, "min": 128, "max": 131072, "step": 64},
+            ),
+            "gpu_layers": (
+                "INT",
+                {"default": 27, "min": -1, "max": 1000, "step": 1},
+            ),
+            "n_threads": (
+                "INT",
+                {"default": 8, "min": 1, "max": 256, "step": 1},
+            ),
+            "system_msg": (
+                "STRING",
+                {
+                    "default": "You are a helpful AI assistant.",
+                    "multiline": True,
+                },
+            ),
+            "prompt": (
+                "STRING",
+                {"default": "", "multiline": True},
+            ),
+            "max_tokens": (
+                "INT",
+                {"default": 512, "min": 1, "max": 8192, "step": 1},
+            ),
+            "temperature": (
+                "FLOAT",
+                {"default": 0.1, "min": 0.0, "max": 2.0, "step": 0.01},
+            ),
+            "top_p": (
+                "FLOAT",
+                {"default": 0.95, "min": 0.0, "max": 1.0, "step": 0.01},
+            ),
+            "top_k": ("INT", {"default": 40, "min": 0, "step": 1}),
+            "frequency_penalty": (
+                "FLOAT",
+                {"default": 0.0, "min": -2.0, "max": 2.0, "step": 0.01},
+            ),
+            "presence_penalty": (
+                "FLOAT",
+                {"default": 0.0, "min": -2.0, "max": 2.0, "step": 0.01},
+            ),
+            "repeat_penalty": (
+                "FLOAT",
+                {"default": 1.1, "min": 0.0, "max": 2.0, "step": 0.01},
+            ),
+            "seed": ("INT", {"default": 42, "step": 1}),
+            "unload": ("BOOLEAN", {"default": False}),
+        }
+        return {"required": required}
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "generate_text_advanced"
+    CATEGORY = "VLM Nodes/LLM"
+
+    def generate_text_advanced(
+        self,
+        ckpt_name,
+        max_ctx,
+        gpu_layers,
+        n_threads,
+        system_msg,
+        prompt,
+        max_tokens,
+        temperature,
+        top_p,
+        top_k,
+        frequency_penalty,
+        presence_penalty,
+        repeat_penalty,
+        seed,
+        unload,
+    ):
+        model = self._model(
+            ckpt_name, max_ctx, gpu_layers, n_threads, seed
+        )
+        try:
+            return (
+                _chat(
+                    model,
+                    prompt=prompt,
+                    system=system_msg,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    top_k=top_k,
+                    frequency_penalty=frequency_penalty,
+                    presence_penalty=presence_penalty,
+                    repeat_penalty=repeat_penalty,
+                    seed=seed,
+                ),
+            )
+        finally:
+            self._maybe_unload(unload)
 
 
 NODE_CLASS_MAPPINGS = {
@@ -729,18 +1135,18 @@ NODE_CLASS_MAPPINGS = {
     "LLMOptionalMemoryFreeSimple": LLMOptionalMemoryFreeSimple,
     "LLMOptionalMemoryFreeAdvanced": LLMOptionalMemoryFreeAdvanced,
 }
-# A dictionary that contains the friendly/humanly readable titles for the nodes
+
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "LLMLoader": "LLMLoader",
-    "LLMSampler": "LLMSampler",
-    "LLMPromptGenerator": "LLM PromptGenerator",
-    "KeywordExtraction": "Get Keywords",
-    "LLavaPromptGenerator": "LLava PromptGenerator",
-    "Suggester": "Suggester",
-    "PromptGenerateAPI": "API PromptGenerator",
-    "CreativeArtPromptGenerator": "Creative Art PromptGenerator",
-    "ChatMusician": "ChatMusician",
+    "LLMLoader": "LLM Loader (GGUF)",
+    "LLMSampler": "LLM Sampler",
+    "LLMPromptGenerator": "LLM Prompt Generator",
+    "KeywordExtraction": "Structured Keyword Extraction",
+    "LLavaPromptGenerator": "Structured Prompt Generator",
+    "Suggester": "Prompt Suggester",
+    "PromptGenerateAPI": "OpenAI-Compatible Prompt API",
+    "CreativeArtPromptGenerator": "Creative Art Prompt Generator",
+    "ChatMusician": "Chat Musician",
     "StructuredOutput": "Structured Output",
-    "LLMOptionalMemoryFreeSimple": "LLM Simple (Memory Optional)",
-    "LLMOptionalMemoryFreeAdvanced": "LLM Advanced (Memory Optional)",
+    "LLMOptionalMemoryFreeSimple": "LLM (Managed Cache)",
+    "LLMOptionalMemoryFreeAdvanced": "LLM (Managed Cache, Advanced)",
 }

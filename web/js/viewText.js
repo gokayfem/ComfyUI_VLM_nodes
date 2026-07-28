@@ -1,42 +1,58 @@
 import { app } from "../../../scripts/app.js";
-import { ComfyWidgets } from "../../../scripts/widgets.js";
+
+const OUTPUT_NAME = "output_text";
+
+function ensureOutputWidget(node) {
+    let widget = node.widgets?.find((item) => item.name === OUTPUT_NAME);
+    if (!widget) {
+        const output = document.createElement("textarea");
+        output.readOnly = true;
+        output.setAttribute("aria-label", "VLM text output");
+        Object.assign(output.style, {
+            width: "100%",
+            height: "100%",
+            minHeight: "120px",
+            resize: "vertical",
+            boxSizing: "border-box",
+            color: "var(--input-text, #ddd)",
+            background: "var(--comfy-input-bg, #202020)",
+            border: "1px solid var(--border-color, #555)",
+            borderRadius: "6px",
+            padding: "8px",
+        });
+        widget = node.addDOMWidget(OUTPUT_NAME, "STRING", output, {
+            serialize: false,
+            hideOnZoom: false,
+        });
+        widget.serialize = false;
+        widget.inputEl = output;
+    }
+    return widget;
+}
 
 app.registerExtension({
-    name: "n.ViewText",
-    async beforeRegisterNodeDef(nodeType, nodeData, app) {
-        
-        if (nodeData.name === "ViewText") {
-            console.warn("ViewText");
-            
-            const onExecuted = nodeType.prototype.onExecuted;
-            
-            nodeType.prototype.onExecuted = function (message) {
-                if (this.widgets) {
-					for (let i = 1; i < this.widgets.length; i++) {
-						this.widgets[i].onRemove?.();
-					}
-					this.widgets.length = 1;
-				}
-                
-                // Call the original onExecuted method if it exists.
-                onExecuted?.apply(this, arguments);
-                
-                // Check if the "text" widget already exists.
-                let textWidget = this.widgets.find(w => w.name === "new_text");
-                if (!textWidget) {
-                    // If the "text" widget does not exist, create it.
-                    textWidget = ComfyWidgets["STRING"](this, "new_text", ["STRING", { multiline: true }], app).widget;
-                }
-                
-                // Generate a random number and set it as the value of the "text" widget.
-                
-                textWidget.inputEl.readOnly = true;
-                textWidget.inputEl.style.opacity = 0.6;
-                textWidget.value = message["text"].join(""); 
-                // change color of the widget
-                console.log(message)    
-
-            };
+    name: "gokayfem.vlm.view-text",
+    async beforeRegisterNodeDef(nodeType, nodeData) {
+        if (nodeData.name !== "ViewText") {
+            return;
         }
+        const onCreated = nodeType.prototype.onNodeCreated;
+        nodeType.prototype.onNodeCreated = function (...args) {
+            const result = onCreated?.apply(this, args);
+            ensureOutputWidget(this);
+            return result;
+        };
+        const onExecuted = nodeType.prototype.onExecuted;
+        nodeType.prototype.onExecuted = function (message) {
+            const result = onExecuted?.apply(this, arguments);
+            const values = Array.isArray(message?.text)
+                ? message.text
+                : [message?.text ?? ""];
+            const widget = ensureOutputWidget(this);
+            widget.value = values.join("");
+            widget.inputEl.value = widget.value;
+            this.setDirtyCanvas?.(true, true);
+            return result;
+        };
     },
 });

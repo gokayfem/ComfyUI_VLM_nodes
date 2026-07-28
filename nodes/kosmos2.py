@@ -1,59 +1,84 @@
-from transformers import AutoModelForVision2Seq, AutoProcessor
-from PIL import Image
-from pathlib import Path
+"""Kosmos-2 grounding/caption node with lazy, Comfy-managed loading."""
+
+from __future__ import annotations
+
 import torch
-from torchvision.transforms import ToPILImage
-from huggingface_hub import snapshot_download
-import folder_paths
-# Define the directory for saving files related to your new model
-files_for_new_model = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_kosmos2"
-files_for_new_model.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
+
+from .runtime import (
+    CachedModelNode,
+    ManagedTorchModel,
+    batch_text,
+    inference_context,
+    model_device,
+    move_inputs,
+    require_module,
+    snapshot_download,
+    tensor_batch_to_pil,
+    torch_dtype,
+)
+
+MODEL_ID = "microsoft/kosmos-2-patch14-224"
+
 
 class KosmosModelPredictor:
     def __init__(self):
-        self.model_path = snapshot_download("microsoft/kosmos-2-patch14-224", 
-                                            local_dir=files_for_new_model,
-                                            force_download=False,  # Set to True if you always want to download, regardless of local copy
-                                            local_files_only=False,  # Set to False to allow downloading if not available locally
-                                            local_dir_use_symlinks="auto",
-                                            ignore_patterns=["*.bin", "*.jpg", "*.png"])  # or set to True/False based on your symlink preference
-        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        self.model = AutoModelForVision2Seq.from_pretrained(self.model_path).to(self.device)
-        self.processor = AutoProcessor.from_pretrained(self.model_path)
-
-    def generate_predictions(self, image_path, main_text):
-        # Load the image
-        image_input = Image.open(image_path).convert("RGB")
-        
-        text_input = f"<grounding>{main_text}: "
-
-        # Process the inputs
-        inputs = self.processor(text=text_input, images=image_input, return_tensors="pt").to(self.device)
-
-        # Generate predictions
-        generated_ids = self.model.generate(
-            pixel_values=inputs["pixel_values"],
-            input_ids=inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
-            image_embeds=None,
-            image_embeds_position_mask=inputs["image_embeds_position_mask"],
-            use_cache=True,
-            max_new_tokens=128,
+        transformers = require_module("transformers")
+        model_path = snapshot_download(
+            MODEL_ID, "kosmos2", ignore_patterns=["*.bin"]
         )
+        self.dtype = torch_dtype("bfloat16")
+        model_class = getattr(
+            transformers,
+            "Kosmos2ForConditionalGeneration",
+            getattr(transformers, "AutoModelForImageTextToText", None),
+        )
+        if model_class is None:
+            raise RuntimeError(
+                "This Transformers version does not include Kosmos-2 support."
+            )
+        model = model_class.from_pretrained(
+            model_path, torch_dtype=self.dtype
+        ).eval()
+        self.processor = transformers.AutoProcessor.from_pretrained(model_path)
+        self.handle = ManagedTorchModel(model, processor=self.processor)
 
-        # Decode the generated IDs
-        generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    def close(self):
+        self.handle.close()
+        self.processor = None
 
-        # By default, the generated text is cleanup and the entities are extracted.
-        processed_text, entities = self.processor.post_process_generation(generated_text)
+    def generate(self, images, text, max_new_tokens):
+        results = []
+        for image in tensor_batch_to_pil(images):
+            prompt = f"<grounding>{text.strip()}"
+            inputs = self.processor(
+                text=prompt, images=image, return_tensors="pt"
+            )
+            model = self.handle.ensure_loaded()
+            device = model_device(model)
+            inputs = move_inputs(inputs, device)
+            with torch.inference_mode(), inference_context(device, self.dtype):
+                output = model.generate(
+                    **inputs,
+                    use_cache=True,
+                    max_new_tokens=int(max_new_tokens),
+                )
+            decoded = self.processor.batch_decode(
+                output, skip_special_tokens=True
+            )[0]
+            post_process = getattr(
+                self.processor, "post_process_generation", None
+            )
+            if callable(post_process):
+                processed, _entities = post_process(decoded)
+            else:
+                processed = decoded
+            if processed.startswith(text):
+                processed = processed[len(text) :].lstrip(": \n")
+            results.append(processed.strip())
+        return batch_text(results)
 
-        return processed_text[len(main_text)+2:]
 
-# Example of integrating NewModelPredictor into a node-like structure
-class Kosmos2model:
-    def __init__(self):
-        self.predictor = KosmosModelPredictor()
-
+class Kosmos2model(CachedModelNode):
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -61,27 +86,39 @@ class Kosmos2model:
                 "image": ("IMAGE",),
                 "text_input": (
                     "STRING",
-                    {
-                        "multiline": True,
-                        "default": "",
-                    },
+                    {"multiline": True, "default": "Describe the image."},
                 ),
+            },
+            "optional": {
+                "max_new_tokens": (
+                    "INT",
+                    {"default": 128, "min": 1, "max": 2048},
+                ),
+                "unload_after": ("BOOLEAN", {"default": False}),
             },
         }
 
     RETURN_TYPES = ("STRING",)
-
     FUNCTION = "new_model_generate_predictions"
-
     CATEGORY = "VLM Nodes/Kosmos-2"
 
-    def new_model_generate_predictions(self, image, text_input):
-        pil_image = ToPILImage()(image[0].permute(2, 0, 1))
-        temp_path = files_for_new_model / "temp_image.png"
-        pil_image.save(temp_path)      
-        
-        response = self.predictor.generate_predictions(temp_path, text_input)
-        return (response, )
+    def new_model_generate_predictions(
+        self,
+        image,
+        text_input,
+        max_new_tokens=128,
+        unload_after=False,
+    ):
+        predictor = self.get_or_create_model(
+            MODEL_ID, KosmosModelPredictor
+        )
+        try:
+            return (
+                predictor.generate(image, text_input, max_new_tokens),
+            )
+        finally:
+            self.maybe_clear_model(unload_after)
+
 
 NODE_CLASS_MAPPINGS = {"Kosmos2model": Kosmos2model}
-NODE_DISPLAY_NAME_MAPPINGS = {"Kosmos2model": "Kosmos-2 Node"}
+NODE_DISPLAY_NAME_MAPPINGS = {"Kosmos2model": "Kosmos-2"}

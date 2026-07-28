@@ -1,105 +1,189 @@
-from huggingface_hub import snapshot_download
-from pathlib import Path
-import torch
-import os
-import soundfile as sf
-from folder_paths import output_directory
-import folder_paths
-import datetime
+"""Lazy AudioLDM2 generation with legacy and standard ComfyUI AUDIO outputs."""
+
+from __future__ import annotations
+
 from pathlib import Path
 
-# Define the directory for saving files related to the audio model
-files_for_audio_model = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_audioldm2"
-files_for_audio_model.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
+import numpy as np
+import torch
+
+import folder_paths
+
+from .runtime import CachedModelNode, require_module, reserve_external_vram, snapshot_download
+
 
 class AnyType(str):
-    def __ne__(self, __value: object) -> bool:
+    def __ne__(self, other):
         return False
-base_path = os.path.dirname(os.path.realpath(__file__))
 
-# Our any instance wants to be a wildcard string
-any = AnyType("*")
-class AudioLDM2ModelPredictor:
-    
-    def __init__(self):
-        from diffusers import AudioLDM2Pipeline
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
 
-        # Use snapshot_download to manage the model download/cache
-        self.model_path = snapshot_download("cvssp/audioldm2",
-                                            local_dir=files_for_audio_model,
-                                            force_download=False,  # Set to True to always download
-                                            local_files_only=False,  # Download if not available locally
-                                            use_auth_token=False,  # Set to True if using a private model
-                                            local_dir_use_symlinks="auto",  # Auto-manage symlinks
-                                            ignore_patterns=["*.bin", "*.jpg", "*.png"])  # Ignore unrelated files
+ANY = AnyType("*")
 
-        self.pipeline = AudioLDM2Pipeline.from_pretrained(self.model_path, 
-                                                          torch_dtype=torch_dtype).to(self.device)
-        self.generator = torch.Generator(self.device)
 
-    def generate_audio(self, text, negative_prompt, duration, guidance_scale, random_seed, sample_rate, n_candidates=1, extension="wav"):
-        if text is None:
-            raise ValueError("Please provide a text input.")
-        
-        # Manual seed for reproducibility
-        self.generator.manual_seed(int(random_seed))
+class AudioLDM2Predictor:
+    def __init__(self, cpu_offload=True):
+        diffusers = require_module("diffusers")
+        path = snapshot_download(
+            "cvssp/audioldm2",
+            "audioldm2",
+            ignore_patterns=["*.bin", "*.jpg", "*.png"],
+        )
+        dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+        if torch.cuda.is_available():
+            reserve_external_vram(8 * 1024**3)
+        self.pipeline = diffusers.AudioLDM2Pipeline.from_pretrained(
+            path, torch_dtype=dtype
+        )
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
+        if self.device.type == "cuda" and cpu_offload:
+            require_module("accelerate")
+            self.pipeline.enable_model_cpu_offload()
+        else:
+            self.pipeline.to(self.device)
 
-        # Generate audio
-        waveforms = self.pipeline(
+    def close(self):
+        self.pipeline = None
+        import gc
+
+        gc.collect()
+        try:
+            import comfy.model_management as model_management
+
+            model_management.soft_empty_cache()
+        except Exception:
+            pass
+
+    def generate(self, text, negative, duration, guidance, seed, count, steps):
+        generator = torch.Generator(device=self.device).manual_seed(int(seed))
+        audios = self.pipeline(
             text,
-            audio_length_in_s=duration,
-            guidance_scale=guidance_scale,
-            num_inference_steps=200,
-            negative_prompt=negative_prompt,
-            num_waveforms_per_prompt=n_candidates,
-            generator=self.generator,
-        )["audios"]
+            negative_prompt=negative or None,
+            audio_length_in_s=float(duration),
+            guidance_scale=float(guidance),
+            num_inference_steps=int(steps),
+            num_waveforms_per_prompt=int(count),
+            generator=generator,
+        ).audios
+        array = np.asarray(audios, dtype=np.float32)
+        if array.ndim == 1:
+            array = array[None, :]
+        native_rate = int(
+            getattr(
+                getattr(getattr(self.pipeline, "vae", None), "config", None),
+                "sampling_rate",
+                16000,
+            )
+        )
+        return array, native_rate
 
-        final_waveforms = waveforms[0].tolist()
-        return (final_waveforms, sample_rate)  # Return the path of the generated audio file
 
-
-class AudioLDM2Node:
-    def __init__(self):
-        self.predictor = AudioLDM2ModelPredictor()
-
+class AudioLDM2Node(CachedModelNode):
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "text": ("STRING",{"default": "", "forceInput": True}),
-                "negative_prompt": ("STRING",{"default": "", "forceInput": True}),
-                "duration": ("INT",{"default": 10, "min": 1, "max": 60, "step": 1}),
-                "guidance_scale": ("FLOAT", {"default": 3.5, "min": 0.1, "max": 20.0, "step": 0.1}),
-                "seed": ("INT", {"default": 42, "step": 1}),
-                "n_candidates": ("INT", {"default": 3, "min": 1, "max": 10, "step": 1}),
-                "sample_rate": ("INT", {"default": 16000, "min": 8000, "max": 48000, "step": 1}),
-                "extension": (["wav", "mp3", "flac"], {"default": "wav"}),
-            }
+                "text": ("STRING", {"default": "", "multiline": True}),
+                "negative_prompt": (
+                    "STRING",
+                    {"default": "", "multiline": True},
+                ),
+                "duration": (
+                    "INT",
+                    {"default": 10, "min": 1, "max": 60},
+                ),
+                "guidance_scale": (
+                    "FLOAT",
+                    {"default": 3.5, "min": 0.1, "max": 20.0, "step": 0.1},
+                ),
+                "seed": ("INT", {"default": 42, "min": 0}),
+                "n_candidates": (
+                    "INT",
+                    {"default": 1, "min": 1, "max": 10},
+                ),
+                "sample_rate": (
+                    "INT",
+                    {"default": 16000, "min": 8000, "max": 48000},
+                ),
+                "extension": (["wav", "flac"],),
+            },
+            "optional": {
+                "steps": ("INT", {"default": 100, "min": 10, "max": 500}),
+                "cpu_offload": ("BOOLEAN", {"default": True}),
+                "unload_after": ("BOOLEAN", {"default": False}),
+            },
         }
 
-    RETURN_NAMES = ("wave_form", "sample_rate", )
-    RETURN_TYPES = (any, "INT", )
+    RETURN_NAMES = ("wave_form", "sample_rate", "audio")
+    RETURN_TYPES = (ANY, "INT", "AUDIO")
     OUTPUT_NODE = True
     FUNCTION = "generate_audio_final"
-
     CATEGORY = "VLM Nodes/Audio"
 
-    def generate_audio_final(self, text, negative_prompt, duration, guidance_scale, sample_rate, seed, n_candidates, extension):
-        wave_form, sample_rate_final = self.predictor.generate_audio(text, negative_prompt, duration, guidance_scale, seed, sample_rate, n_candidates, extension)
-        return (wave_form, sample_rate_final, )
+    def generate_audio_final(
+        self,
+        text,
+        negative_prompt,
+        duration,
+        guidance_scale,
+        sample_rate,
+        seed,
+        n_candidates,
+        extension,
+        steps=100,
+        cpu_offload=True,
+        unload_after=False,
+    ):
+        del extension
+        predictor = self.get_or_create_model(
+            ("audioldm2", bool(cpu_offload)),
+            lambda: AudioLDM2Predictor(cpu_offload),
+        )
+        try:
+            waveforms, native_rate = predictor.generate(
+                text,
+                negative_prompt,
+                duration,
+                guidance_scale,
+                seed,
+                n_candidates,
+                steps,
+            )
+            if int(sample_rate) != native_rate:
+                samples = torch.from_numpy(waveforms).unsqueeze(1)
+                target_length = round(
+                    samples.shape[-1] * int(sample_rate) / native_rate
+                )
+                waveforms = (
+                    torch.nn.functional.interpolate(
+                        samples,
+                        size=target_length,
+                        mode="linear",
+                        align_corners=False,
+                    )
+                    .squeeze(1)
+                    .numpy()
+                )
+            # Standard Comfy AUDIO is [batch, channels, samples].
+            audio = {
+                "waveform": torch.from_numpy(waveforms).unsqueeze(1),
+                "sample_rate": int(sample_rate),
+            }
+            return (waveforms[0].tolist(), int(sample_rate), audio)
+        finally:
+            self.maybe_clear_model(unload_after)
+
 
 class SaveAudioNode:
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "waveforms": (any, {}),
-                "sample_rate": ("INT", {"forceInput": True}),
-                "extension": (["wav", "mp3", "flac"], {"default": "wav"}),
-                "filename": ("STRING", {"default": "audio", "forceInput": True})  # Input for filename
+                "waveforms": (ANY,),
+                "sample_rate": ("INT",),
+                "extension": (["wav", "flac"],),
+                "filename": ("STRING", {"default": "audio"}),
             }
         }
 
@@ -109,35 +193,25 @@ class SaveAudioNode:
     OUTPUT_NODE = True
 
     def save_audio(self, waveforms, sample_rate, extension, filename):
-        # Build the base audio path
-        base_path = Path(output_directory) / filename
-        
-        # Initialize a counter
-        counter = 1
-        
-        # Check if the file exists and append a number if it does
-        while True:
-            # Format the filename with leading zeros for numbering
-            if counter == 1:
-                audio_path = base_path.with_suffix(f".{extension}")  # First instance
-            else:
-                audio_path = base_path.with_name(f"{filename}_{counter:05d}").with_suffix(f".{extension}")
-            
-            if not audio_path.exists():
-                break  # Found a unique filename
-            
-            counter += 1  # Increment the counter
-        
-        # Save the audio file
-        sf.write(audio_path.as_posix(), waveforms, sample_rate)
-
+        soundfile = require_module("soundfile")
+        safe_name = Path(filename).name.strip() or "audio"
+        output = Path(folder_paths.output_directory)
+        output.mkdir(parents=True, exist_ok=True)
+        base = output / safe_name
+        path = base.with_suffix(f".{extension}")
+        counter = 2
+        while path.exists():
+            path = output / f"{safe_name}_{counter:05d}.{extension}"
+            counter += 1
+        soundfile.write(path, np.asarray(waveforms), int(sample_rate))
         return ()
+
 
 NODE_CLASS_MAPPINGS = {
     "AudioLDM2Node": AudioLDM2Node,
-    "SaveAudioNode": SaveAudioNode
+    "SaveAudioNode": SaveAudioNode,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "AudioLDM2Node": "AudioLDM-2 Node",
-    "SaveAudioNode": "Save Audio Node"
+    "AudioLDM2Node": "AudioLDM2",
+    "SaveAudioNode": "Save Audio",
 }

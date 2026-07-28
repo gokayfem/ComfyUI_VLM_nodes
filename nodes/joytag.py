@@ -1,141 +1,140 @@
-from .joytagger import Models
-from PIL import Image
-import torch.amp.autocast_mode
-from pathlib import Path
+"""JoyTag image tagging with cached, ComfyUI-managed model weights."""
+
+from __future__ import annotations
+
+import numpy as np
 import torch
-import torchvision.transforms.functional as TVF
-from huggingface_hub import snapshot_download
-from torchvision import transforms
-import folder_paths
+from PIL import Image
 
-THRESHOLD = 0.4
+from .runtime import (
+    CachedModelNode,
+    ManagedTorchModel,
+    batch_text,
+    inference_context,
+    model_device,
+    snapshot_download,
+    tensor_batch_to_pil,
+    torch_dtype,
+)
 
-# Define your local directory where you want to save the files
-files_for_joytagger = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_joytagger"
-
-# Check if the directory exists, create if it doesn't (optional)
-files_for_joytagger.mkdir(parents=True, exist_ok=True)
-
-def download_joytag():
-    # Ensure the correct behavior based on the existence of the local directory
-    print(f"Target directory for download: {files_for_joytagger}")
-    
-    # Call snapshot_download with specified parameters
-    path = snapshot_download(
-        "fancyfeast/joytag",  # Example repo_id
-        local_dir=files_for_joytagger,
-        force_download=False,  # Set to True if you always want to download, regardless of local copy
-        local_files_only=False,  # Set to False to allow downloading if not available locally
-        local_dir_use_symlinks="auto"  # or set to True/False based on your symlink preference
-    )
-    print(f"Model path: {path}")
-    return path
+MODEL_ID = "fancyfeast/joytag"
 
 
 def prepare_image(image: Image.Image, target_size: int) -> torch.Tensor:
-	# Pad image to square
-	image_shape = image.size
-	max_dim = max(image_shape)
-	pad_left = (max_dim - image_shape[0]) // 2
-	pad_top = (max_dim - image_shape[1]) // 2
-
-	padded_image = Image.new('RGB', (max_dim, max_dim), (255, 255, 255))
-	padded_image.paste(image, (pad_left, pad_top))
-
-	# Resize image
-	if max_dim != target_size:
-		padded_image = padded_image.resize((target_size, target_size), Image.BICUBIC)
-	
-	# Convert to tensor
-	image_tensor = TVF.pil_to_tensor(padded_image) / 255.0
-
-	# Normalize
-	image_tensor = TVF.normalize(image_tensor, mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711])
-
-	return image_tensor
+    width, height = image.size
+    side = max(width, height)
+    canvas = Image.new("RGB", (side, side), (255, 255, 255))
+    canvas.paste(image.convert("RGB"), ((side - width) // 2, (side - height) // 2))
+    if side != target_size:
+        canvas = canvas.resize(
+            (target_size, target_size), Image.Resampling.BICUBIC
+        )
+    array = np.asarray(canvas, dtype=np.float32) / 255.0
+    tensor = torch.from_numpy(array.copy()).permute(2, 0, 1)
+    mean = torch.tensor([0.48145466, 0.4578275, 0.40821073])[:, None, None]
+    std = torch.tensor([0.26862954, 0.26130258, 0.27577711])[:, None, None]
+    return (tensor - mean) / std
 
 
+def clean_tag(tag: str) -> str:
+    return (
+        tag.replace("(medium)", "")
+        .replace("\\", "")
+        .replace("m/", "")
+        .replace("_", " ")
+        .strip(" -")
+    )
 
 
-# Extract and process the tags
-def process_tag(tag):
-	tag = tag.replace("(medium)", "")  # Remove (medium)
-	tag = tag.replace("\\", "")  # Remove \
-	tag = tag.replace("m/", "")  # Remove m/
-	tag = tag.replace("-", "")  # Remove -
-	tag = tag.replace("_", " ")  # Replace underscores with spaces
-	tag = tag.strip()  # Remove leading and trailing spaces
-	return tag
+class JoyTagPredictor:
+    def __init__(self):
+        from .joytagger import Models
 
-class Joytag:
-	def __init__(self):
-		pass
+        path = snapshot_download(MODEL_ID, "joytag")
+        model = Models.VisionModel.load_model(path, device=None).eval()
+        self.tags = [
+            line.strip()
+            for line in (path / "top_tags.txt").read_text(
+                encoding="utf-8"
+            ).splitlines()
+            if line.strip()
+        ]
+        self.dtype = torch_dtype("float16")
+        self.handle = ManagedTorchModel(model)
 
-	@classmethod
-	def INPUT_TYPES(cls):
-		return {
-			"required": {
-				"image": ("IMAGE",),
-				"tag_number": ("INT", {
-                    "default": 1, 
-                    "min": 1, #Minimum value
-                    "max": 100, #Maximum value
-                    "step": 1, #Slider's step
-                    "display": "number" # Cosmetic only: display as "number" or "slider"
-                }),                
-			},
-		}
+    def close(self):
+        self.handle.close()
+        self.tags = []
 
-	RETURN_TYPES = ("STRING",)
-
-	FUNCTION = "tags"
-
-	CATEGORY = "VLM Nodes/JoyTag"
-
-	def tags(self, image, tag_number):
-		path = download_joytag()
-		print(f"Model path: {path}")
-		model = Models.VisionModel.load_model(Path(path), device='cuda')
-		model.eval()
-		with open(Path(path) / 'top_tags.txt', 'r') as f:
-			top_tags = [line.strip() for line in f.readlines() if line.strip()]
-
-		@torch.no_grad()
-		def predict(image: Image.Image):
-			image_tensor = prepare_image(image, model.image_size)
-			batch = {
-				'image': image_tensor.unsqueeze(0).to('cuda'),
-			}
-
-			with torch.amp.autocast_mode.autocast('cuda', enabled=True):
-				preds = model(batch)
-				tag_preds = preds['tags'].sigmoid().cpu()
-			
-			scores = {top_tags[i]: tag_preds[0][i] for i in range(len(top_tags))}
-			predicted_tags = [tag for tag, score in scores.items() if score > THRESHOLD]
-			tag_string = ', '.join(predicted_tags)
-
-			return tag_string, scores
-			
-		image = transforms.ToPILImage()(image[0].permute(2, 0, 1))
-		_, scores = predict(image)
-
-		# Get the top 50 tag and score pairs
-		top_tags_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:tag_number]
-
-		# Extract the tags from the pairs
-		top_tags_processed = [process_tag(tag) for tag, _ in top_tags_scores]
-		
-		top_tags_full = [tag for tag in top_tags_processed if tag]
-
-		# Concatenate the tags with a comma separator
-		top_50_tags_string = ', '.join(top_tags_full)
-		
-		return (top_50_tags_string, )
+    def predict(self, images, count: int, threshold: float):
+        results = []
+        for image in tensor_batch_to_pil(images):
+            model = self.handle.ensure_loaded()
+            device = model_device(model)
+            tensor = prepare_image(image, model.image_size).unsqueeze(0).to(device)
+            with torch.inference_mode(), inference_context(device, self.dtype):
+                predictions = model({"image": tensor})["tags"].sigmoid()[0]
+            scores = predictions.float().cpu()
+            ranked = torch.argsort(scores, descending=True).tolist()
+            selected = [
+                index
+                for index in ranked
+                if scores[index].item() >= float(threshold)
+            ][: int(count)]
+            # Always return up to tag_number useful results, even when the
+            # threshold is deliberately high.
+            if not selected:
+                selected = ranked[: int(count)]
+            tags = [clean_tag(self.tags[index]) for index in selected]
+            results.append(", ".join(tag for tag in tags if tag))
+        return batch_text(results)
 
 
-# A dictionary that contains all nodes you want to export with their names
+class Joytag(CachedModelNode):
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "tag_number": (
+                    "INT",
+                    {
+                        "default": 20,
+                        "min": 1,
+                        "max": 100,
+                        "step": 1,
+                        "display": "number",
+                    },
+                ),
+            },
+            "optional": {
+                "threshold": (
+                    "FLOAT",
+                    {"default": 0.4, "min": 0.0, "max": 1.0, "step": 0.01},
+                ),
+                "unload_after": ("BOOLEAN", {"default": False}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "tags"
+    CATEGORY = "VLM Nodes/JoyTag"
+
+    def tags(
+        self,
+        image,
+        tag_number,
+        threshold=0.4,
+        unload_after=False,
+    ):
+        predictor = self.get_or_create_model(MODEL_ID, JoyTagPredictor)
+        try:
+            return (
+                predictor.predict(image, tag_number, threshold),
+            )
+        finally:
+            self.maybe_clear_model(unload_after)
+
+
 NODE_CLASS_MAPPINGS = {"Joytag": Joytag}
-
-# A dictionary that contains the friendly/humanly readable titles for the nodes
-NODE_DISPLAY_NAME_MAPPINGS = {"Joytag": "Joytag Node"}
+NODE_DISPLAY_NAME_MAPPINGS = {"Joytag": "JoyTag"}

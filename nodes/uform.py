@@ -1,84 +1,86 @@
-from pathlib import Path
-from transformers import AutoModel, AutoProcessor, StoppingCriteria, StoppingCriteriaList
-import torch
-from PIL import Image
-from torchvision.transforms import ToPILImage
-from huggingface_hub import snapshot_download
-import folder_paths
-# Define the directory for saving files related to uform-gen2-qwen
-files_for_uform_gen2_qwen = Path(folder_paths.folder_names_and_paths["LLavacheckpoints"][0][0]) / "files_for_uform_gen2_qwen"
-files_for_uform_gen2_qwen.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
+"""UForm Gen2 Qwen node with safe lazy loading."""
 
-class StopOnTokens(StoppingCriteria):
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        stop_ids = [151645]  # Define stop tokens as per your model's specifics
-        for stop_id in stop_ids:
-            if input_ids[0][-1] == stop_id:
-                return True
-        return False
+from __future__ import annotations
+
+import torch
+
+from .runtime import (
+    CachedModelNode,
+    ManagedTorchModel,
+    batch_text,
+    inference_context,
+    model_device,
+    require_module,
+    snapshot_download,
+    tensor_batch_to_pil,
+    torch_dtype,
+)
+
+MODEL_ID = "unum-cloud/uform-gen2-qwen-500m"
+
 
 class UformGen2QwenChat:
     def __init__(self):
-        self.model_path = snapshot_download("unum-cloud/uform-gen2-qwen-500m", 
-                                            local_dir=files_for_uform_gen2_qwen,
-                                            force_download=False,  # Set to True if you always want to download, regardless of local copy
-                                            local_files_only=False,  # Set to False to allow downloading if not available locally
-                                            local_dir_use_symlinks="auto") # or set to True/False based on your symlink preference
-        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        self.model = AutoModel.from_pretrained(self.model_path, trust_remote_code=True).to(self.device)
-        self.processor = AutoProcessor.from_pretrained(self.model_path, trust_remote_code=True)
-
-    def chat_response(self, message, history, image_path):
-        stop = StopOnTokens()
-        messages = [{"role": "system", "content": "You are a helpful Assistant."}]
-
-        for user_msg, assistant_msg in history:
-            messages.append({"role": "user", "content": user_msg})
-            messages.append({"role": "assistant", "content": assistant_msg})
-
-        if len(messages) == 1:
-            message = f" <image>{message}"
-
-        messages.append({"role": "user", "content": message})
-
-        model_inputs = self.processor.tokenizer.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
-            return_tensors="pt"
+        transformers = require_module("transformers")
+        model_path = snapshot_download(
+            MODEL_ID, "uform-gen2-qwen", ignore_patterns=["*.bin"]
         )
-
-        image = Image.open(image_path)  # Load image using PIL
-        image_tensor = (
-            self.processor.feature_extractor(image)
-            .unsqueeze(0)
+        self.dtype = torch_dtype("float16")
+        model = transformers.AutoModel.from_pretrained(
+            model_path,
+            trust_remote_code=True,
+            torch_dtype=self.dtype,
+        ).eval()
+        self.processor = transformers.AutoProcessor.from_pretrained(
+            model_path, trust_remote_code=True
         )
+        self.handle = ManagedTorchModel(model, processor=self.processor)
 
-        attention_mask = torch.ones(
-            1, model_inputs.shape[1] + self.processor.num_image_latents - 1
-        )
+    def close(self):
+        self.handle.close()
+        self.processor = None
 
-        model_inputs = {
-            "input_ids": model_inputs,
-            "images": image_tensor,
-            "attention_mask": attention_mask
-        }
+    def chat(self, images, question, max_new_tokens):
+        results = []
+        for image in tensor_batch_to_pil(images):
+            messages = [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": f"<image>{question}"},
+            ]
+            input_ids = self.processor.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                return_tensors="pt",
+            )
+            image_tensor = self.processor.feature_extractor(image).unsqueeze(0)
+            attention_mask = torch.ones(
+                1,
+                input_ids.shape[1] + self.processor.num_image_latents - 1,
+                dtype=torch.long,
+            )
+            model = self.handle.ensure_loaded()
+            device = model_device(model)
+            model_inputs = {
+                "input_ids": input_ids.to(device),
+                "images": image_tensor.to(device),
+                "attention_mask": attention_mask.to(device),
+            }
+            with torch.inference_mode(), inference_context(device, self.dtype):
+                output = model.generate(
+                    **model_inputs,
+                    max_new_tokens=int(max_new_tokens),
+                    eos_token_id=self.processor.tokenizer.eos_token_id,
+                )
+            generated = output[0, input_ids.shape[-1] :]
+            results.append(
+                self.processor.tokenizer.decode(
+                    generated, skip_special_tokens=True
+                ).strip()
+            )
+        return batch_text(results)
 
-        model_inputs = {k: v.to(self.device) for k, v in model_inputs.items()}
 
-        output = self.model.generate(
-            **model_inputs,
-            max_new_tokens=1024,
-            stopping_criteria=StoppingCriteriaList([stop])
-        )
-
-        response_text = self.processor.tokenizer.decode(output[0], skip_special_tokens=True)
-        return response_text
-
-# Example of integrating UformGen2QwenChat into a node-like structure
-class UformGen2QwenNode:
-    def __init__(self):
-        self.chat_model = UformGen2QwenChat()
-
+class UformGen2QwenNode(CachedModelNode):
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -88,26 +90,34 @@ class UformGen2QwenNode:
                     "STRING",
                     {
                         "multiline": True,
-                        "default": "",
+                        "default": "Describe this image in detail.",
                     },
                 ),
+            },
+            "optional": {
+                "max_new_tokens": (
+                    "INT",
+                    {"default": 512, "min": 1, "max": 4096},
+                ),
+                "unload_after": ("BOOLEAN", {"default": False}),
             },
         }
 
     RETURN_TYPES = ("STRING",)
-
     FUNCTION = "uform_gen2_qwen_chat"
-
     CATEGORY = "VLM Nodes/UformGen2Qwen"
 
-    def uform_gen2_qwen_chat(self, image, question):
-        history = []  # Example empty history
-        pil_image = ToPILImage()(image[0].permute(2, 0, 1))
-        temp_path = files_for_uform_gen2_qwen / "temp.png"
-        pil_image.save(temp_path)      
-        
-        response = self.chat_model.chat_response(question, history, temp_path)
-        return (response.split("assistant\n", 1)[1], )
+    def uform_gen2_qwen_chat(
+        self, image, question, max_new_tokens=512, unload_after=False
+    ):
+        predictor = self.get_or_create_model(
+            MODEL_ID, UformGen2QwenChat
+        )
+        try:
+            return (predictor.chat(image, question, max_new_tokens),)
+        finally:
+            self.maybe_clear_model(unload_after)
+
 
 NODE_CLASS_MAPPINGS = {"UformGen2QwenNode": UformGen2QwenNode}
-NODE_DISPLAY_NAME_MAPPINGS = {"UformGen2QwenNode": "UformGen2 Qwen Node"}
+NODE_DISPLAY_NAME_MAPPINGS = {"UformGen2QwenNode": "UForm Gen2 Qwen"}

@@ -35,7 +35,7 @@ class JsonToText:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "text": ("STRING", {"forceInput": True}),
+                "text": ("STRING",),
             }
         }
 
@@ -66,7 +66,7 @@ class JsonToText:
                 merged_ideas.append(f"{key}: {value}")
 
         formatted_output_str = "\n\n".join(merged_ideas)
-        return {"ui": {"text": formatted_output_str}, "result": (formatted_output_str,)}
+        return {"ui": {"text": [formatted_output_str]}, "result": (formatted_output_str,)}
 
 class ViewText:
     def __init__(self):
@@ -76,7 +76,7 @@ class ViewText:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "text": ("STRING", {"forceInput": True}),
+                "text": ("STRING",),
             }
         }
 
@@ -88,7 +88,7 @@ class ViewText:
 
     def view_text(self, text):
         # Parse the combined JSON string
-        return {"ui": {"text": text}, "result": (text,)}
+        return {"ui": {"text": [text]}, "result": (text,)}
 
 # A dictionary that contains all nodes you want to export with their names
 NODE_CLASS_MAPPINGS = {"SimpleText": SimpleText,
