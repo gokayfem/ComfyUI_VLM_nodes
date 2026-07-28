@@ -1,0 +1,171 @@
+name: Publish Comfy node fleet
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Node repository to check
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - vlm
+          - depth
+          - dream
+          - texture
+  schedule:
+    - cron: "17 * * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/publish-fleet.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: comfy-registry-fleet
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Check ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: vlm
+            repository: gokayfem/ComfyUI_VLM_nodes
+            node_id: comfyui_vlm_nodes
+          - target: depth
+            repository: gokayfem/ComfyUI-Depth-Visualization
+            node_id: comfyui-depth-visualization
+          - target: dream
+            repository: gokayfem/ComfyUI-Dream-Interpreter
+            node_id: comfyui-dream-interpreter
+          - target: texture
+            repository: gokayfem/ComfyUI-Texture-Simple
+            node_id: comfyui-texture-simple
+
+    steps:
+      - name: Select target
+        id: select
+        env:
+          REQUESTED_TARGET: ${{ inputs.target || 'all' }}
+          MATRIX_TARGET: ${{ matrix.target }}
+        run: |
+          if [[ "$REQUESTED_TARGET" == "all" || "$REQUESTED_TARGET" == "$MATRIX_TARGET" ]]; then
+            echo "selected=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "selected=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out node
+        if: steps.select.outputs.selected == 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ matrix.repository }}
+          ref: main
+          path: node
+          persist-credentials: false
+
+      - name: Set up Python
+        if: steps.select.outputs.selected == 'true'
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Read and verify release metadata
+        if: steps.select.outputs.selected == 'true'
+        id: metadata
+        working-directory: node
+        env:
+          EXPECTED_NODE_ID: ${{ matrix.node_id }}
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          metadata = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          node_id = metadata["project"]["name"]
+          version = metadata["project"]["version"]
+          publisher = metadata["tool"]["comfy"]["PublisherId"]
+          expected = os.environ["EXPECTED_NODE_ID"]
+
+          if node_id != expected:
+              raise SystemExit(f"Expected node id {expected!r}, found {node_id!r}")
+          if publisher != "gokayfem":
+              raise SystemExit(f"Expected publisher 'gokayfem', found {publisher!r}")
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              print(f"node_id={node_id}", file=output)
+              print(f"version={version}", file=output)
+          PY
+
+      - name: Check Registry version
+        if: steps.select.outputs.selected == 'true'
+        id: registry
+        env:
+          NODE_ID: ${{ steps.metadata.outputs.node_id }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+          from pathlib import Path
+
+          node_id = urllib.parse.quote(os.environ["NODE_ID"], safe="")
+          url = f"https://api.comfy.org/nodes/{node_id}/versions"
+          request = urllib.request.Request(
+              url,
+              headers={"Accept": "application/json", "User-Agent": "comfy-node-fleet-publisher"},
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              versions = json.load(response)
+
+          wanted = os.environ["VERSION"]
+          exists = any(item.get("version") == wanted for item in versions)
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              print(f"exists={'true' if exists else 'false'}", file=output)
+          PY
+
+      - name: Require publisher credential
+        if: steps.select.outputs.selected == 'true' && steps.registry.outputs.exists != 'true'
+        env:
+          REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+        run: |
+          if [[ -z "$REGISTRY_ACCESS_TOKEN" ]]; then
+            echo "::error title=Missing registry token::Add the publisher API key as the REGISTRY_ACCESS_TOKEN repository secret."
+            exit 1
+          fi
+
+      - name: Install pinned publisher
+        if: steps.select.outputs.selected == 'true' && steps.registry.outputs.exists != 'true'
+        run: python -m pip install --disable-pip-version-check --no-input "comfy-cli==1.13.0"
+
+      - name: Publish missing version
+        if: steps.select.outputs.selected == 'true' && steps.registry.outputs.exists != 'true'
+        working-directory: node
+        env:
+          REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+        run: comfy --skip-prompt --no-enable-telemetry node publish --token "$REGISTRY_ACCESS_TOKEN"
+
+      - name: Record result
+        if: steps.select.outputs.selected == 'true'
+        env:
+          NODE_ID: ${{ steps.metadata.outputs.node_id }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+          ALREADY_PUBLISHED: ${{ steps.registry.outputs.exists }}
+        run: |
+          if [[ "$ALREADY_PUBLISHED" == "true" ]]; then
+            echo "### $NODE_ID $VERSION already published" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Published $NODE_ID $VERSION" >> "$GITHUB_STEP_SUMMARY"
+          fi
