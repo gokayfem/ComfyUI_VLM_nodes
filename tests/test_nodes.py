@@ -17,10 +17,14 @@ from ComfyUI_VLM_nodes.nodes import (
     qwen2vl,
 )
 from ComfyUI_VLM_nodes.nodes.runtime import (
+    accelerator_backend,
+    external_device_map,
     image_data_uri,
     pil_mask_to_tensor,
     pil_to_tensor,
+    runtime_diagnostics,
     tensor_batch_to_pil,
+    torch_dtype,
 )
 
 
@@ -28,6 +32,7 @@ def test_every_module_imports_and_expected_nodes_exist():
     assert package.IMPORT_ERRORS == {}
     expected = {
         "ModernVLM",
+        "VLMRuntimeDiagnostics",
         "Florence2",
         "Paligemma",
         "MolmoNode",
@@ -53,6 +58,84 @@ def test_source_has_no_runtime_installer_or_direct_cuda_cache():
     assert "torch.cuda.empty_cache" not in source
     assert "subprocess.run" not in source
     assert "pip install" not in source
+
+
+def test_portable_device_dtype_and_backend_contracts(monkeypatch):
+    assert torch_dtype("float16", torch.device("cpu")) == torch.float32
+    assert torch_dtype("float16", torch.device("mps")) == torch.float16
+    assert torch_dtype("float16", torch.device("xpu")) == torch.float16
+    assert accelerator_backend(torch.device("mps")) == "apple-metal"
+    assert accelerator_backend(torch.device("xpu")) == "intel-xpu"
+
+    monkeypatch.setattr(torch.version, "hip", None, raising=False)
+    assert accelerator_backend(torch.device("cuda")) == "nvidia-cuda"
+    monkeypatch.setattr(torch.version, "hip", "7.2", raising=False)
+    assert accelerator_backend(torch.device("cuda")) == "amd-rocm"
+
+
+def test_runtime_report_and_device_map_are_supportable():
+    report = runtime_diagnostics()
+    assert {
+        "platform",
+        "machine",
+        "python",
+        "torch",
+        "device",
+        "backend",
+        "bf16",
+        "torch_cuda",
+        "torch_hip",
+        "packages",
+    } <= report.keys()
+    device_map = external_device_map()
+    assert set(device_map) == {""}
+    assert device_map[""] == report["device"]
+
+
+def test_dependency_metadata_matches_installer_requirements():
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        pytest.skip("tomllib is built into Python 3.11+")
+    from packaging.requirements import Requirement
+
+    root = Path(package.__file__).parent
+    metadata = tomllib.loads((root / "pyproject.toml").read_text("utf-8"))
+    project_requirements = {
+        str(Requirement(value)) for value in metadata["project"]["dependencies"]
+    }
+    installer_requirements = {
+        str(Requirement(line))
+        for line in (root / "requirements.txt").read_text("utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    assert project_requirements == installer_requirements
+
+    bitsandbytes = next(
+        Requirement(value)
+        for value in metadata["project"]["dependencies"]
+        if Requirement(value).name == "bitsandbytes"
+    )
+    assert bitsandbytes.marker is not None
+    supported = (
+        ("linux", "x86_64"),
+        ("linux", "aarch64"),
+        ("win32", "AMD64"),
+        ("win32", "ARM64"),
+        ("darwin", "arm64"),
+    )
+    unsupported = (
+        ("darwin", "x86_64"),
+        ("linux", "ppc64le"),
+    )
+    for system, machine in supported:
+        assert bitsandbytes.marker.evaluate(
+            {"sys_platform": system, "platform_machine": machine}
+        )
+    for system, machine in unsupported:
+        assert not bitsandbytes.marker.evaluate(
+            {"sys_platform": system, "platform_machine": machine}
+        )
 
 
 def test_image_roundtrip_and_png_data_uri():

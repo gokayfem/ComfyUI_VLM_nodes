@@ -16,11 +16,15 @@ from .runtime import (
     CachedModelNode,
     ExternalTorchModel,
     ManagedTorchModel,
+    accelerator_backend,
     batch_text,
+    execution_device,
+    external_device_map,
     inference_context,
     model_device,
     move_inputs,
     normalize_hf_model_id,
+    require_quantization_backend,
     require_module,
     reserve_external_vram,
     snapshot_download,
@@ -222,6 +226,22 @@ class ModernVLMPredictor:
         )
         self.spec = spec
         self.dtype = torch_dtype("bfloat16")
+        if (
+            attention_mode == "Flash Attention 2"
+            and accelerator_backend(execution_device())
+            not in {"nvidia-cuda", "amd-rocm"}
+        ):
+            raise RuntimeError(
+                "Flash Attention 2 requires a supported CUDA or ROCm build. "
+                "Select Auto (SDPA) on Apple Metal, Intel XPU, or CPU."
+            )
+        quantization_device = None
+        if memory_mode in {
+            "4-bit NF4 (bitsandbytes)",
+            "8-bit (bitsandbytes)",
+        }:
+            # Validate before downloading a multi-gigabyte checkpoint.
+            quantization_device = require_quantization_backend(memory_mode)
         try:
             model_path = snapshot_download(
                 repo_id,
@@ -256,13 +276,7 @@ class ModernVLMPredictor:
             kwargs["attn_implementation"] = attention
         external = memory_mode != "ComfyUI managed (BF16)"
         if memory_mode in {"4-bit NF4 (bitsandbytes)", "8-bit (bitsandbytes)"}:
-            require_module("bitsandbytes")
-            require_module("accelerate")
-            if not torch.cuda.is_available():
-                raise RuntimeError(
-                    f"{memory_mode} requires a CUDA GPU. Select CPU for "
-                    "CPU-only inference."
-                )
+            assert quantization_device is not None
             needs_offload = spec.estimated_gib >= 40.0
             kwargs["quantization_config"] = transformers.BitsAndBytesConfig(
                 load_in_4bit=memory_mode.startswith("4-bit"),
@@ -273,17 +287,22 @@ class ModernVLMPredictor:
                 llm_int8_enable_fp32_cpu_offload=needs_offload,
             )
             if needs_offload:
-                # Leave activation headroom on consumer GPUs. If Accelerate
-                # needs disk after CPU RAM, it stays in the model's D-backed
-                # ComfyUI directory instead of an OS temporary directory.
-                kwargs["device_map"] = "auto"
+                # Automatic CPU/disk placement is maintained for CUDA, ROCm,
+                # and XPU. MPS uses unified memory and CPU already runs in RAM,
+                # so both stay on their explicit active device.
+                kwargs["device_map"] = external_device_map(
+                    allow_auto_offload=True
+                )
                 kwargs["offload_folder"] = str(model_path / ".offload")
             else:
-                # Small quantized models avoid unsupported accidental CPU
-                # dispatch and stay on ComfyUI's active CUDA device.
-                kwargs["device_map"] = {"": torch.cuda.current_device()}
+                # Avoid accidental dispatch to device zero when ComfyUI chose
+                # another GPU, Apple Metal, Intel XPU, or CPU.
+                kwargs["device_map"] = external_device_map()
             divisor = 4 if memory_mode.startswith("4-bit") else 2
-            reserve_external_vram(int(spec.estimated_gib * 1024**3 / divisor))
+            if quantization_device.type != "cpu":
+                reserve_external_vram(
+                    int(spec.estimated_gib * 1024**3 / divisor)
+                )
         elif memory_mode == "CPU":
             kwargs["dtype"] = torch.float32
 

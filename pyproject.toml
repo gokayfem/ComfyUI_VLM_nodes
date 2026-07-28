@@ -1,24 +1,45 @@
 [project]
 name = "comfyui_vlm_nodes"
-version = "2.0.1"
+version = "2.1.0"
 description = "Production-ready local and API vision-language nodes for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 dependencies = [
-  "accelerate>=1.0",
-  "bitsandbytes>=0.46",
+  "accelerate>=1.1,<2",
+  "bitsandbytes>=0.50,<1; (sys_platform == 'linux' and platform_machine == 'x86_64') or (sys_platform == 'linux' and platform_machine == 'aarch64') or (sys_platform == 'win32' and platform_machine == 'AMD64') or (sys_platform == 'win32' and platform_machine == 'ARM64') or (sys_platform == 'darwin' and platform_machine == 'arm64')",
   "diffusers>=0.34,<1",
-  "einops>=0.7",
-  "huggingface-hub>=0.34,<2",
-  "num2words>=0.5.14",
+  "einops>=0.8,<1",
+  "huggingface-hub>=1.5,<2",
   "openai>=1.30,<3",
   "pydantic>=2.7,<3",
   "qwen-vl-utils>=0.0.14",
-  "safetensors>=0.4",
+  "safetensors>=0.4.3",
   "soundfile>=0.12",
   "symusic>=0.5",
   "transformers>=5.4,<6",
+]
+classifiers = [
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "Environment :: GPU :: NVIDIA CUDA",
+  "Environment :: GPU :: AMD ROCm",
+  "Environment :: GPU :: Intel Arc",
+  "Environment :: GPU :: Apple Metal",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
+[project.optional-dependencies]
+quantization = [
+  "accelerate>=1.1,<2",
+  "bitsandbytes>=0.50,<1",
+]
+gguf = [
+  "llama-cpp-python>=0.3.15",
 ]
 
 [project.urls]

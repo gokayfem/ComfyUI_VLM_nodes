@@ -1,15 +1,16 @@
 # ComfyUI provides torch, torchvision, numpy and Pillow.
 # Keep this list resolver-friendly; no package is installed during node import.
-accelerate>=1.0
-bitsandbytes>=0.46
+accelerate>=1.1,<2
+# Official wheels: Linux x86_64/aarch64, Windows AMD64/ARM64, macOS arm64.
+# Unsupported machines keep every non-quantized node instead of failing install.
+bitsandbytes>=0.50,<1; (sys_platform == "linux" and platform_machine == "x86_64") or (sys_platform == "linux" and platform_machine == "aarch64") or (sys_platform == "win32" and platform_machine == "AMD64") or (sys_platform == "win32" and platform_machine == "ARM64") or (sys_platform == "darwin" and platform_machine == "arm64")
 diffusers>=0.34,<1
-einops>=0.7
-huggingface-hub>=0.34,<2
-num2words>=0.5.14
+einops>=0.8,<1
+huggingface-hub>=1.5,<2
 openai>=1.30,<3
 pydantic>=2.7,<3
 qwen-vl-utils>=0.0.14
-safetensors>=0.4
+safetensors>=0.4.3
 soundfile>=0.12
 symusic>=0.5
 transformers>=5.4,<6

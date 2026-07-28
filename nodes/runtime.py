@@ -15,9 +15,11 @@ import inspect
 import io
 import logging
 import os
+import platform
 import threading
 from contextlib import nullcontext
 from dataclasses import dataclass
+from importlib import metadata
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
@@ -221,26 +223,201 @@ def batch_text(responses: Iterable[str]) -> str:
     )
 
 
-def torch_dtype(name: str | None = None) -> torch.dtype:
-    requested = (name or "auto").lower()
-    if requested in {"float32", "fp32"}:
-        return torch.float32
-    if requested in {"float16", "fp16"}:
-        return torch.float16 if torch.cuda.is_available() else torch.float32
-    if requested in {"bfloat16", "bf16"}:
-        return torch.bfloat16 if torch.cuda.is_available() else torch.float32
-    if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
-        return torch.bfloat16
-    return torch.float16 if torch.cuda.is_available() else torch.float32
-
-
 def execution_device() -> torch.device:
+    """Return ComfyUI's selected device, with portable standalone fallbacks."""
+
     try:
         import comfy.model_management as model_management
 
         return model_management.get_torch_device()
     except Exception:
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available():
+            # PyTorch intentionally exposes both NVIDIA CUDA and AMD ROCm
+            # devices through torch.cuda.
+            return torch.device("cuda", torch.cuda.current_device())
+        xpu = getattr(torch, "xpu", None)
+        if xpu is not None:
+            try:
+                if xpu.is_available():
+                    return torch.device("xpu", xpu.current_device())
+            except Exception:
+                pass
+        mps = getattr(getattr(torch, "backends", None), "mps", None)
+        if mps is not None:
+            try:
+                if mps.is_available():
+                    return torch.device("mps")
+            except Exception:
+                pass
+        return torch.device("cpu")
+
+
+def accelerator_backend(device: torch.device | None = None) -> str:
+    """Return a stable, user-facing name for the active PyTorch backend."""
+
+    device = device or execution_device()
+    if device.type == "cuda":
+        return (
+            "amd-rocm"
+            if getattr(getattr(torch, "version", None), "hip", None)
+            else "nvidia-cuda"
+        )
+    return {
+        "mps": "apple-metal",
+        "xpu": "intel-xpu",
+        "cpu": "cpu",
+        "privateuseone": "directml-or-privateuse1",
+        "npu": "ascend-npu",
+        "mlu": "cambricon-mlu",
+    }.get(device.type, device.type)
+
+
+def supports_bfloat16(device: torch.device | None = None) -> bool:
+    """Feature-detect BF16 without initializing an unavailable accelerator."""
+
+    device = device or execution_device()
+    if device.type == "cuda":
+        checker = getattr(torch.cuda, "is_bf16_supported", None)
+        try:
+            return bool(checker()) if checker is not None else False
+        except Exception:
+            return False
+    if device.type == "xpu":
+        checker = getattr(getattr(torch, "xpu", None), "is_bf16_supported", None)
+        try:
+            return bool(checker()) if checker is not None else False
+        except Exception:
+            return False
+    if device.type == "mps":
+        # MPS BF16 requires macOS 14+. Older PyTorch releases may not expose
+        # the version probe, in which case FP16 is the safe portable choice.
+        checker = getattr(
+            getattr(getattr(torch, "backends", None), "mps", None),
+            "is_macos_or_newer",
+            None,
+        )
+        try:
+            return bool(checker(14, 0)) if checker is not None else False
+        except Exception:
+            return False
+    return False
+
+
+def torch_dtype(
+    name: str | None = None,
+    device: torch.device | None = None,
+) -> torch.dtype:
+    """Choose a dtype that the selected ComfyUI backend can execute safely."""
+
+    device = device or execution_device()
+    requested = (name or "auto").lower()
+    if requested in {"float32", "fp32"}:
+        return torch.float32
+    if requested in {"float16", "fp16"}:
+        return (
+            torch.float16
+            if device.type in {"cuda", "mps", "xpu"}
+            else torch.float32
+        )
+    if requested in {"bfloat16", "bf16"}:
+        if supports_bfloat16(device):
+            return torch.bfloat16
+        return (
+            torch.float16
+            if device.type in {"cuda", "mps", "xpu"}
+            else torch.float32
+        )
+    if supports_bfloat16(device):
+        return torch.bfloat16
+    return (
+        torch.float16
+        if device.type in {"cuda", "mps", "xpu"}
+        else torch.float32
+    )
+
+
+def _release_tuple(distribution: str) -> tuple[int, ...]:
+    try:
+        value = metadata.version(distribution)
+    except metadata.PackageNotFoundError:
+        return ()
+    parts = []
+    for part in value.split("."):
+        digits = "".join(character for character in part if character.isdigit())
+        if not digits:
+            break
+        parts.append(int(digits))
+    return tuple(parts)
+
+
+def require_quantization_backend(feature: str) -> torch.device:
+    """Validate the maintained bitsandbytes backend for the selected device."""
+
+    device = execution_device()
+    backend = accelerator_backend(device)
+    supported = {"nvidia-cuda", "amd-rocm", "intel-xpu", "apple-metal", "cpu"}
+    if backend not in supported:
+        raise RuntimeError(
+            f"{feature} is not supported on the active {backend} backend. "
+            "Use ComfyUI managed precision or CPU mode."
+        )
+    if (
+        platform.system() == "Darwin"
+        and platform.machine().lower() not in {"arm64", "aarch64"}
+    ):
+        raise RuntimeError(
+            f"{feature} needs bitsandbytes, which has no official Intel-macOS "
+            "wheel. Use ComfyUI managed precision, or use an Apple Silicon Mac."
+        )
+    require_module("bitsandbytes")
+    require_module("accelerate")
+    if backend != "nvidia-cuda" and _release_tuple("bitsandbytes") < (0, 50):
+        raise RuntimeError(
+            f"{feature} on {backend} requires bitsandbytes 0.50 or newer. "
+            "Upgrade requirements.txt in ComfyUI's Python environment."
+        )
+    return device
+
+
+def external_device_map(*, allow_auto_offload: bool = False):
+    """Create an Accelerate device map without assuming CUDA device zero."""
+
+    device = execution_device()
+    if allow_auto_offload and device.type in {"cuda", "xpu"}:
+        return "auto"
+    return {"": str(device)}
+
+
+def runtime_diagnostics() -> dict[str, Any]:
+    """Return support information suitable for bug reports and CI logs."""
+
+    device = execution_device()
+    packages = {}
+    for distribution in (
+        "accelerate",
+        "bitsandbytes",
+        "diffusers",
+        "huggingface-hub",
+        "llama-cpp-python",
+        "qwen-vl-utils",
+        "transformers",
+    ):
+        try:
+            packages[distribution] = metadata.version(distribution)
+        except metadata.PackageNotFoundError:
+            packages[distribution] = None
+    return {
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "python": platform.python_version(),
+        "torch": torch.__version__,
+        "device": str(device),
+        "backend": accelerator_backend(device),
+        "bf16": supports_bfloat16(device),
+        "torch_cuda": getattr(getattr(torch, "version", None), "cuda", None),
+        "torch_hip": getattr(getattr(torch, "version", None), "hip", None),
+        "packages": packages,
+    }
 
 
 def model_device(model: torch.nn.Module) -> torch.device:
@@ -418,16 +595,15 @@ class ExternalTorchModel:
 
 
 def reserve_external_vram(memory_required: int) -> None:
-    """Ask ComfyUI to make room before an external CUDA allocator is used."""
+    """Ask ComfyUI to make room before an external accelerator allocator."""
 
-    if memory_required <= 0 or not torch.cuda.is_available():
+    device = execution_device()
+    if memory_required <= 0 or device.type == "cpu":
         return
     try:
         import comfy.model_management as model_management
 
-        model_management.free_memory(
-            int(memory_required), model_management.get_torch_device()
-        )
+        model_management.free_memory(int(memory_required), device)
     except Exception as exc:
         LOGGER.debug("Could not reserve VRAM through ComfyUI: %s", exc)
 
@@ -487,8 +663,8 @@ class LlamaHandle:
             if not self.model_path.is_file():
                 raise FileNotFoundError(f"GGUF model not found: {self.model_path}")
 
-            # llama.cpp owns its CUDA allocator, so reserve enough room through
-            # ComfyUI first instead of blindly emptying the global CUDA cache.
+            # llama.cpp owns its accelerator allocator, so reserve enough room
+            # through ComfyUI instead of emptying a global backend cache.
             if self.n_gpu_layers != 0:
                 reserve_external_vram(self.model_path.stat().st_size)
 
@@ -504,8 +680,8 @@ class LlamaHandle:
                 "n_gpu_layers": self.n_gpu_layers,
                 "n_threads": self.n_threads,
                 "n_batch": min(1024, self.n_ctx),
-                "offload_kqv": True,
-                "flash_attn": True,
+                "offload_kqv": self.n_gpu_layers != 0,
+                "flash_attn": self.n_gpu_layers != 0,
                 "use_mlock": False,
                 "embedding": False,
                 "verbose": False,
@@ -567,6 +743,9 @@ def close_handle(handle: Any) -> None:
 
 
 def inference_context(device: torch.device, dtype: torch.dtype):
-    if device.type == "cuda":
-        return torch.autocast("cuda", dtype=dtype)
+    if (
+        device.type in {"cuda", "xpu"}
+        and dtype in {torch.float16, torch.bfloat16}
+    ):
+        return torch.autocast(device.type, dtype=dtype)
     return nullcontext()

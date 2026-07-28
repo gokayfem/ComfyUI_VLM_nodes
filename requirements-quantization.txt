@@ -1,0 +1,5 @@
+# Optional maintained 4-bit/8-bit backend.
+# Official 0.50+ wheels cover NVIDIA CUDA, AMD ROCm, Intel XPU/CPU,
+# Apple Silicon, and supported Windows/Linux CPU architectures.
+accelerate>=1.1,<2
+bitsandbytes>=0.50,<1

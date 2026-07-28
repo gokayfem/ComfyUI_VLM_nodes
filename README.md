@@ -1,9 +1,10 @@
 # ComfyUI VLM Nodes
 
 Production-oriented vision-language, structured prompting, audio, and utility
-nodes for ComfyUI. Version 2 removes startup installers and global CUDA cache
-flushes, adds real image batches and video-frame inputs, and lets ComfyUI manage
-ordinary PyTorch model residency and offloading.
+nodes for ComfyUI. Version 2.1 supports ComfyUI's selected NVIDIA CUDA, AMD
+ROCm, Apple Metal, Intel XPU, and CPU device without replacing its PyTorch
+build. It removes startup installers and global accelerator cache flushes,
+adds real image/video batches, and uses ComfyUI model residency and offloading.
 
 ## Modern model coverage
 
@@ -53,21 +54,21 @@ Install through ComfyUI Manager, or clone into `ComfyUI/custom_nodes` and run:
 python -m pip install -r ComfyUI/custom_nodes/ComfyUI_VLM_nodes/requirements.txt
 ```
 
-GGUF nodes use the optional `llama-cpp-python` backend. Install a wheel built for
-your Python, CUDA, and platform; do not use the old source-building startup
-installer:
+Run that command with ComfyUI's Python. Do not install or replace `torch` from
+this repository: ComfyUI's own installer selects CUDA, ROCm, XPU, Metal, or CPU.
+Current official bitsandbytes wheels are installed automatically only on their
+supported OS/architecture combinations. Unsupported machines retain all
+non-quantized nodes.
+
+GGUF nodes use optional `llama-cpp-python`. Install a wheel built for the
+desired CUDA, ROCm/HIP, Metal, Vulkan, SYCL, or CPU backend:
 
 ```bash
 python -m pip install -r ComfyUI/custom_nodes/ComfyUI_VLM_nodes/requirements-llama-cpp.txt
 ```
 
-For Python 3.12 with a CUDA 12.x driver, the official prebuilt CUDA 12.4 wheel
-avoids a local compiler toolchain:
-
-```bash
-python -m pip install llama-cpp-python==0.3.15 \
-  --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
-```
+See [COMPATIBILITY.md](COMPATIBILITY.md) for the tested matrix and official
+backend-specific GGUF commands.
 
 Models are downloaded only when their node first executes and are stored below
 `ComfyUI/models/LLavacheckpoints`. Hugging Face downloads respect `HF_TOKEN`.
@@ -75,15 +76,15 @@ Gemma 3 and PaLI-Gemma require accepting their model licenses on Hugging Face.
 
 ## GPU lifecycle
 
-- **ComfyUI managed (BF16)** is the default and preferred path. Models use
-  ComfyUI's model patcher, load only for execution, and can be offloaded by its
-  normal VRAM manager.
+- **ComfyUI managed (BF16)** is the default and preferred path. BF16 is used
+  only when the active device reports support; otherwise the node safely falls
+  back to FP16 on CUDA/ROCm/Metal/XPU or FP32 on CPU.
 - **4-bit/8-bit** models and llama.cpp own external allocators. Before loading,
   the nodes ask ComfyUI to free the required space; unloading closes the exact
   owned model and then requests a soft cache cleanup. Small quantized models
-  stay together on ComfyUI's active CUDA device. The 27B+ catalog entries use
-  Accelerate placement so generation retains GPU headroom; any required disk
-  offload remains inside the model's ComfyUI directory.
+  stay on ComfyUI's active device instead of assuming GPU zero. Large-model
+  Accelerate placement is enabled on CUDA/ROCm/XPU; any disk offload remains
+  inside the model's ComfyUI directory.
 - `unload_after=false` caches one model per node instance for fast repeated
   queues. Turn it on for maximum reclamation between prompts.
 - A connected `video_frames` batch becomes the primary visual input. The
@@ -92,13 +93,17 @@ Gemma 3 and PaLI-Gemma require accepting their model licenses on Hugging Face.
 - Qwen 3.5/3.6 thinking is off by default for lower latency and predictable
   output length; enable it explicitly for tasks that benefit from visual
   reasoning.
-- Visualization-only companion repositories do not allocate CUDA memory.
+- **Auto (SDPA)** is portable and preferred. Flash Attention 2 is accepted only
+  on supported CUDA/ROCm builds and otherwise fails before model loading.
+- **VLM Runtime Diagnostics** produces a zero-download JSON report containing
+  OS, Python, PyTorch, backend, dtype capability, and optional package versions.
+- Visualization-only companion repositories do not allocate accelerator memory.
 
 Avoid placing several independently quantized VLMs in one workflow unless the
 GPU can hold them. On a 24 GB card, Qwen 3 VL 2B is the fast default,
 Qwen 3 VL 8B fits in BF16, and larger models should use NF4. Qwen 3.5/3.6 can
 be substantially slower when their optional optimized linear-attention kernels
-are not available for the installed PyTorch/CUDA combination.
+are not available for the installed PyTorch/backend combination.
 
 ## API nodes
 
@@ -116,6 +121,9 @@ environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
   item. Florence/PaLI masks use `BHW`.
 - `forceInput` string hacks were removed, preventing frontend widget-index drift.
 - Downloads stay inside the configured ComfyUI model directory.
+- CI installs and imports the full pack on Linux Python 3.10/3.13, Windows
+  Python 3.12, and macOS Python 3.12. Backend contracts for CUDA, ROCm, Metal,
+  XPU, and CPU are exercised without pretending hosted CPU runners are GPUs.
 
 Run local checks with:
 

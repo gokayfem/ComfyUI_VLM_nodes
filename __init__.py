@@ -8,6 +8,7 @@ register_model_folder()
 
 node_list = [
     "audioldm2",
+    "diagnostics",
     "florence2",
     "joytag",
     "kosmos2",

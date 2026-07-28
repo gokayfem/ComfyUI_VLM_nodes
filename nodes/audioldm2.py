@@ -9,7 +9,14 @@ import torch
 
 import folder_paths
 
-from .runtime import CachedModelNode, require_module, reserve_external_vram, snapshot_download
+from .runtime import (
+    CachedModelNode,
+    execution_device,
+    require_module,
+    reserve_external_vram,
+    snapshot_download,
+    torch_dtype,
+)
 
 
 class AnyType(str):
@@ -28,15 +35,15 @@ class AudioLDM2Predictor:
             "audioldm2",
             ignore_patterns=["*.bin", "*.jpg", "*.png"],
         )
-        dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-        if torch.cuda.is_available():
+        self.device = execution_device()
+        dtype = torch_dtype("float16", self.device)
+        if self.device.type != "cpu":
             reserve_external_vram(8 * 1024**3)
         self.pipeline = diffusers.AudioLDM2Pipeline.from_pretrained(
             path, torch_dtype=dtype
         )
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        # Accelerate's model CPU offload is currently reliable on the CUDA API,
+        # which covers both NVIDIA CUDA and AMD ROCm PyTorch builds.
         if self.device.type == "cuda" and cpu_offload:
             require_module("accelerate")
             self.pipeline.enable_model_cpu_offload()
@@ -56,7 +63,14 @@ class AudioLDM2Predictor:
             pass
 
     def generate(self, text, negative, duration, guidance, seed, count, steps):
-        generator = torch.Generator(device=self.device).manual_seed(int(seed))
+        # MPS generators are not supported by every PyTorch/Diffusers pairing.
+        # A CPU generator remains deterministic and works with every pipeline.
+        generator_device = (
+            self.device if self.device.type in {"cuda", "xpu"} else "cpu"
+        )
+        generator = torch.Generator(device=generator_device).manual_seed(
+            int(seed)
+        )
         audios = self.pipeline(
             text,
             negative_prompt=negative or None,

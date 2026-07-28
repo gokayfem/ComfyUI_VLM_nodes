@@ -16,6 +16,7 @@ from .runtime import (
     ExternalTorchModel,
     ManagedTorchModel,
     batch_text,
+    external_device_map,
     hf_download,
     inference_context,
     model_device,
@@ -23,6 +24,7 @@ from .runtime import (
     normalize_hf_model_id,
     pil_mask_to_tensor,
     pil_to_tensor,
+    require_quantization_backend,
     require_module,
     reserve_external_vram,
     snapshot_download,
@@ -117,6 +119,10 @@ def parse_segments(text: str):
 class PaliPredictor:
     def __init__(self, repo_id: str, precision: str, quantization: str):
         transformers = require_module("transformers")
+        external = quantization != "None"
+        if external:
+            # Validate before downloading a multi-gigabyte checkpoint.
+            require_quantization_backend(f"PaLI-Gemma {quantization}")
         path = snapshot_download(
             repo_id,
             f"paligemma/{repo_id.replace('/', '--')}",
@@ -125,10 +131,7 @@ class PaliPredictor:
         self.dtype = torch_dtype(precision)
         self.processor = transformers.AutoProcessor.from_pretrained(path)
         kwargs: dict[str, Any] = {"dtype": self.dtype}
-        external = quantization != "None"
         if external:
-            require_module("bitsandbytes")
-            require_module("accelerate")
             kwargs["quantization_config"] = transformers.BitsAndBytesConfig(
                 load_in_4bit=quantization == "4bit",
                 load_in_8bit=quantization == "8bit",
@@ -136,7 +139,7 @@ class PaliPredictor:
                 bnb_4bit_quant_type="nf4",
                 bnb_4bit_use_double_quant=True,
             )
-            kwargs["device_map"] = "auto"
+            kwargs["device_map"] = external_device_map()
             reserve_external_vram(3 * 1024**3)
         model = transformers.PaliGemmaForConditionalGeneration.from_pretrained(
             path, **kwargs
@@ -226,7 +229,12 @@ class Paligemma(CachedModelNode):
             },
             "optional": {
                 "precision": (["bfloat16", "float32"],),
-                "device": (["cuda", "cpu"],),
+                # Retained in place so older workflows keep their widget
+                # indexes. ComfyUI remains the source of truth for placement.
+                "device": (
+                    ["auto", "cuda", "cpu", "mps", "xpu"],
+                    {"default": "auto"},
+                ),
                 "quantization": (["None", "8bit", "4bit"],),
                 "mask_threshold": (
                     "FLOAT",
@@ -264,7 +272,7 @@ class Paligemma(CachedModelNode):
         task_type,
         model_id=None,
         precision="bfloat16",
-        device="cuda",
+        device="auto",
         quantization="None",
         custom_model_id="",
         mask_threshold=0.5,
@@ -281,7 +289,7 @@ class Paligemma(CachedModelNode):
         unload_after=False,
         **_legacy,
     ):
-        del device  # ComfyUI chooses the managed execution device.
+        del device
         repo_id = (
             normalize_hf_model_id(custom_model_id)
             if model_id == "Custom"

@@ -11,8 +11,10 @@ from .runtime import (
     ExternalTorchModel,
     ManagedTorchModel,
     batch_text,
+    external_device_map,
     inference_context,
     model_device,
+    require_quantization_backend,
     require_module,
     reserve_external_vram,
     snapshot_download,
@@ -37,6 +39,11 @@ class MolmoPredictor:
     def __init__(self, model_name, memory_mode, use_autocast):
         transformers = require_module("transformers")
         repo_id = MOLMO_MODELS[model_name]
+        mode = MEMORY_MODES[memory_mode]
+        external = mode != "managed"
+        if external:
+            # Validate before downloading a multi-gigabyte checkpoint.
+            require_quantization_backend(memory_mode)
         path = snapshot_download(
             repo_id,
             f"molmo/{repo_id.replace('/', '--')}",
@@ -47,15 +54,11 @@ class MolmoPredictor:
         self.processor = transformers.AutoProcessor.from_pretrained(
             path, trust_remote_code=True
         )
-        mode = MEMORY_MODES[memory_mode]
         kwargs: dict[str, Any] = {
             "trust_remote_code": True,
             "dtype": self.dtype,
         }
-        external = mode != "managed"
         if external:
-            require_module("bitsandbytes")
-            require_module("accelerate")
             kwargs["quantization_config"] = transformers.BitsAndBytesConfig(
                 load_in_8bit=mode == "8bit",
                 load_in_4bit=mode.startswith("4bit"),
@@ -63,7 +66,9 @@ class MolmoPredictor:
                 bnb_4bit_quant_type="nf4",
                 bnb_4bit_use_double_quant=True,
             )
-            kwargs["device_map"] = "auto"
+            kwargs["device_map"] = external_device_map(
+                allow_auto_offload=mode == "4bit-offload"
+            )
             reserve_external_vram(
                 (5 if "1B" in model_name else 12) * 1024**3
             )

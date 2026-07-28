@@ -10,10 +10,14 @@ from .runtime import (
     CachedModelNode,
     ExternalTorchModel,
     ManagedTorchModel,
+    accelerator_backend,
     batch_text,
+    execution_device,
+    external_device_map,
     inference_context,
     model_device,
     move_inputs,
+    require_quantization_backend,
     require_module,
     reserve_external_vram,
     snapshot_download,
@@ -93,6 +97,18 @@ class Qwen2VLPredictor:
         transformers = require_module("transformers")
         if model_name in LEGACY_QUANTIZED_ALIASES:
             model_name, memory_mode = LEGACY_QUANTIZED_ALIASES[model_name]
+        if (
+            attention_mode == "Flash Attention 2"
+            and accelerator_backend(execution_device())
+            not in {"nvidia-cuda", "amd-rocm"}
+        ):
+            raise RuntimeError(
+                "Flash Attention 2 requires a supported CUDA or ROCm build. "
+                "Select Auto (SDPA) on Apple Metal, Intel XPU, or CPU."
+            )
+        if memory_mode in {"Balanced (8-bit)", "Maximum Savings (4-bit)"}:
+            # Validate before downloading a multi-gigabyte checkpoint.
+            require_quantization_backend(memory_mode)
         repo_id = QWEN2_VL_MODELS[model_name]
         model_path = snapshot_download(
             repo_id,
@@ -116,7 +132,6 @@ class Qwen2VLPredictor:
         }
 
         if memory_mode in {"Balanced (8-bit)", "Maximum Savings (4-bit)"}:
-            require_module("bitsandbytes")
             kwargs["quantization_config"] = transformers.BitsAndBytesConfig(
                 load_in_8bit=memory_mode == "Balanced (8-bit)",
                 load_in_4bit=memory_mode == "Maximum Savings (4-bit)",
@@ -133,7 +148,9 @@ class Qwen2VLPredictor:
             reserve_external_vram(
                 estimate // (4 if memory_mode == "Maximum Savings (4-bit)" else 2)
             )
-            kwargs["device_map"] = "auto"
+            kwargs["device_map"] = external_device_map(
+                allow_auto_offload=memory_mode == "CPU Offload"
+            )
 
         try:
             model = _model_class(transformers).from_pretrained(
@@ -143,8 +160,8 @@ class Qwen2VLPredictor:
             if attention_mode == "Flash Attention 2":
                 raise RuntimeError(
                     "Flash Attention 2 was selected but flash-attn is not "
-                    "installed for this PyTorch/CUDA build. Use Auto (SDPA) "
-                    "or install a matching flash-attn wheel."
+                    "installed for this PyTorch accelerator build. Use Auto "
+                    "(SDPA), or install a matching flash-attn wheel."
                 ) from exc
             raise
 
