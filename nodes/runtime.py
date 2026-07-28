@@ -16,6 +16,7 @@ import io
 import logging
 import os
 import platform
+import re
 import threading
 from contextlib import nullcontext
 from dataclasses import dataclass
@@ -23,14 +24,27 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
+import folder_paths
 import numpy as np
 import torch
 from PIL import Image
 
-import folder_paths
-
 LOGGER = logging.getLogger("ComfyUI_VLM_nodes")
 GGUF_EXTENSIONS = {".gguf"}
+LLAMA_FLASH_ATTENTION_CHOICES = ("Auto", "Enabled", "Disabled")
+LLAMA_SPLIT_MODE_CHOICES = ("Layer", "Row", "Single GPU")
+LLAMA_VISION_HANDLER_CHOICES = (
+    "Auto (GGUF chat template)",
+    "LLaVA 1.5",
+    "LLaVA 1.6",
+    "MiniCPM-V 2.6",
+    "Moondream2",
+    "NanoLLaVA",
+    "Qwen2.5-VL",
+    "Gemma 4",
+    "Llama 3 Vision Alpha",
+    "Obsidian",
+)
 
 
 class OptionalDependencyError(RuntimeError):
@@ -96,9 +110,7 @@ def resolve_model_path(filename: str) -> Path:
         return Path(getter("LLavacheckpoints", filename))
     path = folder_paths.get_full_path("LLavacheckpoints", filename)
     if path is None:
-        raise FileNotFoundError(
-            f"Model '{filename}' was not found in {model_root()}."
-        )
+        raise FileNotFoundError(f"Model '{filename}' was not found in {model_root()}.")
     return Path(path)
 
 
@@ -126,16 +138,12 @@ def snapshot_download(repo_id: str, subdirectory: str, **kwargs: Any) -> Path:
     }
     download_kwargs.update(kwargs)
     # local_dir_use_symlinks was removed from newer huggingface-hub versions.
-    if "local_dir_use_symlinks" in inspect.signature(
-        hub.snapshot_download
-    ).parameters:
+    if "local_dir_use_symlinks" in inspect.signature(hub.snapshot_download).parameters:
         download_kwargs.setdefault("local_dir_use_symlinks", False)
     return Path(hub.snapshot_download(**download_kwargs))
 
 
-def hf_download(
-    repo_id: str, filename: str, subdirectory: str, **kwargs: Any
-) -> Path:
+def hf_download(repo_id: str, filename: str, subdirectory: str, **kwargs: Any) -> Path:
     hub = require_module("huggingface_hub", "huggingface-hub")
     destination = model_cache_dir(subdirectory)
     download_kwargs = {
@@ -144,9 +152,7 @@ def hf_download(
         "local_dir": str(destination),
     }
     download_kwargs.update(kwargs)
-    if "local_dir_use_symlinks" in inspect.signature(
-        hub.hf_hub_download
-    ).parameters:
+    if "local_dir_use_symlinks" in inspect.signature(hub.hf_hub_download).parameters:
         download_kwargs.setdefault("local_dir_use_symlinks", False)
     return Path(hub.hf_hub_download(**download_kwargs))
 
@@ -179,9 +185,7 @@ def tensor_to_pil(image: torch.Tensor, index: int = 0) -> Image.Image:
     )
     if value.numel() and (value.max() > 1.0 or value.min() < 0.0):
         value = value / 255.0
-    array = (
-        value.clamp(0.0, 1.0).mul(255.0).round().to(torch.uint8).numpy()
-    )
+    array = value.clamp(0.0, 1.0).mul(255.0).round().to(torch.uint8).numpy()
     if array.shape[-1] == 1:
         array = np.repeat(array, 3, axis=-1)
     elif array.shape[-1] == 4:
@@ -221,6 +225,23 @@ def batch_text(responses: Iterable[str]) -> str:
     return "\n\n".join(
         f"--- Image {index} ---\n{text}" for index, text in enumerate(items, 1)
     )
+
+
+def llama_chat_content(response: Any) -> str:
+    """Extract non-empty text from llama.cpp's OpenAI-compatible response."""
+
+    try:
+        content = response["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise RuntimeError(
+            f"llama.cpp returned an unexpected response: {response!r}"
+        ) from exc
+    if content is None or not str(content).strip():
+        raise RuntimeError(
+            "llama.cpp returned an empty response. Check that the GGUF chat "
+            "template/vision handler matches the model and that max_tokens is positive."
+        )
+    return str(content).strip()
 
 
 def execution_device() -> torch.device:
@@ -314,26 +335,14 @@ def torch_dtype(
     if requested in {"float32", "fp32"}:
         return torch.float32
     if requested in {"float16", "fp16"}:
-        return (
-            torch.float16
-            if device.type in {"cuda", "mps", "xpu"}
-            else torch.float32
-        )
+        return torch.float16 if device.type in {"cuda", "mps", "xpu"} else torch.float32
     if requested in {"bfloat16", "bf16"}:
         if supports_bfloat16(device):
             return torch.bfloat16
-        return (
-            torch.float16
-            if device.type in {"cuda", "mps", "xpu"}
-            else torch.float32
-        )
+        return torch.float16 if device.type in {"cuda", "mps", "xpu"} else torch.float32
     if supports_bfloat16(device):
         return torch.bfloat16
-    return (
-        torch.float16
-        if device.type in {"cuda", "mps", "xpu"}
-        else torch.float32
-    )
+    return torch.float16 if device.type in {"cuda", "mps", "xpu"} else torch.float32
 
 
 def _release_tuple(distribution: str) -> tuple[int, ...]:
@@ -361,10 +370,10 @@ def require_quantization_backend(feature: str) -> torch.device:
             f"{feature} is not supported on the active {backend} backend. "
             "Use ComfyUI managed precision or CPU mode."
         )
-    if (
-        platform.system() == "Darwin"
-        and platform.machine().lower() not in {"arm64", "aarch64"}
-    ):
+    if platform.system() == "Darwin" and platform.machine().lower() not in {
+        "arm64",
+        "aarch64",
+    }:
         raise RuntimeError(
             f"{feature} needs bitsandbytes, which has no official Intel-macOS "
             "wheel. Use ComfyUI managed precision, or use an Apple Silicon Mac."
@@ -417,6 +426,7 @@ def runtime_diagnostics() -> dict[str, Any]:
         "torch_cuda": getattr(getattr(torch, "version", None), "cuda", None),
         "torch_hip": getattr(getattr(torch, "version", None), "hip", None),
         "packages": packages,
+        "llama_cpp": llama_cpp_diagnostics(),
     }
 
 
@@ -484,13 +494,9 @@ class ManagedTorchModel:
 
         self.load_device = load_device or model_management.get_torch_device()
         self.offload_device = offload_device or (
-            torch.device("cpu")
-            if self.load_device.type != "cpu"
-            else self.load_device
+            torch.device("cpu") if self.load_device.type != "cpu" else self.load_device
         )
-        self.model = _ManagedModelAdapter(
-            model.eval(), self.offload_device
-        )
+        self.model = _ManagedModelAdapter(model.eval(), self.offload_device)
         self.processor = processor
         self.patcher = ModelPatcher(
             self.model,
@@ -608,19 +614,257 @@ def reserve_external_vram(memory_required: int) -> None:
         LOGGER.debug("Could not reserve VRAM through ComfyUI: %s", exc)
 
 
+def default_llama_threads() -> int:
+    """A portable generation-thread default that avoids oversubscribing ComfyUI."""
+
+    return max(1, min(16, (os.cpu_count() or 4) // 2))
+
+
+def llama_runtime_input_types() -> dict[str, tuple[Any, ...]]:
+    """Advanced llama.cpp inputs shared by every GGUF loader."""
+
+    return {
+        "n_batch": (
+            "INT",
+            {
+                "default": 512,
+                "min": 1,
+                "max": 8192,
+                "step": 1,
+                "tooltip": "Logical prompt batch. Lower this if context loading runs out of memory.",
+            },
+        ),
+        "n_ubatch": (
+            "INT",
+            {
+                "default": 512,
+                "min": 1,
+                "max": 8192,
+                "step": 1,
+                "tooltip": "Physical prompt micro-batch. Never exceeds n_batch.",
+            },
+        ),
+        "flash_attention": (
+            list(LLAMA_FLASH_ATTENTION_CHOICES),
+            {
+                "default": "Auto",
+                "tooltip": "Auto enables llama.cpp flash attention only with accelerator offload and safely retries without it when unsupported.",
+            },
+        ),
+        "use_mmap": (
+            "BOOLEAN",
+            {
+                "default": True,
+                "tooltip": "Memory-map GGUF weights when the installed backend supports it.",
+            },
+        ),
+        "split_mode": (
+            list(LLAMA_SPLIT_MODE_CHOICES),
+            {
+                "default": "Layer",
+                "tooltip": "How llama.cpp distributes tensors across multiple accelerators.",
+            },
+        ),
+        "main_gpu": (
+            "INT",
+            {
+                "default": 0,
+                "min": 0,
+                "max": 31,
+                "step": 1,
+            },
+        ),
+        "tensor_split": (
+            "STRING",
+            {
+                "default": "",
+                "tooltip": "Optional comma-separated accelerator proportions, for example 0.6,0.4.",
+            },
+        ),
+    }
+
+
+def llama_runtime_options(
+    *,
+    n_batch: int = 512,
+    n_ubatch: int = 512,
+    flash_attention: str = "Auto",
+    use_mmap: bool = True,
+    split_mode: str = "Layer",
+    main_gpu: int = 0,
+    tensor_split: str = "",
+) -> dict[str, Any]:
+    """Normalize node inputs into keyword arguments accepted by LlamaHandle."""
+
+    return {
+        "n_batch": int(n_batch),
+        "n_ubatch": int(n_ubatch),
+        "flash_attention": str(flash_attention),
+        "use_mmap": bool(use_mmap),
+        "split_mode": str(split_mode),
+        "main_gpu": int(main_gpu),
+        "tensor_split": str(tensor_split),
+    }
+
+
+def _call_llama_probe(module: Any, name: str) -> bool | None:
+    for source in (module, getattr(module, "llama_cpp", None)):
+        probe = getattr(source, name, None)
+        if callable(probe):
+            try:
+                return bool(probe())
+            except Exception:
+                return None
+    return None
+
+
+def _llama_system_info(module: Any) -> str | None:
+    for source in (module, getattr(module, "llama_cpp", None)):
+        probe = getattr(source, "llama_print_system_info", None)
+        if callable(probe):
+            try:
+                value = probe()
+                if isinstance(value, bytes):
+                    value = value.decode("utf-8", errors="replace")
+                return str(value).strip() or None
+            except Exception:
+                return None
+    return None
+
+
+def _llama_backend_labels(system_info: str | None) -> list[str]:
+    if not system_info:
+        return []
+    value = system_info.upper()
+    candidates = (
+        ("CUDA", "cuda"),
+        ("ROCM", "rocm"),
+        ("HIP", "hip"),
+        ("METAL", "metal"),
+        ("VULKAN", "vulkan"),
+        ("SYCL", "sycl"),
+        ("CANN", "cann"),
+        ("OPENCL", "opencl"),
+        ("BLAS", "blas"),
+    )
+    return [label for marker, label in candidates if marker in value]
+
+
+def llama_cpp_diagnostics(module: Any | None = None) -> dict[str, Any]:
+    """Describe the installed llama.cpp build without allocating model memory."""
+
+    try:
+        version = metadata.version("llama-cpp-python")
+    except metadata.PackageNotFoundError:
+        version = None
+    if module is None:
+        try:
+            module = importlib.import_module("llama_cpp")
+        except Exception as exc:
+            return {
+                "installed": version is not None,
+                "version": version,
+                "import_error": f"{type(exc).__name__}: {exc}",
+                "gpu_offload": None,
+                "mmap": None,
+                "mlock": None,
+                "backends": [],
+                "system_info": None,
+            }
+    system_info = _llama_system_info(module)
+    return {
+        "installed": True,
+        "version": getattr(module, "__version__", None) or version,
+        "import_error": None,
+        "gpu_offload": _call_llama_probe(module, "llama_supports_gpu_offload"),
+        "mmap": _call_llama_probe(module, "llama_supports_mmap"),
+        "mlock": _call_llama_probe(module, "llama_supports_mlock"),
+        "backends": _llama_backend_labels(system_info),
+        "system_info": system_info,
+    }
+
+
+def _parse_tensor_split(value: str | Iterable[float] | None) -> list[float] | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, str):
+        parts = [part.strip() for part in value.split(",") if part.strip()]
+        try:
+            values = [float(part) for part in parts]
+        except ValueError as exc:
+            raise ValueError(
+                "tensor_split must be comma-separated numbers, for example 0.6,0.4."
+            ) from exc
+    else:
+        values = [float(part) for part in value]
+    if not values or any(not np.isfinite(part) or part < 0 for part in values):
+        raise ValueError("tensor_split values must be finite and non-negative.")
+    if not any(values):
+        raise ValueError("tensor_split must give at least one accelerator a weight.")
+    return values
+
+
+def _resolve_split_mode(module: Any, value: str) -> Any:
+    constants = {
+        "Layer": "LLAMA_SPLIT_MODE_LAYER",
+        "Row": "LLAMA_SPLIT_MODE_ROW",
+        "Single GPU": "LLAMA_SPLIT_MODE_NONE",
+    }
+    if value not in constants:
+        raise ValueError(
+            f"Unknown llama.cpp split mode {value!r}; choose one of {LLAMA_SPLIT_MODE_CHOICES}."
+        )
+    return getattr(module, constants[value], None)
+
+
 @dataclass(frozen=True)
 class LlavaClipConfig:
     model_path: Path
+    # Preserve the prompt format used by workflows saved before handler
+    # selection existed. New loader widgets explicitly pass the Auto choice.
+    handler: str = "LLaVA 1.5"
 
-    def create(self):
+    def create(self, *, use_gpu: bool = True):
         module = require_module("llama_cpp.llama_chat_format", "llama-cpp-python")
-        return module.Llava15ChatHandler(
-            clip_model_path=str(self.model_path), verbose=False
-        )
+        handlers = {
+            "LLaVA 1.5": "Llava15ChatHandler",
+            "LLaVA 1.6": "Llava16ChatHandler",
+            "MiniCPM-V 2.6": "MiniCPMv26ChatHandler",
+            "Moondream2": "MoondreamChatHandler",
+            "NanoLLaVA": "NanoLlavaChatHandler",
+            "Qwen2.5-VL": "Qwen25VLChatHandler",
+            "Gemma 4": "Gemma4ChatHandler",
+            "Llama 3 Vision Alpha": "Llama3VisionAlphaChatHandler",
+            "Obsidian": "ObsidianChatHandler",
+        }
+        if self.handler == "Auto (GGUF chat template)":
+            handler_class = getattr(module, "MTMDChatHandler", None)
+            if handler_class is not None:
+                return handler_class(
+                    clip_model_path=str(self.model_path),
+                    verbose=False,
+                    use_gpu=use_gpu,
+                )
+            handler_name = "Llava15ChatHandler"
+        else:
+            try:
+                handler_name = handlers[self.handler]
+            except KeyError as exc:
+                raise ValueError(
+                    f"Unknown vision handler {self.handler!r}; choose one of "
+                    f"{LLAMA_VISION_HANDLER_CHOICES}."
+                ) from exc
+        handler_class = getattr(module, handler_name, None)
+        if handler_class is None:
+            raise RuntimeError(
+                f"The installed llama-cpp-python does not provide {handler_name}. "
+                "Install a current wheel for CUDA, ROCm/HIP, Metal, Vulkan, SYCL, or CPU."
+            )
+        return handler_class(clip_model_path=str(self.model_path), verbose=False)
 
 
 class LlamaHandle:
-    """Lazy llama.cpp handle that owns and closes its exact GPU allocations."""
+    """Lazy llama.cpp handle that owns and closes its accelerator allocations."""
 
     def __init__(
         self,
@@ -630,8 +874,17 @@ class LlamaHandle:
         n_gpu_layers: int,
         n_threads: int,
         chat_format: str | None = None,
-        chat_handler_factory: Callable[[], Any] | None = None,
+        chat_handler_factory: Callable[..., Any] | None = None,
         seed: int = 42,
+        n_batch: int = 512,
+        n_ubatch: int = 512,
+        n_threads_batch: int | None = None,
+        flash_attention: str = "Auto",
+        use_mmap: bool = True,
+        split_mode: str = "Layer",
+        main_gpu: int = 0,
+        tensor_split: str | Iterable[float] | None = None,
+        projector_path: Path | None = None,
     ) -> None:
         self.model_path = Path(model_path)
         self.n_ctx = int(n_ctx)
@@ -640,6 +893,21 @@ class LlamaHandle:
         self.chat_format = chat_format
         self.chat_handler_factory = chat_handler_factory
         self.seed = int(seed)
+        self.n_batch = max(1, int(n_batch))
+        self.n_ubatch = max(1, int(n_ubatch))
+        self.n_threads_batch = (
+            None if n_threads_batch is None else max(1, int(n_threads_batch))
+        )
+        if flash_attention not in LLAMA_FLASH_ATTENTION_CHOICES:
+            raise ValueError(
+                f"flash_attention must be one of {LLAMA_FLASH_ATTENTION_CHOICES}."
+            )
+        self.flash_attention = flash_attention
+        self.use_mmap = bool(use_mmap)
+        self.split_mode = split_mode
+        self.main_gpu = max(0, int(main_gpu))
+        self.tensor_split = _parse_tensor_split(tensor_split)
+        self.projector_path = None if projector_path is None else Path(projector_path)
         self._llm = None
         self._chat_handler = None
         self._lock = threading.RLock()
@@ -652,7 +920,55 @@ class LlamaHandle:
             self.n_gpu_layers,
             self.n_threads,
             self.chat_format,
+            self.seed,
+            self.n_batch,
+            self.n_ubatch,
+            self.n_threads_batch,
+            self.flash_attention,
+            self.use_mmap,
+            self.split_mode,
+            self.main_gpu,
+            tuple(self.tensor_split or ()),
+            str(self.projector_path) if self.projector_path else None,
         )
+
+    @staticmethod
+    def _filter_constructor_kwargs(llama_class: Any, requested: dict[str, Any]):
+        signature = inspect.signature(llama_class.__init__)
+        named_parameters = {
+            name
+            for name, parameter in signature.parameters.items()
+            if name != "self"
+            and parameter.kind
+            in {
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            }
+        }
+        accepts_kwargs = any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in signature.parameters.values()
+        )
+        return {
+            key: value
+            for key, value in requested.items()
+            if value is not None
+            and (
+                key in named_parameters
+                or (accepts_kwargs and not named_parameters)
+            )
+        }
+
+    def _create_chat_handler(self, *, use_gpu: bool):
+        if self.chat_handler_factory is None:
+            return None
+        try:
+            signature = inspect.signature(self.chat_handler_factory)
+            if "use_gpu" in signature.parameters:
+                return self.chat_handler_factory(use_gpu=use_gpu)
+        except (TypeError, ValueError):
+            pass
+        return self.chat_handler_factory()
 
     def ensure_loaded(self):
         if self._llm is not None:
@@ -663,37 +979,83 @@ class LlamaHandle:
             if not self.model_path.is_file():
                 raise FileNotFoundError(f"GGUF model not found: {self.model_path}")
 
-            # llama.cpp owns its accelerator allocator, so reserve enough room
-            # through ComfyUI instead of emptying a global backend cache.
-            if self.n_gpu_layers != 0:
-                reserve_external_vram(self.model_path.stat().st_size)
-
             llama_cpp = require_module("llama_cpp", "llama-cpp-python")
-            if self.chat_handler_factory is not None:
-                self._chat_handler = self.chat_handler_factory()
+            capabilities = llama_cpp_diagnostics(llama_cpp)
+            supports_gpu = capabilities["gpu_offload"]
+            effective_gpu_layers = self.n_gpu_layers
+            if effective_gpu_layers != 0 and supports_gpu is False:
+                LOGGER.warning(
+                    "The installed llama-cpp-python build has no accelerator "
+                    "offload; falling back from n_gpu_layers=%s to CPU.",
+                    effective_gpu_layers,
+                )
+                effective_gpu_layers = 0
+
+            # llama.cpp owns its allocator, so ask ComfyUI to make room without
+            # globally clearing unrelated accelerator caches.
+            if effective_gpu_layers != 0:
+                memory_required = self.model_path.stat().st_size
+                if self.projector_path is not None and self.projector_path.is_file():
+                    memory_required += self.projector_path.stat().st_size
+                reserve_external_vram(memory_required)
+
+            use_gpu = effective_gpu_layers != 0 and supports_gpu is not False
+            self._chat_handler = self._create_chat_handler(use_gpu=use_gpu)
+
+            effective_batch = min(
+                self.n_batch, self.n_ctx if self.n_ctx > 0 else self.n_batch
+            )
+            effective_ubatch = min(self.n_ubatch, effective_batch)
+            flash_attention = self.flash_attention == "Enabled" or (
+                self.flash_attention == "Auto" and use_gpu
+            )
 
             requested = {
                 "model_path": str(self.model_path),
                 "chat_handler": self._chat_handler,
                 "chat_format": self.chat_format,
                 "n_ctx": self.n_ctx,
-                "n_gpu_layers": self.n_gpu_layers,
+                "n_gpu_layers": effective_gpu_layers,
                 "n_threads": self.n_threads,
-                "n_batch": min(1024, self.n_ctx),
-                "offload_kqv": self.n_gpu_layers != 0,
-                "flash_attn": self.n_gpu_layers != 0,
+                # None lets llama.cpp choose its optimized prompt-processing
+                # thread count independently from token-generation threads.
+                "n_threads_batch": self.n_threads_batch,
+                "n_batch": effective_batch,
+                "n_ubatch": effective_ubatch,
+                "split_mode": _resolve_split_mode(llama_cpp, self.split_mode),
+                "main_gpu": self.main_gpu,
+                "tensor_split": self.tensor_split,
+                "offload_kqv": use_gpu,
+                "op_offload": use_gpu,
+                "flash_attn": flash_attention,
+                "use_mmap": self.use_mmap and capabilities["mmap"] is not False,
                 "use_mlock": False,
                 "embedding": False,
                 "verbose": False,
                 "seed": self.seed,
             }
-            signature = inspect.signature(llama_cpp.Llama.__init__)
-            kwargs = {
-                key: value
-                for key, value in requested.items()
-                if key in signature.parameters and value is not None
-            }
-            self._llm = llama_cpp.Llama(**kwargs)
+            kwargs = self._filter_constructor_kwargs(llama_cpp.Llama, requested)
+            try:
+                self._llm = llama_cpp.Llama(**kwargs)
+            except Exception as exc:
+                # Some backend/model pairs reject flash attention at context
+                # creation. Auto is an optimization, never a compatibility
+                # requirement, so retry once with the official safe default.
+                if (
+                    self.flash_attention == "Auto"
+                    and kwargs.get("flash_attn")
+                    and re.search(r"flash|attn|attention", str(exc), re.IGNORECASE)
+                ):
+                    LOGGER.warning(
+                        "llama.cpp flash attention was unavailable; retrying "
+                        "with the portable attention path: %s",
+                        exc,
+                    )
+                    kwargs["flash_attn"] = False
+                    gc.collect()
+                    self._llm = llama_cpp.Llama(**kwargs)
+                else:
+                    raise
             return self._llm
 
     def close(self) -> None:
@@ -743,9 +1105,6 @@ def close_handle(handle: Any) -> None:
 
 
 def inference_context(device: torch.device, dtype: torch.dtype):
-    if (
-        device.type in {"cuda", "xpu"}
-        and dtype in {torch.float16, torch.bfloat16}
-    ):
+    if device.type in {"cuda", "xpu"} and dtype in {torch.float16, torch.bfloat16}:
         return torch.autocast(device.type, dtype=dtype)
     return nullcontext()

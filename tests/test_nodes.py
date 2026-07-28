@@ -2,13 +2,12 @@ import base64
 import inspect
 import io
 from pathlib import Path
+from types import SimpleNamespace
 
+import ComfyUI_VLM_nodes as package
 import numpy as np
 import pytest
 import torch
-from PIL import Image
-
-import ComfyUI_VLM_nodes as package
 from ComfyUI_VLM_nodes.nodes import (
     audioldm2,
     florence2,
@@ -16,16 +15,24 @@ from ComfyUI_VLM_nodes.nodes import (
     paligemma,
     qwen2vl,
 )
+from ComfyUI_VLM_nodes.nodes import (
+    runtime as vlm_runtime,
+)
 from ComfyUI_VLM_nodes.nodes.runtime import (
+    LlamaHandle,
+    LlavaClipConfig,
     accelerator_backend,
     external_device_map,
     image_data_uri,
+    llama_chat_content,
+    llama_cpp_diagnostics,
     pil_mask_to_tensor,
     pil_to_tensor,
     runtime_diagnostics,
     tensor_batch_to_pil,
     torch_dtype,
 )
+from PIL import Image
 
 
 def test_every_module_imports_and_expected_nodes_exist():
@@ -86,6 +93,7 @@ def test_runtime_report_and_device_map_are_supportable():
         "torch_cuda",
         "torch_hip",
         "packages",
+        "llama_cpp",
     } <= report.keys()
     device_map = external_device_map()
     assert set(device_map) == {""}
@@ -137,6 +145,202 @@ def test_dependency_metadata_matches_installer_requirements():
             {"sys_platform": system, "platform_machine": machine}
         )
 
+    gguf_extra = {
+        str(Requirement(value))
+        for value in metadata["project"]["optional-dependencies"]["gguf"]
+    }
+    gguf_requirements = {
+        str(Requirement(line))
+        for line in (root / "requirements-llama-cpp.txt")
+        .read_text("utf-8")
+        .splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    assert gguf_extra == gguf_requirements
+
+
+def _fake_llama_module(llama_class, *, gpu=True, mmap=True):
+    return SimpleNamespace(
+        __version__="0.3.34",
+        Llama=llama_class,
+        LLAMA_SPLIT_MODE_LAYER=1,
+        LLAMA_SPLIT_MODE_ROW=2,
+        LLAMA_SPLIT_MODE_NONE=0,
+        llama_supports_gpu_offload=lambda: gpu,
+        llama_supports_mmap=lambda: mmap,
+        llama_supports_mlock=lambda: False,
+        llama_print_system_info=lambda: (
+            b"GGML_CUDA = 1 | BLAS = 1" if gpu else b"BLAS = 1"
+        ),
+    )
+
+
+def test_llama_cpp_diagnostics_reports_its_own_backend():
+    class FakeLlama:
+        pass
+
+    report = llama_cpp_diagnostics(_fake_llama_module(FakeLlama))
+    assert report["version"] == "0.3.34"
+    assert report["gpu_offload"] is True
+    assert report["mmap"] is True
+    assert report["backends"] == ["cuda", "blas"]
+
+
+def test_llama_chat_content_rejects_empty_or_malformed_responses():
+    assert (
+        llama_chat_content({"choices": [{"message": {"content": "  ready  "}}]})
+        == "ready"
+    )
+    with pytest.raises(RuntimeError, match="empty response"):
+        llama_chat_content({"choices": [{"message": {"content": None}}]})
+    with pytest.raises(RuntimeError, match="unexpected response"):
+        llama_chat_content({"choices": []})
+
+
+def test_llama_handle_falls_back_to_cpu_for_cpu_only_build(monkeypatch, tmp_path):
+    calls = []
+
+    class FakeLlama:
+        def __init__(self, **kwargs):
+            calls.append(kwargs)
+
+        def close(self):
+            calls.append("closed")
+
+    module = _fake_llama_module(FakeLlama, gpu=False, mmap=False)
+    monkeypatch.setattr(vlm_runtime, "require_module", lambda *_args: module)
+    reserved = []
+    monkeypatch.setattr(vlm_runtime, "reserve_external_vram", reserved.append)
+    model_path = tmp_path / "model.gguf"
+    model_path.write_bytes(b"gguf")
+    handler_gpu = []
+
+    class Handler:
+        def close(self):
+            handler_gpu.append("closed")
+
+    def handler_factory(*, use_gpu):
+        handler_gpu.append(use_gpu)
+        return Handler()
+
+    handle = LlamaHandle(
+        model_path,
+        n_ctx=0,
+        n_gpu_layers=-1,
+        n_threads=4,
+        n_batch=1024,
+        n_ubatch=768,
+        flash_attention="Auto",
+        use_mmap=True,
+        chat_handler_factory=handler_factory,
+    )
+    handle.ensure_loaded()
+    assert reserved == []
+    assert handler_gpu == [False]
+    assert calls[0]["n_gpu_layers"] == 0
+    assert calls[0]["n_batch"] == 1024
+    assert calls[0]["n_ubatch"] == 768
+    assert calls[0]["offload_kqv"] is False
+    assert calls[0]["op_offload"] is False
+    assert calls[0]["flash_attn"] is False
+    assert calls[0]["use_mmap"] is False
+    handle.close()
+    assert calls[-1] == "closed"
+    assert handler_gpu[-1] == "closed"
+
+
+def test_llama_handle_uses_accelerator_batching_and_multi_gpu(monkeypatch, tmp_path):
+    calls = []
+
+    class FakeLlama:
+        def __init__(self, **kwargs):
+            calls.append(kwargs)
+
+    module = _fake_llama_module(FakeLlama)
+    monkeypatch.setattr(vlm_runtime, "require_module", lambda *_args: module)
+    reserved = []
+    monkeypatch.setattr(vlm_runtime, "reserve_external_vram", reserved.append)
+    model_path = tmp_path / "model.gguf"
+    projector_path = tmp_path / "mmproj.gguf"
+    model_path.write_bytes(b"1234")
+    projector_path.write_bytes(b"123")
+    handle = LlamaHandle(
+        model_path,
+        n_ctx=256,
+        n_gpu_layers=-1,
+        n_threads=6,
+        n_batch=512,
+        n_ubatch=1024,
+        split_mode="Row",
+        main_gpu=1,
+        tensor_split="0.25, 0.75",
+        projector_path=projector_path,
+    )
+    handle.ensure_loaded()
+    assert reserved == [7]
+    assert calls[0]["n_batch"] == 256
+    assert calls[0]["n_ubatch"] == 256
+    assert "n_threads_batch" not in calls[0]
+    assert calls[0]["split_mode"] == 2
+    assert calls[0]["main_gpu"] == 1
+    assert calls[0]["tensor_split"] == [0.25, 0.75]
+    assert calls[0]["flash_attn"] is True
+    assert calls[0]["offload_kqv"] is True
+
+
+def test_llama_handle_auto_flash_attention_retries_portably(monkeypatch, tmp_path):
+    calls = []
+
+    class FakeLlama:
+        def __init__(self, **kwargs):
+            calls.append(kwargs)
+            if kwargs["flash_attn"]:
+                raise RuntimeError("flash attention is not supported")
+
+    monkeypatch.setattr(
+        vlm_runtime,
+        "require_module",
+        lambda *_args: _fake_llama_module(FakeLlama),
+    )
+    monkeypatch.setattr(vlm_runtime, "reserve_external_vram", lambda _size: None)
+    model_path = tmp_path / "model.gguf"
+    model_path.write_bytes(b"gguf")
+    LlamaHandle(
+        model_path,
+        n_ctx=128,
+        n_gpu_layers=-1,
+        n_threads=2,
+    ).ensure_loaded()
+    assert [call["flash_attn"] for call in calls] == [True, False]
+
+
+def test_llava_handler_auto_and_explicit_selection(monkeypatch, tmp_path):
+    calls = []
+
+    class MTMD:
+        def __init__(self, **kwargs):
+            calls.append(("auto", kwargs))
+
+    class MiniCPM:
+        def __init__(self, **kwargs):
+            calls.append(("minicpm", kwargs))
+
+    monkeypatch.setattr(
+        vlm_runtime,
+        "require_module",
+        lambda *_args: SimpleNamespace(
+            MTMDChatHandler=MTMD,
+            MiniCPMv26ChatHandler=MiniCPM,
+        ),
+    )
+    projector = tmp_path / "mmproj.gguf"
+    projector.write_bytes(b"gguf")
+    LlavaClipConfig(projector, "Auto (GGUF chat template)").create(use_gpu=False)
+    LlavaClipConfig(projector, "MiniCPM-V 2.6").create(use_gpu=True)
+    assert calls[0][0] == "auto"
+    assert calls[0][1]["use_gpu"] is False
+    assert calls[1][0] == "minicpm"
+
 
 def test_image_roundtrip_and_png_data_uri():
     tensor = torch.tensor(
@@ -181,18 +385,14 @@ def test_florence_rendering_supports_boxes_quads_and_nested_polygons():
 
 def test_modern_catalog_has_current_quality_and_low_vram_tiers():
     repositories = {spec.repo_id for spec in modern_vlm.MODEL_CATALOG.values()}
-    small_fast = [
-        spec for spec in modern_vlm.MODEL_CATALOG.values() if spec.small_fast
-    ]
+    small_fast = [spec for spec in modern_vlm.MODEL_CATALOG.values() if spec.small_fast]
     assert 10 <= len(small_fast) <= 20
     assert all(
         not spec.trust_remote_code
         for spec in modern_vlm.MODEL_CATALOG.values()
         if spec.family != "Custom"
     )
-    assert modern_vlm.MODEL_CATALOG[
-        "Custom Hugging Face model"
-    ].trust_remote_code
+    assert modern_vlm.MODEL_CATALOG["Custom Hugging Face model"].trust_remote_code
     assert "Qwen/Qwen3.5-4B" in repositories
     assert "Qwen/Qwen3.5-35B-A3B" in repositories
     assert "Qwen/Qwen3.6-27B" in repositories
@@ -212,12 +412,8 @@ def test_modern_catalog_has_current_quality_and_low_vram_tiers():
 def test_modern_video_is_primary_input_and_thinking_is_explicit():
     assert "image" in modern_vlm.ModernVLM.INPUT_TYPES()["optional"]
     assert "image" in qwen2vl.Qwen2VLNode.INPUT_TYPES()["optional"]
-    predictor = modern_vlm.ModernVLMPredictor.__new__(
-        modern_vlm.ModernVLMPredictor
-    )
-    predictor.spec = modern_vlm.ModelSpec(
-        "test/model", "Qwen 3.5", 1.0, video=True
-    )
+    predictor = modern_vlm.ModernVLMPredictor.__new__(modern_vlm.ModernVLMPredictor)
+    predictor.spec = modern_vlm.ModelSpec("test/model", "Qwen 3.5", 1.0, video=True)
     captured = {}
 
     def capture(messages, enable_thinking=False, **kwargs):
@@ -251,12 +447,8 @@ def test_modern_video_is_primary_input_and_thinking_is_explicit():
 
 
 def test_internvl_video_uses_an_even_vision_patch_grid():
-    predictor = modern_vlm.ModernVLMPredictor.__new__(
-        modern_vlm.ModernVLMPredictor
-    )
-    predictor.spec = modern_vlm.ModelSpec(
-        "test/model", "InternVL 3.5", 1.0, video=True
-    )
+    predictor = modern_vlm.ModernVLMPredictor.__new__(modern_vlm.ModernVLMPredictor)
+    predictor.spec = modern_vlm.ModelSpec("test/model", "InternVL 3.5", 1.0, video=True)
     captured = {}
 
     class ImageProcessor:
@@ -285,12 +477,14 @@ def test_qwen2_legacy_quantized_labels_use_maintained_backends():
         "Qwen2-VL-2B",
         "Qwen2-VL-7B",
     ]
-    assert qwen2vl.LEGACY_QUANTIZED_ALIASES[
-        "Qwen2-VL-7B-GPTQ-Int8"
-    ] == ("Qwen2-VL-7B", "Balanced (8-bit)")
-    assert qwen2vl.LEGACY_QUANTIZED_ALIASES[
-        "Qwen2-VL-7B-AWQ"
-    ] == ("Qwen2-VL-7B", "Maximum Savings (4-bit)")
+    assert qwen2vl.LEGACY_QUANTIZED_ALIASES["Qwen2-VL-7B-GPTQ-Int8"] == (
+        "Qwen2-VL-7B",
+        "Balanced (8-bit)",
+    )
+    assert qwen2vl.LEGACY_QUANTIZED_ALIASES["Qwen2-VL-7B-AWQ"] == (
+        "Qwen2-VL-7B",
+        "Maximum Savings (4-bit)",
+    )
 
 
 def test_audioldm_keeps_legacy_outputs_and_adds_standard_audio(monkeypatch):
@@ -300,9 +494,7 @@ def test_audioldm_keeps_legacy_outputs_and_adds_standard_audio(monkeypatch):
 
     node = audioldm2.AudioLDM2Node()
     monkeypatch.setattr(node, "get_or_create_model", lambda *_args: FakePredictor())
-    result = node.generate_audio_final(
-        "rain", "", 1, 3.5, 16000, 42, 2, "wav"
-    )
+    result = node.generate_audio_final("rain", "", 1, 3.5, 16000, 42, 2, "wav")
     assert len(result) == 3
     assert result[1] == 16000
     assert result[2]["waveform"].shape == (2, 1, 16)

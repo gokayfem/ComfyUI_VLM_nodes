@@ -7,11 +7,16 @@ from typing import Any
 import folder_paths
 
 from .runtime import (
+    LLAMA_VISION_HANDLER_CHOICES,
     LlamaHandle,
     LlavaClipConfig,
     batch_text,
     close_handle,
+    default_llama_threads,
     image_data_uri,
+    llama_chat_content,
+    llama_runtime_input_types,
+    llama_runtime_options,
     resolve_model_path,
     tensor_batch_to_pil,
     unwrap_llm,
@@ -35,7 +40,11 @@ def _make_handle(
     clip: Any,
     *,
     seed: int = 42,
+    runtime_options: dict[str, Any] | None = None,
 ) -> LlamaHandle:
+    options = dict(runtime_options or {})
+    if isinstance(clip, LlavaClipConfig):
+        options.setdefault("projector_path", clip.model_path)
     return LlamaHandle(
         resolve_model_path(ckpt_name),
         n_ctx=max_ctx,
@@ -43,6 +52,7 @@ def _make_handle(
         n_threads=n_threads,
         chat_handler_factory=_clip_factory(clip),
         seed=seed,
+        **options,
     )
 
 
@@ -59,13 +69,6 @@ def _vision_messages(system_msg: str, prompt: str, data_uri: str):
     ]
 
 
-def _content(response: dict[str, Any]) -> str:
-    try:
-        return str(response["choices"][0]["message"]["content"])
-    except (KeyError, IndexError, TypeError) as exc:
-        raise RuntimeError(f"llama.cpp returned an unexpected response: {response!r}") from exc
-
-
 def _run_batch(
     image,
     model,
@@ -78,12 +81,10 @@ def _run_batch(
     responses = []
     for pil_image in tensor_batch_to_pil(image):
         response = llm.create_chat_completion(
-            messages=_vision_messages(
-                system_msg, prompt, image_data_uri(pil_image)
-            ),
+            messages=_vision_messages(system_msg, prompt, image_data_uri(pil_image)),
             **generation,
         )
-        responses.append(_content(response))
+        responses.append(llama_chat_content(response))
     return batch_text(responses)
 
 
@@ -92,23 +93,27 @@ class LLavaLoader:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "ckpt_name": (
-                    folder_paths.get_filename_list("LLavacheckpoints"),
-                ),
+                "ckpt_name": (folder_paths.get_filename_list("LLavacheckpoints"),),
                 "max_ctx": (
                     "INT",
                     {"default": 4096, "min": 128, "max": 131072, "step": 64},
                 ),
                 "gpu_layers": (
                     "INT",
-                    {"default": 27, "min": -1, "max": 1000, "step": 1},
+                    {"default": -1, "min": -1, "max": 1000, "step": 1},
                 ),
                 "n_threads": (
                     "INT",
-                    {"default": 8, "min": 1, "max": 256, "step": 1},
+                    {
+                        "default": default_llama_threads(),
+                        "min": 1,
+                        "max": 256,
+                        "step": 1,
+                    },
                 ),
                 "clip": ("CUSTOM", {"default": ""}),
-            }
+            },
+            "optional": llama_runtime_input_types(),
         }
 
     RETURN_TYPES = ("CUSTOM",)
@@ -117,12 +122,37 @@ class LLavaLoader:
     CATEGORY = "VLM Nodes/LLava"
 
     def load_llava_checkpoint(
-        self, ckpt_name, max_ctx, gpu_layers, n_threads, clip
+        self,
+        ckpt_name,
+        max_ctx,
+        gpu_layers,
+        n_threads,
+        clip,
+        n_batch=512,
+        n_ubatch=512,
+        flash_attention="Auto",
+        use_mmap=True,
+        split_mode="Layer",
+        main_gpu=0,
+        tensor_split="",
     ):
         # The GGUF and mmproj are loaded only when a sampler actually executes.
         return (
             _make_handle(
-                ckpt_name, max_ctx, gpu_layers, n_threads, clip
+                ckpt_name,
+                max_ctx,
+                gpu_layers,
+                n_threads,
+                clip,
+                runtime_options=llama_runtime_options(
+                    n_batch=n_batch,
+                    n_ubatch=n_ubatch,
+                    flash_attention=flash_attention,
+                    use_mmap=use_mmap,
+                    split_mode=split_mode,
+                    main_gpu=main_gpu,
+                    tensor_split=tensor_split,
+                ),
             ),
         )
 
@@ -132,10 +162,14 @@ class LlavaClipLoader:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "clip_name": (
-                    folder_paths.get_filename_list("LLavacheckpoints"),
-                )
-            }
+                "clip_name": (folder_paths.get_filename_list("LLavacheckpoints"),),
+            },
+            "optional": {
+                "handler": (
+                    list(LLAMA_VISION_HANDLER_CHOICES),
+                    {"default": "Auto (GGUF chat template)"},
+                ),
+            },
         }
 
     RETURN_TYPES = ("CUSTOM",)
@@ -143,8 +177,8 @@ class LlavaClipLoader:
     FUNCTION = "load_clip_checkpoint"
     CATEGORY = "VLM Nodes/LLava"
 
-    def load_clip_checkpoint(self, clip_name):
-        return (LlavaClipConfig(resolve_model_path(clip_name)),)
+    def load_clip_checkpoint(self, clip_name, handler="LLaVA 1.5"):
+        return (LlavaClipConfig(resolve_model_path(clip_name), handler),)
 
 
 class LLavaSamplerSimple:
@@ -276,6 +310,8 @@ class _CachedLlavaBase:
         gpu_layers,
         n_threads,
         seed=42,
+        handler="LLaVA 1.5",
+        **runtime_options,
     ):
         key = (
             ckpt_name,
@@ -284,10 +320,12 @@ class _CachedLlavaBase:
             int(gpu_layers),
             int(n_threads),
             int(seed),
+            handler,
+            tuple(sorted(runtime_options.items())),
         )
         if self._handle is None or self._key != key:
             close_handle(self._handle)
-            clip = LlavaClipConfig(resolve_model_path(clip_name))
+            clip = LlavaClipConfig(resolve_model_path(clip_name), handler)
             self._handle = _make_handle(
                 ckpt_name,
                 max_ctx,
@@ -295,6 +333,7 @@ class _CachedLlavaBase:
                 n_threads,
                 clip,
                 seed=seed,
+                runtime_options=runtime_options,
             )
             self._key = key
         return self._handle
@@ -311,23 +350,24 @@ class LLavaOptionalMemoryFreeSimple(_CachedLlavaBase):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "ckpt_name": (
-                    folder_paths.get_filename_list("LLavacheckpoints"),
-                ),
-                "clip_name": (
-                    folder_paths.get_filename_list("LLavacheckpoints"),
-                ),
+                "ckpt_name": (folder_paths.get_filename_list("LLavacheckpoints"),),
+                "clip_name": (folder_paths.get_filename_list("LLavacheckpoints"),),
                 "max_ctx": (
                     "INT",
                     {"default": 4096, "min": 128, "max": 131072, "step": 64},
                 ),
                 "gpu_layers": (
                     "INT",
-                    {"default": 27, "min": -1, "max": 1000, "step": 1},
+                    {"default": -1, "min": -1, "max": 1000, "step": 1},
                 ),
                 "n_threads": (
                     "INT",
-                    {"default": 8, "min": 1, "max": 256, "step": 1},
+                    {
+                        "default": default_llama_threads(),
+                        "min": 1,
+                        "max": 256,
+                        "step": 1,
+                    },
                 ),
                 "image": ("IMAGE",),
                 "prompt": ("STRING", {"default": "", "multiline": True}),
@@ -336,7 +376,14 @@ class LLavaOptionalMemoryFreeSimple(_CachedLlavaBase):
                     {"default": 0.1, "min": 0.0, "max": 2.0, "step": 0.01},
                 ),
                 "unload": ("BOOLEAN", {"default": False}),
-            }
+            },
+            "optional": {
+                "handler": (
+                    list(LLAMA_VISION_HANDLER_CHOICES),
+                    {"default": "Auto (GGUF chat template)"},
+                ),
+                **llama_runtime_input_types(),
+            },
         }
 
     RETURN_TYPES = ("STRING",)
@@ -354,9 +401,32 @@ class LLavaOptionalMemoryFreeSimple(_CachedLlavaBase):
         prompt,
         temperature,
         unload,
+        handler="LLaVA 1.5",
+        n_batch=512,
+        n_ubatch=512,
+        flash_attention="Auto",
+        use_mmap=True,
+        split_mode="Layer",
+        main_gpu=0,
+        tensor_split="",
     ):
+        options = llama_runtime_options(
+            n_batch=n_batch,
+            n_ubatch=n_ubatch,
+            flash_attention=flash_attention,
+            use_mmap=use_mmap,
+            split_mode=split_mode,
+            main_gpu=main_gpu,
+            tensor_split=tensor_split,
+        )
         model = self._model(
-            ckpt_name, clip_name, max_ctx, gpu_layers, n_threads
+            ckpt_name,
+            clip_name,
+            max_ctx,
+            gpu_layers,
+            n_threads,
+            handler=handler,
+            **options,
         )
         try:
             result = _run_batch(
@@ -375,32 +445,29 @@ class LLavaOptionalMemoryFreeAdvanced(_CachedLlavaBase):
     @classmethod
     def INPUT_TYPES(cls):
         required = {
-            "ckpt_name": (
-                folder_paths.get_filename_list("LLavacheckpoints"),
-            ),
-            "clip_name": (
-                folder_paths.get_filename_list("LLavacheckpoints"),
-            ),
+            "ckpt_name": (folder_paths.get_filename_list("LLavacheckpoints"),),
+            "clip_name": (folder_paths.get_filename_list("LLavacheckpoints"),),
             "max_ctx": (
                 "INT",
                 {"default": 4096, "min": 128, "max": 131072, "step": 64},
             ),
             "gpu_layers": (
                 "INT",
-                {"default": 27, "min": -1, "max": 1000, "step": 1},
+                {"default": -1, "min": -1, "max": 1000, "step": 1},
             ),
             "n_threads": (
                 "INT",
-                {"default": 8, "min": 1, "max": 256, "step": 1},
+                {
+                    "default": default_llama_threads(),
+                    "min": 1,
+                    "max": 256,
+                    "step": 1,
+                },
             ),
             "image": ("IMAGE",),
             "system_msg": (
                 "STRING",
-                {
-                    "default": (
-                        "You are an assistant who accurately describes images."
-                    )
-                },
+                {"default": ("You are an assistant who accurately describes images.")},
             ),
             "prompt": ("STRING", {"default": "", "multiline": True}),
             "max_tokens": (
@@ -431,7 +498,16 @@ class LLavaOptionalMemoryFreeAdvanced(_CachedLlavaBase):
             "seed": ("INT", {"default": 42, "step": 1}),
             "unload": ("BOOLEAN", {"default": False}),
         }
-        return {"required": required}
+        return {
+            "required": required,
+            "optional": {
+                "handler": (
+                    list(LLAMA_VISION_HANDLER_CHOICES),
+                    {"default": "Auto (GGUF chat template)"},
+                ),
+                **llama_runtime_input_types(),
+            },
+        }
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate_text_advanced"
@@ -456,7 +532,24 @@ class LLavaOptionalMemoryFreeAdvanced(_CachedLlavaBase):
         repeat_penalty,
         seed,
         unload,
+        handler="LLaVA 1.5",
+        n_batch=512,
+        n_ubatch=512,
+        flash_attention="Auto",
+        use_mmap=True,
+        split_mode="Layer",
+        main_gpu=0,
+        tensor_split="",
     ):
+        options = llama_runtime_options(
+            n_batch=n_batch,
+            n_ubatch=n_ubatch,
+            flash_attention=flash_attention,
+            use_mmap=use_mmap,
+            split_mode=split_mode,
+            main_gpu=main_gpu,
+            tensor_split=tensor_split,
+        )
         model = self._model(
             ckpt_name,
             clip_name,
@@ -464,6 +557,8 @@ class LLavaOptionalMemoryFreeAdvanced(_CachedLlavaBase):
             gpu_layers,
             n_threads,
             seed,
+            handler,
+            **options,
         )
         try:
             result = _run_batch(

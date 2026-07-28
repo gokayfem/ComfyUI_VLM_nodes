@@ -5,10 +5,14 @@ from __future__ import annotations
 from .runtime import (
     CachedModelNode,
     LlamaHandle,
+    LlavaClipConfig,
     batch_text,
+    default_llama_threads,
     hf_download,
     image_data_uri,
-    require_module,
+    llama_chat_content,
+    llama_runtime_input_types,
+    llama_runtime_options,
     tensor_batch_to_pil,
 )
 
@@ -30,6 +34,7 @@ class MiniCPMPredictor:
         context_length,
         gpu_layers,
         n_threads,
+        runtime_options=None,
     ):
         model_path = hf_download(
             MODEL_REPO,
@@ -42,19 +47,10 @@ class MiniCPMPredictor:
             "minicpm-v-2_6-gguf",
         )
 
-        def create_handler():
-            chat = require_module(
-                "llama_cpp.llama_chat_format", "llama-cpp-python"
-            )
-            handler_class = getattr(chat, "MiniCPMv26ChatHandler", None)
-            if handler_class is None:
-                raise RuntimeError(
-                    "Your llama-cpp-python build is too old for MiniCPM-V 2.6. "
-                    "Install a current CUDA or CPU wheel."
-                )
-            return handler_class(
-                clip_model_path=str(projector_path), verbose=False
-            )
+        clip = LlavaClipConfig(projector_path, "MiniCPM-V 2.6")
+
+        def create_handler(*, use_gpu=True):
+            return clip.create(use_gpu=use_gpu)
 
         self.handle = LlamaHandle(
             model_path,
@@ -62,6 +58,8 @@ class MiniCPMPredictor:
             n_gpu_layers=int(gpu_layers),
             n_threads=int(n_threads),
             chat_handler_factory=create_handler,
+            projector_path=projector_path,
+            **dict(runtime_options or {}),
         )
 
     def close(self):
@@ -87,9 +85,7 @@ class MiniCPMPredictor:
                         "content": [
                             {
                                 "type": "image_url",
-                                "image_url": {
-                                    "url": image_data_uri(image)
-                                },
+                                "image_url": {"url": image_data_uri(image)},
                             },
                             {"type": "text", "text": prompt},
                         ],
@@ -101,9 +97,7 @@ class MiniCPMPredictor:
                 top_k=int(top_k),
                 repeat_penalty=float(repeat_penalty),
             )
-            results.append(
-                str(response["choices"][0]["message"]["content"]).strip()
-            )
+            results.append(llama_chat_content(response))
         return batch_text(results)
 
 
@@ -149,13 +143,18 @@ class MiniCPMNode(CachedModelNode):
                 ),
                 "n_threads": (
                     "INT",
-                    {"default": 8, "min": 1, "max": 256},
+                    {
+                        "default": default_llama_threads(),
+                        "min": 1,
+                        "max": 256,
+                    },
                 ),
                 "max_tokens": (
                     "INT",
                     {"default": 512, "min": 1, "max": 8192},
                 ),
                 "unload_after": ("BOOLEAN", {"default": False}),
+                **llama_runtime_input_types(),
             },
         }
 
@@ -174,15 +173,33 @@ class MiniCPMNode(CachedModelNode):
         top_k=100,
         repeat_penalty=1.05,
         gpu_layers=-1,
-        n_threads=8,
+        n_threads=None,
         max_tokens=512,
         unload_after=False,
+        n_batch=512,
+        n_ubatch=512,
+        flash_attention="Auto",
+        use_mmap=True,
+        split_mode="Layer",
+        main_gpu=0,
+        tensor_split="",
     ):
+        n_threads = default_llama_threads() if n_threads is None else int(n_threads)
+        options = llama_runtime_options(
+            n_batch=n_batch,
+            n_ubatch=n_ubatch,
+            flash_attention=flash_attention,
+            use_mmap=use_mmap,
+            split_mode=split_mode,
+            main_gpu=main_gpu,
+            tensor_split=tensor_split,
+        )
         key = (
             model_variant,
             int(context_length),
             int(gpu_layers),
             int(n_threads),
+            tuple(sorted(options.items())),
         )
         predictor = self.get_or_create_model(
             key,
@@ -191,6 +208,7 @@ class MiniCPMNode(CachedModelNode):
                 context_length,
                 gpu_layers,
                 n_threads,
+                options,
             ),
         )
         try:

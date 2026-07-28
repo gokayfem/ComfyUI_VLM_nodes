@@ -1,4 +1,4 @@
 # Optional GGUF backend. This default may build the CPU backend from source.
 # Prefer the official CUDA, Metal, ROCm/HIP, Vulkan, or SYCL wheel/build from:
 # https://github.com/abetlen/llama-cpp-python
-llama-cpp-python>=0.3.15
+llama-cpp-python>=0.3.20,<1

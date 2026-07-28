@@ -12,15 +12,18 @@ import os
 import re
 from typing import Any, Literal, Optional
 
+import folder_paths
 import torch
 from pydantic import BaseModel, Field
-
-import folder_paths
 
 from .prompts import system_msg_prompts, system_msg_simple
 from .runtime import (
     LlamaHandle,
     close_handle,
+    default_llama_threads,
+    llama_chat_content,
+    llama_runtime_input_types,
+    llama_runtime_options,
     require_module,
     resolve_model_path,
     unwrap_llm,
@@ -36,17 +39,13 @@ ANY = AnyType("*")
 
 
 class Analysis(BaseModel):
-    main_character: list[str] = Field(
-        ..., description="Main subjects and objects."
-    )
+    main_character: list[str] = Field(..., description="Main subjects and objects.")
     artform: list[str] = Field(..., description="Art forms present.")
     photo_type: list[str] = Field(..., description="Photographic genres.")
     color_with_objects: list[str] = Field(
         ..., description="Objects paired with their colors."
     )
-    digital_artform: list[str] = Field(
-        ..., description="Digital art techniques."
-    )
+    digital_artform: list[str] = Field(..., description="Digital art techniques.")
     background: list[str] = Field(..., description="Background details.")
     lighting: list[str] = Field(..., description="Lighting details.")
 
@@ -86,9 +85,7 @@ class ArtPromptSpecification(BaseModel):
     techniques: ArtisticTechniques
     theme: ImageryTheme
     style: VisualStyle
-    creative_descriptions: list[ArtInspirationNarrative] = Field(
-        default_factory=list
-    )
+    creative_descriptions: list[ArtInspirationNarrative] = Field(default_factory=list)
 
 
 def _schema(model_class: type[BaseModel]) -> dict[str, Any]:
@@ -98,12 +95,7 @@ def _schema(model_class: type[BaseModel]) -> dict[str, Any]:
 
 
 def _response_content(response: dict[str, Any]) -> str:
-    try:
-        return str(response["choices"][0]["message"]["content"])
-    except (KeyError, IndexError, TypeError) as exc:
-        raise RuntimeError(
-            f"The model returned an unexpected response: {response!r}"
-        ) from exc
+    return llama_chat_content(response)
 
 
 def _chat(
@@ -161,9 +153,7 @@ def _structured_chat(
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(
-            f"The model did not return valid JSON: {raw[:500]}"
-        ) from exc
+        raise RuntimeError(f"The model did not return valid JSON: {raw[:500]}") from exc
     return raw, parsed
 
 
@@ -253,8 +243,7 @@ class PromptGenerateAPI:
                     {
                         "default": "",
                         "tooltip": (
-                            "OpenAI-compatible base URL, e.g. "
-                            "http://127.0.0.1:8000/v1."
+                            "OpenAI-compatible base URL, e.g. http://127.0.0.1:8000/v1."
                         ),
                     },
                 ),
@@ -298,9 +287,7 @@ class PromptGenerateAPI:
         model, route_url, route_mode = route
         model = (model_override or model).strip()
         if not model:
-            raise ValueError(
-                "A model ID is required for Custom / OpenAI-compatible."
-            )
+            raise ValueError("A model ID is required for Custom / OpenAI-compatible.")
         effective_url = (base_url or route_url or "").strip() or None
         mode = route_mode if api_mode == "Auto" else api_mode
         return model, effective_url, mode
@@ -326,11 +313,7 @@ class PromptGenerateAPI:
         )
         key = (
             api_key.strip()
-            or (
-                os.getenv("DEEPSEEK_API_KEY", "")
-                if model_name == "DeepSeek"
-                else ""
-            )
+            or (os.getenv("DEEPSEEK_API_KEY", "") if model_name == "DeepSeek" else "")
             or os.getenv("VLM_API_KEY", "")
             or os.getenv("OPENAI_API_KEY", "")
         )
@@ -355,9 +338,7 @@ class PromptGenerateAPI:
             f"Optional question:\n{question.strip()}"
         ).strip()
         history_limit = max(0, int(context_size)) * 2
-        history = (
-            self.session_history[-history_limit:] if history_limit else []
-        )
+        history = self.session_history[-history_limit:] if history_limit else []
 
         if mode == "Responses":
             response = client.responses.create(
@@ -397,20 +378,23 @@ class LLMLoader:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "ckpt_name": (
-                    folder_paths.get_filename_list("LLavacheckpoints"),
-                ),
+                "ckpt_name": (folder_paths.get_filename_list("LLavacheckpoints"),),
                 "max_ctx": (
                     "INT",
                     {"default": 2048, "min": 128, "max": 131072, "step": 64},
                 ),
                 "gpu_layers": (
                     "INT",
-                    {"default": 27, "min": -1, "max": 1000, "step": 1},
+                    {"default": -1, "min": -1, "max": 1000, "step": 1},
                 ),
                 "n_threads": (
                     "INT",
-                    {"default": 8, "min": 1, "max": 256, "step": 1},
+                    {
+                        "default": default_llama_threads(),
+                        "min": 1,
+                        "max": 256,
+                        "step": 1,
+                    },
                 ),
             },
             "optional": {
@@ -422,7 +406,8 @@ class LLMLoader:
                             "Leave blank to use the chat template embedded in GGUF."
                         ),
                     },
-                )
+                ),
+                **llama_runtime_input_types(),
             },
         }
 
@@ -432,7 +417,19 @@ class LLMLoader:
     CATEGORY = "VLM Nodes/LLM"
 
     def load_llm_checkpoint(
-        self, ckpt_name, max_ctx, gpu_layers, n_threads, chat_format=""
+        self,
+        ckpt_name,
+        max_ctx,
+        gpu_layers,
+        n_threads,
+        chat_format="",
+        n_batch=512,
+        n_ubatch=512,
+        flash_attention="Auto",
+        use_mmap=True,
+        split_mode="Layer",
+        main_gpu=0,
+        tensor_split="",
     ):
         return (
             LlamaHandle(
@@ -441,6 +438,15 @@ class LLMLoader:
                 n_gpu_layers=gpu_layers,
                 n_threads=n_threads,
                 chat_format=chat_format.strip() or None,
+                **llama_runtime_options(
+                    n_batch=n_batch,
+                    n_ubatch=n_ubatch,
+                    flash_attention=flash_attention,
+                    use_mmap=use_mmap,
+                    split_mode=split_mode,
+                    main_gpu=main_gpu,
+                    tensor_split=tensor_split,
+                ),
             ),
         )
 
@@ -693,9 +699,9 @@ class ChatMusician:
 
         symusic = require_module("symusic", "symusic")
         score = symusic.Score.from_abc(abc)
-        rendered = symusic.Synthesizer(
-            sample_rate=int(sample_rate)
-        ).render(score, stereo=True)
+        rendered = symusic.Synthesizer(sample_rate=int(sample_rate)).render(
+            score, stereo=True
+        )
         waveform = torch.as_tensor(rendered, dtype=torch.float32)
         if waveform.ndim == 1:
             waveform = waveform.unsqueeze(0)
@@ -794,9 +800,7 @@ class CreativeArtPromptGenerator:
         techniques = ", ".join(parsed["techniques"]["preferred"])
         theme = parsed["theme"]["core_subject"]
         styles = ", ".join(parsed["style"]["desired"])
-        return (
-            f"{theme}. Techniques: {techniques}. Visual style: {styles}.",
-        )
+        return (f"{theme}. Techniques: {techniques}. Visual style: {styles}.",)
 
 
 class Suggester:
@@ -889,13 +893,9 @@ class StructuredOutput:
             "float": "number",
             "bool": "boolean",
         }
-        property_schema: dict[str, Any] = {
-            "description": attribute_description.strip()
-        }
+        property_schema: dict[str, Any] = {"description": attribute_description.strip()}
         if attribute_type == "Category":
-            values = [
-                value.strip() for value in categories.split(",") if value.strip()
-            ]
+            values = [value.strip() for value in categories.split(",") if value.strip()]
             if not values:
                 raise ValueError(
                     "Category requires at least one comma-separated value."
@@ -917,9 +917,7 @@ class StructuredOutput:
             temperature=temperature,
         )
         value = parsed[name]
-        return (
-            value if isinstance(value, str) else json.dumps(value),
-        )
+        return (value if isinstance(value, str) else json.dumps(value),)
 
 
 class _CachedLLMBase:
@@ -927,13 +925,24 @@ class _CachedLLMBase:
         self._handle = None
         self._key = None
 
-    def _model(self, ckpt_name, max_ctx, gpu_layers, n_threads, seed=42):
+    def _model(
+        self,
+        ckpt_name,
+        max_ctx,
+        gpu_layers,
+        n_threads,
+        seed=42,
+        chat_format="",
+        **runtime_options,
+    ):
         key = (
             ckpt_name,
             int(max_ctx),
             int(gpu_layers),
             int(n_threads),
             int(seed),
+            chat_format.strip(),
+            tuple(sorted(runtime_options.items())),
         )
         if self._handle is None or self._key != key:
             close_handle(self._handle)
@@ -943,6 +952,8 @@ class _CachedLLMBase:
                 n_gpu_layers=gpu_layers,
                 n_threads=n_threads,
                 seed=seed,
+                chat_format=chat_format.strip() or None,
+                **runtime_options,
             )
             self._key = key
         return self._handle
@@ -959,20 +970,23 @@ class LLMOptionalMemoryFreeSimple(_CachedLLMBase):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "ckpt_name": (
-                    folder_paths.get_filename_list("LLavacheckpoints"),
-                ),
+                "ckpt_name": (folder_paths.get_filename_list("LLavacheckpoints"),),
                 "max_ctx": (
                     "INT",
                     {"default": 4096, "min": 128, "max": 131072, "step": 64},
                 ),
                 "gpu_layers": (
                     "INT",
-                    {"default": 27, "min": -1, "max": 1000, "step": 1},
+                    {"default": -1, "min": -1, "max": 1000, "step": 1},
                 ),
                 "n_threads": (
                     "INT",
-                    {"default": 8, "min": 1, "max": 256, "step": 1},
+                    {
+                        "default": default_llama_threads(),
+                        "min": 1,
+                        "max": 256,
+                        "step": 1,
+                    },
                 ),
                 "prompt": (
                     "STRING",
@@ -983,7 +997,14 @@ class LLMOptionalMemoryFreeSimple(_CachedLLMBase):
                     {"default": 0.1, "min": 0.0, "max": 2.0, "step": 0.01},
                 ),
                 "unload": ("BOOLEAN", {"default": False}),
-            }
+            },
+            "optional": {
+                "chat_format": (
+                    "STRING",
+                    {"default": ""},
+                ),
+                **llama_runtime_input_types(),
+            },
         }
 
     RETURN_TYPES = ("STRING",)
@@ -999,9 +1020,31 @@ class LLMOptionalMemoryFreeSimple(_CachedLLMBase):
         prompt,
         temperature,
         unload,
+        chat_format="",
+        n_batch=512,
+        n_ubatch=512,
+        flash_attention="Auto",
+        use_mmap=True,
+        split_mode="Layer",
+        main_gpu=0,
+        tensor_split="",
     ):
+        options = llama_runtime_options(
+            n_batch=n_batch,
+            n_ubatch=n_ubatch,
+            flash_attention=flash_attention,
+            use_mmap=use_mmap,
+            split_mode=split_mode,
+            main_gpu=main_gpu,
+            tensor_split=tensor_split,
+        )
         model = self._model(
-            ckpt_name, max_ctx, gpu_layers, n_threads
+            ckpt_name,
+            max_ctx,
+            gpu_layers,
+            n_threads,
+            chat_format=chat_format,
+            **options,
         )
         try:
             return (
@@ -1020,20 +1063,23 @@ class LLMOptionalMemoryFreeAdvanced(_CachedLLMBase):
     @classmethod
     def INPUT_TYPES(cls):
         required = {
-            "ckpt_name": (
-                folder_paths.get_filename_list("LLavacheckpoints"),
-            ),
+            "ckpt_name": (folder_paths.get_filename_list("LLavacheckpoints"),),
             "max_ctx": (
                 "INT",
                 {"default": 4096, "min": 128, "max": 131072, "step": 64},
             ),
             "gpu_layers": (
                 "INT",
-                {"default": 27, "min": -1, "max": 1000, "step": 1},
+                {"default": -1, "min": -1, "max": 1000, "step": 1},
             ),
             "n_threads": (
                 "INT",
-                {"default": 8, "min": 1, "max": 256, "step": 1},
+                {
+                    "default": default_llama_threads(),
+                    "min": 1,
+                    "max": 256,
+                    "step": 1,
+                },
             ),
             "system_msg": (
                 "STRING",
@@ -1074,7 +1120,16 @@ class LLMOptionalMemoryFreeAdvanced(_CachedLLMBase):
             "seed": ("INT", {"default": 42, "step": 1}),
             "unload": ("BOOLEAN", {"default": False}),
         }
-        return {"required": required}
+        return {
+            "required": required,
+            "optional": {
+                "chat_format": (
+                    "STRING",
+                    {"default": ""},
+                ),
+                **llama_runtime_input_types(),
+            },
+        }
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate_text_advanced"
@@ -1097,9 +1152,32 @@ class LLMOptionalMemoryFreeAdvanced(_CachedLLMBase):
         repeat_penalty,
         seed,
         unload,
+        chat_format="",
+        n_batch=512,
+        n_ubatch=512,
+        flash_attention="Auto",
+        use_mmap=True,
+        split_mode="Layer",
+        main_gpu=0,
+        tensor_split="",
     ):
+        options = llama_runtime_options(
+            n_batch=n_batch,
+            n_ubatch=n_ubatch,
+            flash_attention=flash_attention,
+            use_mmap=use_mmap,
+            split_mode=split_mode,
+            main_gpu=main_gpu,
+            tensor_split=tensor_split,
+        )
         model = self._model(
-            ckpt_name, max_ctx, gpu_layers, n_threads, seed
+            ckpt_name,
+            max_ctx,
+            gpu_layers,
+            n_threads,
+            seed,
+            chat_format,
+            **options,
         )
         try:
             return (

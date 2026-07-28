@@ -1,6 +1,6 @@
 # Model validation
 
-Validated on 2026-07-28 with ComfyUI 0.28.0, Python 3.12, Transformers 5.14.1,
+Validated on 2026-07-29 with ComfyUI 0.28.0, Python 3.12, Transformers 5.14.1,
 PyTorch 2.13.0+cu126, and an RTX 3090 24 GB. All models and caches were stored
 on the D drive and executed through WSL.
 
@@ -15,6 +15,7 @@ on the D drive and executed through WSL.
 | InternVL 3.5 | 1B video returned “green rectangle” after the 448px patch-grid fix | 2.14 GiB |
 | Granite Vision 4.1 | 4B returned “solid red square” through native Transformers code | 7.61 GiB |
 | Florence-2 | Native converted base-FT returned and parsed a bright-red-square caption | 0.59 GiB |
+| llama.cpp GGUF | Official Qwen3.5-0.8B Q4_0 with llama-cpp-python 0.3.34 CUDA loaded in 20.015s and generated the exact requested response in 0.654s | < 1 GiB model weights |
 
 One checkpoint covers sibling sizes that use the same architecture and loader.
 The node does not download every size simply to repeat the same integration
@@ -28,6 +29,18 @@ workflow (`EmptyImage` -> `ModernVLM` -> `ViewText`) ran the cached LFM2.5-VL
 450M checkpoint on a solid red input, returned `Red.`, and completed with
 `unload_after=true`. Prompt ID:
 `919f92cd-ecb2-487b-abf0-19f5e4d88229`.
+
+A second real local API workflow (`LLMLoader` -> `LLMSampler` -> `ViewText`)
+used the official 563 MB `ggml-org/Qwen3.5-0.8B-GGUF` Q4_0 checkpoint with
+full GPU offload, `n_batch=256`, `n_ubatch=128`, mmap, and Auto flash
+attention. It returned exactly `ComfyUI llama API ready` and completed
+successfully. Prompt ID: `eed8458d-de7f-47ac-8ebf-e48e4dacc2d6`.
+
+The installed llama.cpp CUDA 12.4 wheel reported GPU offload, mmap, and mlock
+support directly. CPU-only fallback, Metal/Vulkan/SYCL/ROCm-independent
+capability detection, multi-GPU options, and flash-attention retry are covered
+by simulated backend contract tests; those vendor kernels were not claimed as
+real hardware passes on the NVIDIA test machine.
 
 ## Catalog validation
 

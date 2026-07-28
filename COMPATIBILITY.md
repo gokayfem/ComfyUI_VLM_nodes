@@ -58,7 +58,7 @@ official project currently publishes backend indexes and documents source
 build flags:
 
 ```bash
-# NVIDIA; replace cu124 with the CUDA index matching the environment.
+# NVIDIA; choose a wheel supported by the installed driver.
 python -m pip install llama-cpp-python \
   --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
 
@@ -87,11 +87,42 @@ Source builds use `GGML_CUDA=on`, `GGML_METAL=on`, `GGML_HIP=on`,
 on Apple Silicon; an x86 Python builds the wrong architecture and is
 dramatically slower.
 
+The llama.cpp wheel is an independent native runtime; it does not have to use
+the same accelerator API as ComfyUI's PyTorch wheel. For example, a Vulkan
+llama.cpp wheel can coexist with a CUDA or CPU PyTorch build. The nodes query
+`llama_supports_gpu_offload`, `llama_supports_mmap`, and llama.cpp's system
+information at runtime. They never label a wheel CUDA/ROCm/Metal based only on
+`torch`.
+
+### GGUF runtime controls
+
+- `gpu_layers=-1` requests full accelerator offload. A build that reports no
+  offload support is automatically clamped to `0` and continues on CPU.
+- `n_batch` is the logical prompt batch and `n_ubatch` is the physical
+  micro-batch. The runtime clamps both to the selected context and guarantees
+  `n_ubatch <= n_batch`.
+- **Auto** flash attention enables the optimized path for accelerator offload
+  and retries once without it only when llama.cpp reports an attention-related
+  initialization failure. **Enabled** remains strict; **Disabled** is the
+  maximum-compatibility setting.
+- `use_mmap` is honored only when the compiled backend reports mmap support.
+- Layer, row, and single-device split modes plus `main_gpu` and
+  comma-separated `tensor_split` weights are passed through when supported by
+  the installed binding. Parallel multi-GPU is primarily a CUDA/ROCm feature;
+  Vulkan and SYCL support is more limited.
+- Current multimodal GGUFs should use **Auto (GGUF chat template)**, which maps
+  to llama.cpp's MTMD handler. Named legacy handlers remain selectable for
+  model cards that require an exact prompt format.
+- Every model handle is lazy, mutex-protected, cache-keyed by all performance
+  settings, and closes its exact model and projector handler on unload.
+
 Authoritative installation references:
 
 - [ComfyUI installation and hardware backends](https://github.com/Comfy-Org/ComfyUI)
 - [bitsandbytes installation and supported hardware](https://huggingface.co/docs/bitsandbytes/installation)
 - [llama-cpp-python supported backends](https://github.com/abetlen/llama-cpp-python#supported-backends)
+- [llama-cpp-python API reference](https://llama-cpp-python.readthedocs.io/en/latest/api-reference/)
+- [llama.cpp backend feature matrix](https://github.com/ggml-org/llama.cpp/wiki/Feature-matrix)
 
 ## Attention and offloading
 
