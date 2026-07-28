@@ -7,16 +7,41 @@ on:
     paths:
       - "pyproject.toml"
 
+concurrency:
+  group: comfy-registry-${{ github.repository }}
+  cancel-in-progress: false
+
+env:
+  COMFY_CLI_VERSION: "1.13.0"
+
 jobs:
   publish-node:
     name: Publish Custom Node to registry
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
       - name: Check out code
         uses: actions/checkout@v7
-      - name: Publish Custom Node
-        uses: Comfy-Org/publish-node-action@1.0.1
+      - name: Validate registry credentials
+        shell: bash
+        env:
+          REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+        run: |
+          if [[ -z "$REGISTRY_ACCESS_TOKEN" ]]; then
+            echo "::error title=Missing registry token::Create a Comfy Registry publisher API key and save it as the REGISTRY_ACCESS_TOKEN repository secret."
+            exit 1
+          fi
+      - name: Set up Python
+        uses: actions/setup-python@v7
         with:
-          personal_access_token: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+          python-version: "3.12"
+      - name: Install pinned Comfy CLI
+        shell: bash
+        run: python -m pip install --disable-pip-version-check "comfy-cli==${COMFY_CLI_VERSION}"
+      - name: Publish Custom Node
+        shell: bash
+        env:
+          REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+        run: comfy --skip-prompt --no-enable-telemetry node publish --token "$REGISTRY_ACCESS_TOKEN"
