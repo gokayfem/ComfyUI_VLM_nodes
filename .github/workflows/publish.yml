@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "pyproject.toml"
+      - ".github/workflows/publish.yml"
 
 concurrency:
   group: comfy-registry-${{ github.repository }}
@@ -24,24 +25,90 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v7
-      - name: Validate registry credentials
-        shell: bash
-        env:
-          REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
-        run: |
-          if [[ -z "$REGISTRY_ACCESS_TOKEN" ]]; then
-            echo "::error title=Missing registry token::Create a Comfy Registry publisher API key and save it as the REGISTRY_ACCESS_TOKEN repository secret."
-            exit 1
-          fi
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - name: Read release metadata
+        id: metadata
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          metadata = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          node_id = metadata["project"]["name"]
+          version = metadata["project"]["version"]
+          publisher = metadata["tool"]["comfy"]["PublisherId"]
+          if publisher != "gokayfem":
+              raise SystemExit(f"Expected publisher 'gokayfem', found {publisher!r}")
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              print(f"node_id={node_id}", file=output)
+              print(f"version={version}", file=output)
+          PY
+      - name: Check Registry version
+        id: registry
+        env:
+          NODE_ID: ${{ steps.metadata.outputs.node_id }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+          from pathlib import Path
+
+          node_id = urllib.parse.quote(os.environ["NODE_ID"], safe="")
+          request = urllib.request.Request(
+              f"https://api.comfy.org/nodes/{node_id}/versions",
+              headers={"Accept": "application/json", "User-Agent": "comfy-node-publisher"},
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              versions = json.load(response)
+
+          exists = any(item.get("version") == os.environ["VERSION"] for item in versions)
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              print(f"exists={'true' if exists else 'false'}", file=output)
+          PY
+      - name: Check publisher credential
+        if: steps.registry.outputs.exists != 'true'
+        id: credentials
+        env:
+          REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+        run: |
+          if [[ -n "$REGISTRY_ACCESS_TOKEN" ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Central publisher enabled::The secure fleet publisher will publish this release within one hour."
+          fi
       - name: Install pinned Comfy CLI
+        if: steps.registry.outputs.exists != 'true' && steps.credentials.outputs.available == 'true'
         shell: bash
         run: python -m pip install --disable-pip-version-check "comfy-cli==${COMFY_CLI_VERSION}"
       - name: Publish Custom Node
+        if: steps.registry.outputs.exists != 'true' && steps.credentials.outputs.available == 'true'
+        id: publish
+        continue-on-error: true
         shell: bash
         env:
           REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
         run: comfy --skip-prompt --no-enable-telemetry node publish --token "$REGISTRY_ACCESS_TOKEN"
+      - name: Record publication result
+        env:
+          NODE_ID: ${{ steps.metadata.outputs.node_id }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+          ALREADY_PUBLISHED: ${{ steps.registry.outputs.exists }}
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+        run: |
+          if [[ "$ALREADY_PUBLISHED" == "true" ]]; then
+            echo "### $NODE_ID $VERSION already published" >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$PUBLISH_OUTCOME" == "success" ]]; then
+            echo "### Published $NODE_ID $VERSION" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::notice title=Central publishing handoff::The secure fleet publisher will retry this release within one hour."
+            echo "### $NODE_ID $VERSION queued for the fleet publisher" >> "$GITHUB_STEP_SUMMARY"
+          fi
