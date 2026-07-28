@@ -1,0 +1,116 @@
+{
+  "1": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "tracking_input.mp4"
+    }
+  },
+  "2": {
+    "class_type": "Video Slice",
+    "inputs": {
+      "video": [
+        "1",
+        0
+      ],
+      "start_time": 0.0,
+      "duration": 2.0,
+      "strict_duration": false
+    }
+  },
+  "3": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "2",
+        0
+      ]
+    }
+  },
+  "4": {
+    "class_type": "ImageScaleToMaxDimension",
+    "inputs": {
+      "image": [
+        "3",
+        0
+      ],
+      "upscale_method": "area",
+      "largest_size": 768
+    }
+  },
+  "5": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "sam3.1_multiplex_fp16.safetensors"
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "person, dog, vehicle",
+      "clip": [
+        "5",
+        1
+      ]
+    }
+  },
+  "7": {
+    "class_type": "SAM3_VideoTrack",
+    "inputs": {
+      "images": [
+        "4",
+        0
+      ],
+      "model": [
+        "5",
+        0
+      ],
+      "conditioning": [
+        "6",
+        0
+      ],
+      "detection_threshold": 0.5,
+      "max_objects": 8,
+      "detect_interval": 1
+    }
+  },
+  "8": {
+    "class_type": "VLMSAM3TrackAdapter",
+    "inputs": {
+      "track_data": [
+        "7",
+        0
+      ],
+      "fps": [
+        "3",
+        2
+      ]
+    }
+  },
+  "9": {
+    "class_type": "VLMTrackReport",
+    "inputs": {
+      "tracks": [
+        "8",
+        0
+      ]
+    }
+  },
+  "10": {
+    "class_type": "SAM3_TrackPreview",
+    "inputs": {
+      "track_data": [
+        "8",
+        1
+      ],
+      "images": [
+        "4",
+        0
+      ],
+      "opacity": 0.5,
+      "fps": [
+        "3",
+        2
+      ]
+    }
+  }
+}

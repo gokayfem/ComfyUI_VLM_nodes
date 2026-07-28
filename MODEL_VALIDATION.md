@@ -50,6 +50,65 @@ SmolVLM2 256M/500M/2.2B, LFM2.5 VL 450M/1.6B, InternVL 3.5 1B/2B, and Granite
 Vision 3.3 2B/4.1 4B. Gemma 3 4B is the sixteenth entry and correctly requires
 license acceptance plus `HF_TOKEN`.
 
+## Structured vision validation
+
+The versioned detection/track/point/event payloads, geometry and mask
+conversion, strict spatial parser, Grounding-family adapters, SAM2.1 session
+plumbing, SAM3 bit-packed payload adapter, and ByteTrack-style association pass
+the local WSL contract suite. Those tests validate schemas, shapes, output
+ordering, bounds, timestamps, deterministic IDs, and error handling.
+
+Representative real-weight checks were then submitted through ComfyUI's local
+`POST /prompt` API and verified from `/history/{prompt_id}`. The test machine
+used ComfyUI 0.28.0, Python 3.12.12, PyTorch 2.13.0+cu126, Transformers 5.14.1,
+and an NVIDIA RTX 3090. Input media, checkpoints, model caches, ComfyUI, and
+this checkout all remained on the D drive under WSL.
+
+| Family | Representative checkpoint policy | Real-weight status |
+| --- | --- | --- |
+| Grounding DINO | Tiny; Base uses the same loader/processor contract | **Passed**: FP16, four real 640x360 video frames in two-frame micro-batches; person and bird boxes/labels were visually checked, serialized, timestamped, and in bounds |
+| OWLv2 | Base Ensemble | Pending |
+| OmDet Turbo | Swin Tiny | Pending |
+| SAM2.1 video | Hiera Tiny; sibling sizes use the same session adapter | **Passed**: FP16, real 12-frame 640x360 clip at 24 FPS with CPU preprocessing/state. Grounding's core `BOUNDING_BOX` output connected directly: the forward union-only run kept one person ID on frames 0-11; a last-frame reverse run kept two IDs for 24 observations and emitted 24 frame-major object masks. All geometry was in bounds and first/last overlays and masks were visually checked |
+| Comfy core SAM3.1 | `sam3.1_multiplex_fp16.safetensors`, only after license/access is available | Pending |
+| SAM3 adapter/report | Synthetic core payload contract | Passed without weights; real core handoff pending |
+| ByteTrack-style tracker | Deterministic synthetic crossing, missed-frame, and expiry cases | Passed; no model weights exist |
+| Florence-2 multitask | Base FT; Large uses the same native Transformers contract | **Passed**: real object-detection API run produced bounded woman, face, and clothing boxes plus a visually checked overlay |
+
+The SAM2 API check initially exposed a real session-lifecycle defect that unit
+fixtures did not: prompt insertion must be followed by inference on the seeded
+frame before propagation. The implementation now performs that seed pass and
+also propagates in reverse when `seed_frame` is greater than zero. Later live
+checks exercised nested multi-object core boxes, CPU preprocessing/state,
+union-only low-memory output, optional object-mask output, disabled preview
+rendering, reverse propagation, and `unload_after=true` for both models. The
+final unload run returned total reported GPU memory use to within 4 MiB of the
+pre-run `nvidia-smi` baseline.
+
+Grounding DINO and SAM2 sibling sizes are catalog-available but were not
+downloaded or executed. OWLv2, OmDet Turbo, and gated SAM3 remain explicitly
+unverified; the UI never presents them as locally tested simply because their
+schemas import.
+
+The acceptance run for each model family must record:
+
+1. Exact checkpoint revision, ComfyUI/Python/PyTorch/Transformers versions,
+   device, dtype, peak accelerator allocation, and wall time.
+2. A real image or short bounded video with manually verified boxes, labels,
+   masks, timestamps, and stable IDs.
+3. The canonical JSON schema/version and every advertised output socket,
+   including preview/report output through ComfyUI's local `/prompt` API.
+4. A second queue using the cached model, followed by an `unload_after=true`
+   run where that option exists.
+5. Failure behavior for an absent checkpoint or gated access without exposing
+   a token.
+
+One checkpoint per distinct implementation family is enough for sibling model
+sizes that share the same code path. Validation prioritizes the smallest useful
+checkpoint and will not download or execute a 30B model. A larger variant is
+tested only when it has a different loader, processor, postprocessor, or
+quantization path.
+
 ## Not marked passed
 
 - Qwen 3 VL 30B-A3B: weights are available locally, but inference validation

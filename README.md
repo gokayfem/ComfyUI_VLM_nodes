@@ -56,6 +56,147 @@ useful model capabilities:
 - **llama.cpp LLaVA/GGUF**, structured prompt suggestions, OpenAI-compatible
   prompting, and AudioLDM2.
 
+## Structured detection, segmentation, and tracking
+
+The vision nodes use stable, typed sockets instead of passing model-specific
+lists between nodes:
+
+| Socket | JSON schema | Purpose |
+| --- | --- | --- |
+| `VLM_DETECTIONS` | `comfyui-vlm/detections`, version 1 | Per-frame boxes, labels, scores, optional polygons/quads, and in-process masks |
+| `VLM_TRACKS` | `comfyui-vlm/tracks`, version 1 | Durable object IDs with ordered observations over time |
+| `VLM_POINTS` | `comfyui-vlm/points`, version 1 | Pixel-coordinate points, including detection centers |
+| `VLM_EVENTS` | `comfyui-vlm/events`, version 1 | Ordered temporal events for downstream video analysis |
+
+All spatial coordinates are source-image pixels. Bounding boxes are
+`[x1, y1, x2, y2]` with an exclusive right/bottom edge; polygons contain at
+least three points and quads exactly four. JSON roots contain `schema`,
+`version`, media dimensions/frame count/FPS, and their ordered records. Dense
+mask tensors remain in-process and are deliberately omitted from JSON so API
+results do not unexpectedly grow by hundreds of megabytes.
+
+The utility layer converts without model-specific glue:
+
+- `VLMStructuredSpatialParser` strictly parses pixel, normalized 0–1, or
+  normalized 0–1000 JSON from any VLM into `VLM_DETECTIONS` and `VLM_POINTS`.
+  `VLMSpatialPromptBuilder` creates the matching constrained prompt.
+- `VLMDetectionsToBoundingBoxes`, `VLMDetectionsToPoints`, and
+  `VLMDetectionsToMasks` emit Comfy core boxes, center points, and union plus
+  individual masks. Polygon/quad masks are rasterized when present, otherwise
+  the bounding box is used.
+- `VLMFilterDetections`, `VLMSelectDetection`, `VLMCropDetections`, and
+  `VLMRenderDetections` provide label/score/area/frame selection, padded crops,
+  and deterministic overlays.
+- `VLMDetectionsFromJSON` and `VLMDetectionsToJSON` are the explicit API and
+  persistence boundary for the versioned detection schema.
+
+### Open-vocabulary image and video detection
+
+`VLMOpenVocabularyDetection` exposes one interface for:
+
+- Grounding DINO Tiny and Base
+- OWLv2 Base Ensemble
+- OmDet Turbo Swin Tiny
+
+It accepts a still image or an `IMAGE` batch of video frames and processes the
+batch frame by frame. Outputs, in socket order, are `detections`, `json`,
+`preview`, `box_mask`, and Comfy core `bounding_boxes`. Connect the FPS output
+of `GetVideoComponents` when the input is video so every timestamp is correct.
+For tracking-by-detection, run detection over the complete bounded batch and
+connect it to `VLMTrackDetections`.
+
+`VLMTrackDetections` uses a ByteTrack-style two-stage high/low-confidence
+association, motion prediction, label-aware matching, and time-based expiry.
+IDs are durable within the supplied sequence and survive short missed
+detections when `emit_predictions` is enabled. Independent Comfy queue runs or
+independently sliced chunks are separate tracking sessions; they do not
+silently reuse IDs.
+
+### SAM2.1 and Comfy core SAM3.1
+
+`VLMSAM2VideoSegmentation` propagates first-frame detections, one core
+`BOUNDING_BOX`, or seed masks through an `IMAGE` batch using SAM2.1 Hiera Tiny,
+Small, Base+, or Large. It returns `VLM_TRACKS`, report JSON, per-frame union
+masks, frame-major individual object masks, and an overlay batch. The object
+IDs assigned at the seed frame remain stable for that video session.
+
+`VLMSAM3TrackAdapter` is intentionally an adapter, not a second SAM3 loader. It
+validates ComfyUI core `SAM3_TRACK_DATA`, preserves the core bit-packed mask
+payload unchanged, and exposes lightweight `VLM_TRACKS` metadata with mask
+references. Connect its passthrough output to core `SAM3_TrackPreview` or
+`SAM3_TrackToMask`, and connect `tracks` to `VLMTrackReport`. This avoids
+duplicating dense masks in memory or JSON.
+
+SAM3 weights use Meta's SAM License. The upstream `facebook/sam3` repository
+requires accepting access terms and sharing the requested account information;
+the ComfyUI checkpoint is also marked `sam-license`. Review and accept the
+license before downloading. The example names ComfyUI's
+`sam3.1_multiplex_fp16.safetensors`; if it is unavailable, use the SAM2.1
+workflow rather than substituting an unrelated checkpoint.
+
+### Florence-2 task coverage
+
+`Florence2` exposes all 15 supported task contracts:
+
+| Task | Extra input | Structured result |
+| --- | --- | --- |
+| Caption | none | text |
+| Detailed caption | none | text |
+| More detailed caption | none | text |
+| OCR | none | text |
+| OCR with regions | none | text plus quadrilateral regions |
+| Object detection | none | labeled boxes |
+| Dense region caption | none | captions with boxes |
+| Caption to phrase grounding | `text_input` | phrase boxes |
+| Referring expression segmentation | `text_input` | polygons and mask |
+| Region to segmentation | one `BOUNDING_BOX` per image | polygons and mask |
+| Open vocabulary detection | `text_input` | model-provided spatial records |
+| Region to category | one `BOUNDING_BOX` per image | text |
+| Region to description | one `BOUNDING_BOX` per image | text |
+| Region to OCR | one `BOUNDING_BOX` per image | text |
+| Region proposals | none | boxes |
+
+Every task returns `text`, `structured_json`, `mask`, and `visualization`.
+Tasks that do not produce a spatial result return an empty mask and the source
+image visualization. Region tasks reject ambiguous multi-box input; use
+`VLMSelectDetection` to isolate the record, then supply exactly one core
+`BOUNDING_BOX` with the same pixel coordinates.
+
+### Video memory strategy
+
+- Trim long media with core `Video Slice`, then use `GetVideoComponents`.
+  Downscale the complete frame batch before detection or segmentation and keep
+  every frame at identical dimensions.
+- Grounding detection supports configurable micro-batches; keep `batch_size=1`
+  for minimum VRAM or increase it when memory allows. It returns both nested
+  per-frame core `BOUNDING_BOX` values and flat metadata-rich
+  `BOUNDING_BOXES`.
+- SAM2.1 stores source video frames on CPU, keeps its inference state on CPU by
+  default, and limits the vision-feature cache to one frame. Union masks and
+  previews return on CPU. Full per-object mask volumes are opt-in with
+  `mask_output=union_and_objects`; disable `render_preview` to avoid another
+  full-resolution overlay copy on long clips.
+- Start with Grounding DINO Tiny plus SAM2.1 Hiera Tiny. Increase detector or
+  segmenter size only after the pipeline is correct. `unload_after=false`
+  caches one model per node instance; use `true` when another large model must
+  run immediately afterward.
+- A `Video Slice` is an independent propagation session. For very long media,
+  use bounded slices, reseed each slice, and keep the overlap/output mapping in
+  the caller. The pack does not pretend IDs are globally stable across separate
+  queues.
+- The SAM3 adapter never unpacks the complete mask volume for its report. Use
+  core `SAM3_TrackToMask` only when a dense selected mask is actually needed.
+
+API-format examples are in [`examples/vision`](examples/vision):
+
+- [`grounding_dino_image_api.json`](examples/vision/grounding_dino_image_api.json)
+- [`sam2_video_tracking_api.json`](examples/vision/sam2_video_tracking_api.json)
+- [`sam3_core_adapter_blueprint_api.json`](examples/vision/sam3_core_adapter_blueprint_api.json)
+
+Upload the named media to ComfyUI's input directory, adjust the filenames and
+labels, then submit the JSON object as the `prompt` value to `/prompt`. These
+are API graphs, not frontend workflow-export JSON.
+
 ## Install
 
 Install through ComfyUI Manager, or clone into `ComfyUI/custom_nodes` and run:

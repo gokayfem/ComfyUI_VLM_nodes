@@ -1,0 +1,116 @@
+{
+  "1": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "tracking_input.mp4"
+    }
+  },
+  "2": {
+    "class_type": "Video Slice",
+    "inputs": {
+      "video": [
+        "1",
+        0
+      ],
+      "start_time": 0.0,
+      "duration": 2.0,
+      "strict_duration": false
+    }
+  },
+  "3": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "2",
+        0
+      ]
+    }
+  },
+  "4": {
+    "class_type": "ImageScaleToMaxDimension",
+    "inputs": {
+      "image": [
+        "3",
+        0
+      ],
+      "upscale_method": "area",
+      "largest_size": 768
+    }
+  },
+  "5": {
+    "class_type": "ImageFromBatch",
+    "inputs": {
+      "image": [
+        "4",
+        0
+      ],
+      "batch_index": 0,
+      "length": 1
+    }
+  },
+  "6": {
+    "class_type": "VLMOpenVocabularyDetection",
+    "inputs": {
+      "image": [
+        "5",
+        0
+      ],
+      "model": "Grounding DINO Tiny (fast)",
+      "labels": "person, dog, vehicle",
+      "box_threshold": 0.3,
+      "text_threshold": 0.25,
+      "max_detections": 16,
+      "fps": [
+        "3",
+        2
+      ],
+      "nms_threshold": 0.5,
+      "precision": "auto",
+      "batch_size": 1,
+      "unload_after": true
+    }
+  },
+  "7": {
+    "class_type": "VLMSAM2VideoSegmentation",
+    "inputs": {
+      "images": [
+        "4",
+        0
+      ],
+      "model": "SAM2.1 Hiera Tiny (fast)",
+      "seed_frame": 0,
+      "fps": [
+        "3",
+        2
+      ],
+      "detections": [
+        "6",
+        0
+      ],
+      "mask_threshold": 0.0,
+      "precision": "auto",
+      "keep_video_on_cpu": true,
+      "mask_output": "union_only",
+      "render_preview": true,
+      "unload_after": false
+    }
+  },
+  "8": {
+    "class_type": "VLMTrackReport",
+    "inputs": {
+      "tracks": [
+        "7",
+        0
+      ]
+    }
+  },
+  "9": {
+    "class_type": "PreviewImage",
+    "inputs": {
+      "images": [
+        "7",
+        4
+      ]
+    }
+  }
+}

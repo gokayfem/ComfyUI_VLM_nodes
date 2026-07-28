@@ -11,6 +11,7 @@ openai>=1.30,<3
 pydantic>=2.7,<3
 qwen-vl-utils>=0.0.14
 safetensors>=0.4.3
+scipy>=1.10,<2
 soundfile>=0.12
 symusic>=0.5
 transformers>=5.4,<6
