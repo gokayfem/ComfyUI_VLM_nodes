@@ -214,6 +214,12 @@ def _worker_environment(
         "HTTP_PROXY",
         "HTTPS_PROXY",
         "NO_PROXY",
+        # ComfyUI may select cudaMallocAsync for its own allocator. Photon
+        # captures CUDA graphs in a separate process, where inheriting that
+        # override can abort during warmup on an uncaptured/captured free.
+        # Let the sidecar use PyTorch's native allocator instead.
+        "PYTORCH_ALLOC_CONF",
+        "PYTORCH_CUDA_ALLOC_CONF",
     }
     secret_name = re.compile(
         r"(?:API[_-]?KEY|AUTHORIZATION|CREDENTIAL|PASSWORD|SECRET|TOKEN)",
@@ -306,8 +312,11 @@ class Moondream31Model:
         )
         if "cudaLibraryLoadData" in tail:
             detail += (
-                " The installed Photon CUDA kernel requires a newer compatible "
-                "NVIDIA driver/runtime combination than this machine exposes."
+                " Photon's CUDA 12 kernels require libcudart 12.9 or newer; "
+                "CUDA runtime 12.6 does not export cudaLibraryLoadData. Re-run "
+                "the README isolated-runtime install command so "
+                "requirements-moondream31.txt upgrades only this sidecar to "
+                "nvidia-cuda-runtime-cu12 12.9.79."
             )
         if tail:
             detail += f"\n\nSanitized worker log tail:\n{tail}"
