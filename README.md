@@ -287,11 +287,33 @@ are not available for the installed PyTorch/backend combination.
 
 **Hosted LLM API (Secure)** and **Hosted VLM API (Secure)** share a provider
 layer built around the current OpenAI Responses and Chat Completions request
-shapes, with Anthropic using its native Messages/vision contract. The VLM node
+shapes, with Anthropic using its native Messages/vision contract and Gemini
+switching to its native multimodal contract for grounded or structured calls.
+The VLM node
 accepts a still image or a video-frame batch, samples
 frames uniformly, resizes and JPEG-compresses them, and enforces per-image and
 total request limits before upload. Both nodes can stream text into a connected
 `ViewText` node.
+
+Both API nodes also expose:
+
+- **Native web search** for OpenAI, Gemini, Anthropic, xAI, and any compatible
+  model routed through OpenRouter. Unsupported presets fail clearly before a
+  model request instead of silently pretending to search. Search can add
+  provider cost and has provider-specific data terms, so it is off by default.
+- **JSON object** and **JSON Schema** output. Completed JSON is always parsed
+  locally, JSON Schema results are validated locally, and invalid results fail
+  the node instead of flowing into downstream automation.
+- **Open-source structured VLM output** through Custom / Local endpoints.
+  OpenAI-standard mode supports vLLM, Ollama, and compatible servers;
+  `llama.cpp JSON Schema` emits llama.cpp's direct schema dialect; and
+  `JSON object + local validation` is a portable fallback for servers that
+  implement only JSON mode.
+
+User-provided schemas are capped at 64,000 characters, bounded by depth/node
+count, checked against their declared JSON Schema draft, and may use only local
+fragment `$ref` values. Remote/file references are rejected so validation can
+never turn into an unexpected network or filesystem lookup.
 
 Curated production profiles include:
 
@@ -321,6 +343,20 @@ Preset IDs were reviewed on 2026-07-29 against the official
 catalogs. Use `model_override` when a provider exposes a newer compatible model
 before the next node-pack release.
 
+The capability routing follows the current official
+[OpenAI web-search](https://developers.openai.com/api/docs/guides/tools-web-search)
+and [structured-output](https://developers.openai.com/api/docs/guides/structured-outputs)
+contracts,
+[Gemini grounding](https://ai.google.dev/gemini-api/docs/google-search) and
+[structured output](https://ai.google.dev/gemini-api/docs/structured-output),
+[Claude web-search](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool)
+and [structured-output](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
+contracts, [xAI web search](https://docs.x.ai/developers/tools/web-search) and
+[structured outputs](https://docs.x.ai/developers/model-capabilities/text/structured-outputs),
+and [OpenRouter server-side search](https://openrouter.ai/docs/guides/features/server-tools/web-search).
+The local dialect is based on the
+[llama.cpp server API](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md).
+
 API keys are not node inputs. A workflow contains only the provider selection,
 and the server resolves that provider's fixed environment variable at execution
 time. Built-in credentials are pinned to the provider's official HTTPS host;
@@ -330,6 +366,10 @@ Remote custom URLs require HTTPS, while keyless HTTP is restricted to
 by default, API calls are stateless, OpenAI Responses explicitly use
 `store=false`, and provider exceptions are redacted before ComfyUI receives
 them.
+
+Web search sends the prompt (and, where supported, the same multimodal request)
+to the selected provider's server-side search system. Do not enable it for
+content that must not be processed under that provider's search terms.
 
 Opening an older `PromptGenerateAPI` workflow automatically clears its former
 plaintext key widget before the graph is configured. Save the migrated workflow

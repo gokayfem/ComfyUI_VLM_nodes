@@ -18,6 +18,10 @@
   user-info before the message reaches ComfyUI.
 - Local image/video-frame uploads are uniformly sampled, resized,
   JPEG-compressed, limited to 4 MiB per image, and limited to 24 MiB total.
+- User JSON Schemas are size/depth/node bounded and may contain only local
+  fragment `$ref` values. Remote URLs and file references are rejected before
+  validation, preventing schema resolution from becoming an SSRF or local-file
+  access path.
 
 ## Configure credentials
 
@@ -49,6 +53,11 @@ python main.py
 Use the equivalent secret manager or service environment mechanism for a
 persistent installation. Do not commit a `.env` file, workflow containing an
 old key, shell script containing a key, or copied ComfyUI log.
+
+Web search is disabled by default. Enabling it sends the request content to the
+selected provider's server-side search system and may have separate retention,
+regional-availability, and billing terms. Treat it as an explicit data-sharing
+choice; do not enable it for content that is outside those terms.
 
 ## Legacy workflows
 

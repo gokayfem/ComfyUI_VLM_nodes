@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import ipaddress
 import io
+import json
 import os
 import re
 from dataclasses import dataclass, replace
@@ -37,12 +38,22 @@ REASONING_EFFORTS = (
     "max",
 )
 IMAGE_DETAILS = ("auto", "low", "high")
+OUTPUT_FORMATS = ("Text", "JSON object", "JSON Schema")
+SCHEMA_API_STYLES = (
+    "Auto (provider native)",
+    "OpenAI JSON Schema",
+    "llama.cpp JSON Schema",
+    "JSON object + local validation",
+)
 
 MAX_ERROR_CHARS = 800
 MAX_IMAGE_BYTES = 4 * 1024 * 1024
 MAX_TOTAL_MEDIA_BYTES = 24 * 1024 * 1024
 MAX_PROMPT_CHARS = 200_000
 MAX_SYSTEM_PROMPT_CHARS = 32_000
+MAX_SCHEMA_CHARS = 64_000
+MAX_SCHEMA_DEPTH = 32
+MAX_SCHEMA_NODES = 4096
 
 
 @dataclass(frozen=True)
@@ -58,6 +69,8 @@ class ProviderProfile:
     custom_endpoint: bool = False
     supports_seed: bool = False
     max_images: int = 8
+    web_search: str = "none"
+    schema_api_style: str = "openai"
 
 
 _PROFILES = (
@@ -71,6 +84,7 @@ _PROFILES = (
         vision=True,
         responses=True,
         max_images=32,
+        web_search="responses",
     ),
     ProviderProfile(
         "OpenAI — GPT-5.6 Sol",
@@ -82,6 +96,7 @@ _PROFILES = (
         vision=True,
         responses=True,
         max_images=32,
+        web_search="responses",
     ),
     ProviderProfile(
         "OpenAI — GPT-5.6 Luna",
@@ -93,6 +108,7 @@ _PROFILES = (
         vision=True,
         responses=True,
         max_images=32,
+        web_search="responses",
     ),
     ProviderProfile(
         "Google — Gemini 3.6 Flash",
@@ -102,6 +118,7 @@ _PROFILES = (
         "https://generativelanguage.googleapis.com/v1beta/openai/",
         vision=True,
         max_images=32,
+        web_search="gemini",
     ),
     ProviderProfile(
         "Google — Gemini 3.5 Flash",
@@ -111,6 +128,7 @@ _PROFILES = (
         "https://generativelanguage.googleapis.com/v1beta/openai/",
         vision=True,
         max_images=32,
+        web_search="gemini",
     ),
     ProviderProfile(
         "Google — Gemini 3.5 Flash-Lite",
@@ -120,6 +138,7 @@ _PROFILES = (
         "https://generativelanguage.googleapis.com/v1beta/openai/",
         vision=True,
         max_images=32,
+        web_search="gemini",
     ),
     ProviderProfile(
         "Anthropic — Claude Fable 5",
@@ -130,6 +149,7 @@ _PROFILES = (
         api_mode="Anthropic Messages",
         vision=True,
         max_images=20,
+        web_search="anthropic",
     ),
     ProviderProfile(
         "Anthropic — Claude Opus 5",
@@ -140,6 +160,7 @@ _PROFILES = (
         api_mode="Anthropic Messages",
         vision=True,
         max_images=20,
+        web_search="anthropic",
     ),
     ProviderProfile(
         "Anthropic — Claude Sonnet 5",
@@ -150,6 +171,7 @@ _PROFILES = (
         api_mode="Anthropic Messages",
         vision=True,
         max_images=20,
+        web_search="anthropic",
     ),
     ProviderProfile(
         "Anthropic — Claude Haiku 4.5",
@@ -160,6 +182,7 @@ _PROFILES = (
         api_mode="Anthropic Messages",
         vision=True,
         max_images=20,
+        web_search="anthropic",
     ),
     ProviderProfile(
         "xAI — Grok 4.5",
@@ -171,6 +194,7 @@ _PROFILES = (
         vision=True,
         responses=True,
         max_images=10,
+        web_search="responses",
     ),
     ProviderProfile(
         "DeepSeek — V4 Flash",
@@ -178,6 +202,7 @@ _PROFILES = (
         "deepseek-v4-flash",
         "DEEPSEEK_API_KEY",
         "https://api.deepseek.com/v1",
+        schema_api_style="json_object",
     ),
     ProviderProfile(
         "DeepSeek — V4 Pro",
@@ -185,6 +210,7 @@ _PROFILES = (
         "deepseek-v4-pro",
         "DEEPSEEK_API_KEY",
         "https://api.deepseek.com/v1",
+        schema_api_style="json_object",
     ),
     ProviderProfile(
         "Groq — Qwen 3.6 27B (vision)",
@@ -196,6 +222,7 @@ _PROFILES = (
         vision=True,
         responses=True,
         max_images=5,
+        schema_api_style="json_object",
     ),
     ProviderProfile(
         "Groq — GPT-OSS 20B",
@@ -205,6 +232,7 @@ _PROFILES = (
         "https://api.groq.com/openai/v1",
         api_mode="Responses",
         responses=True,
+        schema_api_style="openai",
     ),
     ProviderProfile(
         "Mistral — Mistral Large (latest)",
@@ -253,6 +281,7 @@ _PROFILES = (
         "OPENROUTER_API_KEY",
         "https://openrouter.ai/api/v1",
         vision=True,
+        web_search="openrouter",
     ),
     ProviderProfile(
         "Custom / Local — OpenAI compatible",
@@ -593,6 +622,177 @@ def _bounded_text(name: str, value: object, limit: int) -> str:
     return text
 
 
+def _walk_json_schema(value: Any, *, depth: int = 0) -> int:
+    """Bound a user schema and reject references that could resolve off-server."""
+
+    if depth > MAX_SCHEMA_DEPTH:
+        raise ValueError(
+            f"json_schema exceeds the maximum nesting depth of {MAX_SCHEMA_DEPTH}."
+        )
+    nodes = 1
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise ValueError("json_schema object keys must be strings.")
+            if key in {"$ref", "$dynamicRef", "$recursiveRef"} and (
+                not isinstance(item, str) or not item.startswith("#")
+            ):
+                raise ValueError(
+                    "json_schema allows only local fragment reference values; "
+                    "remote and file references are blocked."
+                )
+            nodes += _walk_json_schema(item, depth=depth + 1)
+    elif isinstance(value, list):
+        for item in value:
+            nodes += _walk_json_schema(item, depth=depth + 1)
+    if nodes > MAX_SCHEMA_NODES:
+        raise ValueError(
+            f"json_schema exceeds the {MAX_SCHEMA_NODES:,}-node safety limit."
+        )
+    return nodes
+
+
+def parse_json_schema(output_format: str, raw_schema: object) -> dict[str, Any] | None:
+    if output_format not in OUTPUT_FORMATS:
+        raise ValueError(f"output_format must be one of {OUTPUT_FORMATS}.")
+    if output_format != "JSON Schema":
+        return None
+
+    text = _bounded_text("json_schema", raw_schema, MAX_SCHEMA_CHARS)
+    if not text:
+        raise ValueError("JSON Schema output requires a json_schema value.")
+    try:
+        schema = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"json_schema is not valid JSON (line {exc.lineno}, column {exc.colno})."
+        ) from None
+    if not isinstance(schema, dict):
+        raise ValueError("json_schema must be a JSON object.")
+    _walk_json_schema(schema)
+
+    jsonschema = require_module("jsonschema", "jsonschema>=4.22,<5")
+    try:
+        validator_class = jsonschema.validators.validator_for(schema)
+        validator_class.check_schema(schema)
+    except Exception:
+        raise ValueError(
+            "json_schema is not valid for its declared JSON Schema draft."
+        ) from None
+    return schema
+
+
+def _schema_path(path: Any) -> str:
+    output = "$"
+    for item in path:
+        if isinstance(item, int):
+            output += f"[{item}]"
+        elif re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(item)):
+            output += f".{item}"
+        else:
+            output += f"[{json.dumps(str(item), ensure_ascii=True)}]"
+    return output
+
+
+def validate_structured_output(
+    result: str,
+    output_format: str,
+    schema: dict[str, Any] | None,
+) -> str:
+    """Parse, locally validate, and normalize completed structured output."""
+
+    if output_format == "Text":
+        return result
+    candidate = result.strip()
+    if candidate.startswith("```") and candidate.endswith("```"):
+        first_newline = candidate.find("\n")
+        if first_newline >= 0:
+            candidate = candidate[first_newline + 1 : -3].strip()
+    try:
+        parsed = json.loads(candidate)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            "The provider did not return valid JSON "
+            f"(line {exc.lineno}, column {exc.colno})."
+        ) from None
+    if output_format == "JSON object" and not isinstance(parsed, dict):
+        raise RuntimeError("The provider returned JSON, but it was not an object.")
+    if schema is not None:
+        jsonschema = require_module("jsonschema", "jsonschema>=4.22,<5")
+        validator_class = jsonschema.validators.validator_for(schema)
+        validator = validator_class(schema)
+        error = next(validator.iter_errors(parsed), None)
+        if error is not None:
+            path = _schema_path(error.absolute_path)
+            rule = str(error.validator or "schema")
+            raise RuntimeError(
+                f"Structured output failed local validation at {path} "
+                f"({rule} constraint)."
+            ) from None
+    return json.dumps(parsed, ensure_ascii=False, indent=2)
+
+
+def _structured_prompt(
+    system_prompt: str,
+    output_format: str,
+    schema: dict[str, Any] | None,
+) -> str:
+    if output_format == "Text":
+        return system_prompt
+    if output_format == "JSON object":
+        guidance = (
+            "Return only one valid JSON object. Do not wrap it in Markdown or "
+            "include commentary outside the JSON."
+        )
+    else:
+        guidance = (
+            "Return only JSON matching this schema exactly. Do not wrap it in "
+            "Markdown or include commentary outside the JSON.\nJSON Schema:\n"
+            f"{json.dumps(schema, ensure_ascii=False, separators=(',', ':'))}"
+        )
+    return f"{system_prompt.rstrip()}\n\n{guidance}".strip()
+
+
+def _schema_style(profile: ProviderProfile, requested: str) -> str:
+    if requested not in SCHEMA_API_STYLES:
+        raise ValueError(
+            f"schema_api_style must be one of {SCHEMA_API_STYLES}."
+        )
+    if requested == "Auto (provider native)":
+        return profile.schema_api_style
+    if not profile.custom_endpoint:
+        raise ValueError(
+            "schema_api_style overrides are available only for Custom / Local; "
+            "built-in providers use their verified native contract."
+        )
+    return {
+        "OpenAI JSON Schema": "openai",
+        "llama.cpp JSON Schema": "llama_cpp",
+        "JSON object + local validation": "json_object",
+    }[requested]
+
+
+def _chat_response_format(
+    output_format: str,
+    schema: dict[str, Any] | None,
+    schema_style: str,
+) -> dict[str, Any] | None:
+    if output_format == "Text":
+        return None
+    if output_format == "JSON object" or schema_style == "json_object":
+        return {"type": "json_object"}
+    if schema_style == "llama_cpp":
+        return {"type": "json_schema", "schema": schema}
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "comfyui_output",
+            "strict": True,
+            "schema": schema,
+        },
+    }
+
+
 def _stream_responses(client: Any, request: dict[str, Any], sender) -> str:
     stream = client.responses.create(**request, stream=True)
     chunks: list[str] = []
@@ -634,14 +834,19 @@ def _stream_chat(client: Any, request: dict[str, Any], sender) -> str:
     return "".join(chunks).strip()
 
 
-def _anthropic_image_source(data_uri: str) -> dict[str, Any]:
+def _data_uri_parts(data_uri: str) -> tuple[str, str]:
     try:
         header, data = data_uri.split(",", 1)
         media_type = header.split(";", 1)[0].split(":", 1)[1]
     except (IndexError, ValueError):
-        raise ValueError("Invalid image data URI for Anthropic Messages.") from None
+        raise ValueError("Invalid image data URI.") from None
     if media_type not in {"image/jpeg", "image/png", "image/webp", "image/gif"}:
-        raise ValueError(f"Unsupported Anthropic image media type: {media_type}.")
+        raise ValueError(f"Unsupported image media type: {media_type}.")
+    return media_type, data
+
+
+def _anthropic_image_source(data_uri: str) -> dict[str, Any]:
+    media_type, data = _data_uri_parts(data_uri)
     return {
         "type": "base64",
         "media_type": media_type,
@@ -660,6 +865,137 @@ def _anthropic_response_text(payload: dict[str, Any]) -> str:
     ).strip()
 
 
+def _gemini_response_text(payload: dict[str, Any]) -> str:
+    candidates = payload.get("candidates")
+    if not isinstance(candidates, list) or not candidates:
+        return ""
+    content = candidates[0].get("content")
+    if not isinstance(content, dict):
+        return ""
+    parts = content.get("parts")
+    if not isinstance(parts, list):
+        return ""
+    return "".join(
+        str(part.get("text", ""))
+        for part in parts
+        if isinstance(part, dict) and isinstance(part.get("text"), str)
+    )
+
+
+def _call_gemini_api(
+    *,
+    profile: ProviderProfile,
+    model: str,
+    api_key: str,
+    system_prompt: str,
+    prompt: str,
+    image_data: list[str],
+    timeout_seconds: float,
+    max_output_tokens: int,
+    stream_output: bool,
+    use_system_proxy: bool,
+    unique_id: str | None,
+    web_search: bool,
+    output_format: str,
+    output_schema: dict[str, Any] | None,
+) -> str:
+    """Use Gemini's native multimodal API for search and structured output."""
+
+    httpx = require_module("httpx", "httpx")
+    parts: list[dict[str, Any]] = [{"text": prompt}]
+    for data_uri in image_data:
+        media_type, data = _data_uri_parts(data_uri)
+        parts.append(
+            {
+                "inlineData": {
+                    "mimeType": media_type,
+                    "data": data,
+                }
+            }
+        )
+    generation_config: dict[str, Any] = {
+        "maxOutputTokens": int(max_output_tokens),
+    }
+    if output_format != "Text":
+        text_format: dict[str, Any] = {"mimeType": "application/json"}
+        if output_schema is not None:
+            text_format["schema"] = output_schema
+        generation_config["responseFormat"] = {"text": text_format}
+
+    request: dict[str, Any] = {
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"role": "user", "parts": parts}],
+        "generationConfig": generation_config,
+        "store": False,
+    }
+    if web_search:
+        request["tools"] = [{"google_search": {}}]
+
+    headers = {
+        "x-goog-api-key": api_key,
+        "content-type": "application/json",
+    }
+    sender = _progress_text_sender(unique_id) if stream_output else None
+    if sender is not None:
+        sender("Connecting securely…")
+    method = "streamGenerateContent" if stream_output else "generateContent"
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{quote(model, safe='')}:{method}"
+    )
+    if stream_output:
+        url += "?alt=sse"
+
+    client = httpx.Client(
+        timeout=float(timeout_seconds),
+        follow_redirects=False,
+        trust_env=bool(use_system_proxy),
+    )
+    try:
+        if stream_output:
+            chunks: list[str] = []
+            with client.stream(
+                "POST",
+                url,
+                headers=headers,
+                json=request,
+            ) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    raw = line[5:].strip()
+                    if not raw or raw == "[DONE]":
+                        continue
+                    try:
+                        delta = _gemini_response_text(json.loads(raw))
+                    except (json.JSONDecodeError, TypeError, ValueError):
+                        continue
+                    if not delta:
+                        continue
+                    chunks.append(delta)
+                    if sender is not None:
+                        sender("".join(chunks))
+            result = "".join(chunks).strip()
+        else:
+            response = client.post(
+                url,
+                headers=headers,
+                json=request,
+            )
+            response.raise_for_status()
+            result = _gemini_response_text(response.json()).strip()
+        if not result:
+            raise RuntimeError("Gemini returned an empty text response.")
+        if sender is not None:
+            sender(result)
+        return result
+    except Exception as exc:
+        raise safe_api_error(exc, profile, secret=api_key) from None
+    finally:
+        client.close()
+
+
 def _call_anthropic_api(
     *,
     profile: ProviderProfile,
@@ -674,6 +1010,9 @@ def _call_anthropic_api(
     stream_output: bool,
     use_system_proxy: bool,
     unique_id: str | None,
+    web_search: bool,
+    output_format: str,
+    output_schema: dict[str, Any] | None,
 ) -> str:
     """Use Anthropic's native Messages contract, including native vision."""
 
@@ -693,6 +1032,26 @@ def _call_anthropic_api(
         "max_tokens": int(max_output_tokens),
         "stream": bool(stream_output),
     }
+    if web_search:
+        request["tools"] = [
+            {
+                "type": "web_search_20260318",
+                "name": "web_search",
+                "allowed_callers": ["direct"],
+                "response_inclusion": "excluded",
+                "max_uses": 5,
+            }
+        ]
+    # Anthropic citation blocks and native structured output cannot be mixed.
+    # In that combination, JSON-object prompting plus local validation remains
+    # enabled without asking the API for an incompatible output_config.
+    if output_schema is not None and not web_search:
+        request["output_config"] = {
+            "format": {
+                "type": "json_schema",
+                "schema": output_schema,
+            }
+        }
     headers = {
         "x-api-key": api_key,
         "anthropic-version": "2023-06-01",
@@ -778,27 +1137,67 @@ def _call_hosted_api(
     stream_output: bool,
     use_system_proxy: bool,
     unique_id: str | None,
+    web_search: bool,
+    output_format: str,
+    output_schema: dict[str, Any] | None,
+    schema_api_style: str,
 ) -> str:
     if image_detail not in IMAGE_DETAILS:
         raise ValueError(f"image_detail must be one of {IMAGE_DETAILS}.")
     if reasoning_effort not in REASONING_EFFORTS:
         raise ValueError(f"reasoning_effort must be one of {REASONING_EFFORTS}.")
+    if web_search and profile.web_search == "none":
+        raise ValueError(
+            f"{profile.label} does not expose native web search through this API. "
+            "Choose OpenAI, Gemini, Anthropic, xAI, or route the model through "
+            "OpenRouter."
+        )
+    if profile.web_search == "gemini" and (
+        web_search or output_format != "Text"
+    ):
+        return validate_structured_output(
+            _call_gemini_api(
+                profile=profile,
+                model=model,
+                api_key=api_key,
+                system_prompt=system_prompt,
+                prompt=prompt,
+                image_data=image_data,
+                timeout_seconds=timeout_seconds,
+                max_output_tokens=max_output_tokens,
+                stream_output=stream_output,
+                use_system_proxy=use_system_proxy,
+                unique_id=unique_id,
+                web_search=web_search,
+                output_format=output_format,
+                output_schema=output_schema,
+            ),
+            output_format,
+            output_schema,
+        )
     if mode == "Anthropic Messages":
         if not endpoint:
             raise ValueError("Anthropic Messages requires its fixed API endpoint.")
-        return _call_anthropic_api(
-            profile=profile,
-            model=model,
-            endpoint=endpoint,
-            api_key=api_key,
-            system_prompt=system_prompt,
-            prompt=prompt,
-            image_data=image_data,
-            timeout_seconds=timeout_seconds,
-            max_output_tokens=max_output_tokens,
-            stream_output=stream_output,
-            use_system_proxy=use_system_proxy,
-            unique_id=unique_id,
+        return validate_structured_output(
+            _call_anthropic_api(
+                profile=profile,
+                model=model,
+                endpoint=endpoint,
+                api_key=api_key,
+                system_prompt=system_prompt,
+                prompt=prompt,
+                image_data=image_data,
+                timeout_seconds=timeout_seconds,
+                max_output_tokens=max_output_tokens,
+                stream_output=stream_output,
+                use_system_proxy=use_system_proxy,
+                unique_id=unique_id,
+                web_search=web_search,
+                output_format=output_format,
+                output_schema=output_schema,
+            ),
+            output_format,
+            output_schema,
         )
     openai = require_module("openai", "openai>=2,<3")
     client_kwargs: dict[str, Any] = {
@@ -845,6 +1244,19 @@ def _call_hosted_api(
                 request["store"] = False
                 if reasoning_effort != "none":
                     request["reasoning"] = {"effort": reasoning_effort}
+            if web_search:
+                request["tools"] = [{"type": "web_search"}]
+            if output_format == "JSON object":
+                request["text"] = {"format": {"type": "json_object"}}
+            elif output_schema is not None:
+                request["text"] = {
+                    "format": {
+                        "type": "json_schema",
+                        "name": "comfyui_output",
+                        "strict": True,
+                        "schema": output_schema,
+                    }
+                }
             if stream_output:
                 result = _stream_responses(client, request, sender)
             else:
@@ -877,6 +1289,15 @@ def _call_hosted_api(
             }
             if profile.supports_seed and int(seed):
                 request["seed"] = int(seed)
+            response_format = _chat_response_format(
+                output_format,
+                output_schema,
+                schema_api_style,
+            )
+            if response_format is not None:
+                request["response_format"] = response_format
+            if web_search and profile.web_search == "openrouter":
+                request["tools"] = [{"type": "openrouter:web_search"}]
             if stream_output:
                 result = _stream_chat(client, request, sender)
             else:
@@ -889,6 +1310,11 @@ def _call_hosted_api(
                 )
         if not result:
             raise RuntimeError("The provider returned an empty text response.")
+        result = validate_structured_output(
+            result,
+            output_format,
+            output_schema,
+        )
         if sender is not None:
             sender(result)
         return result
@@ -919,6 +1345,11 @@ def execute_hosted(
     use_system_proxy: bool,
     unique_id: str | None,
     image_data: list[str] | None = None,
+    image_detail: str = "auto",
+    web_search: bool = False,
+    output_format: str = "Text",
+    json_schema: str = "",
+    schema_api_style: str = "Auto (provider native)",
 ) -> tuple[str, str, ProviderProfile]:
     profile = provider_profile(model_name)
     model = (model_override or profile.model).strip()
@@ -937,6 +1368,14 @@ def execute_hosted(
         loopback=loopback,
     )
     mode = profile.api_mode if api_mode == "Auto" else api_mode
+    if (
+        api_mode == "Auto"
+        and profile.provider == "Groq"
+        and output_format != "Text"
+    ):
+        # Groq documents structured output on Chat Completions. Keep Responses
+        # as the fast default for ordinary text/vision generation.
+        mode = "Chat Completions"
     if mode not in {"Responses", "Chat Completions", "Anthropic Messages"}:
         raise ValueError("api_mode must be Auto, Responses, or Chat Completions.")
     if mode == "Responses" and not profile.responses:
@@ -950,6 +1389,17 @@ def execute_hosted(
         system_prompt,
         MAX_SYSTEM_PROMPT_CHARS,
     )
+    output_schema = parse_json_schema(output_format, json_schema)
+    safe_system_prompt = _structured_prompt(
+        safe_system_prompt,
+        output_format,
+        output_schema,
+    )
+    effective_schema_style = (
+        _schema_style(profile, schema_api_style)
+        if output_format == "JSON Schema"
+        else profile.schema_api_style
+    )
     result = _call_hosted_api(
         profile=profile,
         model=model,
@@ -959,7 +1409,7 @@ def execute_hosted(
         system_prompt=safe_system_prompt,
         prompt=safe_prompt,
         image_data=images,
-        image_detail=IMAGE_DETAILS[0],
+        image_detail=image_detail,
         timeout_seconds=max(1.0, min(1800.0, float(timeout_seconds))),
         max_output_tokens=max(1, min(131072, int(max_output_tokens))),
         reasoning_effort=reasoning_effort,
@@ -967,6 +1417,10 @@ def execute_hosted(
         stream_output=bool(stream_output),
         use_system_proxy=bool(use_system_proxy),
         unique_id=unique_id,
+        web_search=bool(web_search),
+        output_format=output_format,
+        output_schema=output_schema,
+        schema_api_style=effective_schema_style,
     )
     return result, model, profile
 
@@ -1057,6 +1511,47 @@ class PromptGenerateAPI:
                     "INT",
                     {"default": 4096, "min": 1, "max": 131072},
                 ),
+                "web_search": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": (
+                            "Enable the provider's native/server-side web search. "
+                            "Search calls may have additional cost and data terms."
+                        ),
+                    },
+                ),
+                "output_format": (
+                    OUTPUT_FORMATS,
+                    {
+                        "default": "Text",
+                        "tooltip": (
+                            "JSON modes are parsed and validated locally before "
+                            "the node succeeds."
+                        ),
+                    },
+                ),
+                "json_schema": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "",
+                        "tooltip": (
+                            "JSON Schema object used when output_format is "
+                            "JSON Schema."
+                        ),
+                    },
+                ),
+                "schema_api_style": (
+                    SCHEMA_API_STYLES,
+                    {
+                        "default": "Auto (provider native)",
+                        "tooltip": (
+                            "Custom / Local compatibility override. llama.cpp "
+                            "uses a different response_format schema shape."
+                        ),
+                    },
+                ),
                 "stream_output": ("BOOLEAN", {"default": True}),
                 "use_system_proxy": (
                     "BOOLEAN",
@@ -1095,6 +1590,10 @@ class PromptGenerateAPI:
         timeout_seconds=120.0,
         reasoning_effort="none",
         max_output_tokens=4096,
+        web_search=False,
+        output_format="Text",
+        json_schema="",
+        schema_api_style="Auto (provider native)",
         stream_output=True,
         use_system_proxy=False,
         unique_id=None,
@@ -1119,6 +1618,10 @@ class PromptGenerateAPI:
             stream_output=stream_output,
             use_system_proxy=use_system_proxy,
             unique_id=unique_id,
+            web_search=web_search,
+            output_format=output_format,
+            json_schema=json_schema,
+            schema_api_style=schema_api_style,
         )
         return (result,)
 
@@ -1200,6 +1703,41 @@ class HostedVLMAPI:
                     REASONING_EFFORTS,
                     {"default": "none"},
                 ),
+                "web_search": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": (
+                            "Enable native/server-side search where the selected "
+                            "provider supports it."
+                        ),
+                    },
+                ),
+                "output_format": (
+                    OUTPUT_FORMATS,
+                    {"default": "Text"},
+                ),
+                "json_schema": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "",
+                        "tooltip": (
+                            "For JSON Schema mode, including open-source VLMs "
+                            "served by llama.cpp, vLLM, or Ollama."
+                        ),
+                    },
+                ),
+                "schema_api_style": (
+                    SCHEMA_API_STYLES,
+                    {
+                        "default": "Auto (provider native)",
+                        "tooltip": (
+                            "Custom / Local only. Select llama.cpp for its direct "
+                            "schema response_format dialect."
+                        ),
+                    },
+                ),
                 "stream_output": ("BOOLEAN", {"default": True}),
                 "use_system_proxy": ("BOOLEAN", {"default": False}),
             },
@@ -1232,6 +1770,10 @@ class HostedVLMAPI:
         timeout_seconds=180.0,
         max_output_tokens=4096,
         reasoning_effort="none",
+        web_search=False,
+        output_format="Text",
+        json_schema="",
+        schema_api_style="Auto (provider native)",
         stream_output=True,
         use_system_proxy=False,
         unique_id=None,
@@ -1247,50 +1789,27 @@ class HostedVLMAPI:
             if images is not None
             else []
         )
-        model = (model_override or profile.model).strip()
-        if not model:
-            raise ValueError(f"A model_override is required for {profile.label}.")
-        if image_data and not profile.vision:
-            raise ValueError(f"{profile.label} does not accept image input.")
-
-        endpoint, loopback = resolve_endpoint(profile, base_url)
-        api_key = resolve_api_key(
-            profile,
-            credential_source,
-            loopback=loopback,
-        )
-        mode = profile.api_mode if api_mode == "Auto" else api_mode
-        if mode not in {"Responses", "Chat Completions", "Anthropic Messages"}:
-            raise ValueError(
-                "api_mode must be Auto, Responses, or Chat Completions."
-            )
-        if mode == "Responses" and not profile.responses:
-            raise ValueError(
-                f"{profile.provider} is configured for Chat Completions. Use Auto."
-            )
-        safe_prompt = _bounded_text("prompt", prompt, MAX_PROMPT_CHARS)
-        safe_system_prompt = _bounded_text(
-            "system_prompt",
-            system_prompt,
-            MAX_SYSTEM_PROMPT_CHARS,
-        )
-        result = _call_hosted_api(
-            profile=profile,
-            model=model,
-            endpoint=endpoint,
-            api_key=api_key,
-            mode=mode,
-            system_prompt=safe_system_prompt,
-            prompt=safe_prompt,
-            image_data=image_data,
-            image_detail=image_detail,
-            timeout_seconds=max(1.0, min(1800.0, float(timeout_seconds))),
-            max_output_tokens=max(1, min(131072, int(max_output_tokens))),
+        result, model, _profile = execute_hosted(
+            model_name=model_name,
+            credential_source=credential_source,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            base_url=base_url,
+            model_override=model_override,
+            api_mode=api_mode,
+            timeout_seconds=timeout_seconds,
+            max_output_tokens=max_output_tokens,
             reasoning_effort=reasoning_effort,
             seed=0,
             stream_output=stream_output,
             use_system_proxy=use_system_proxy,
             unique_id=unique_id,
+            image_data=image_data,
+            image_detail=image_detail,
+            web_search=web_search,
+            output_format=output_format,
+            json_schema=json_schema,
+            schema_api_style=schema_api_style,
         )
         return result, model, len(image_data)
 
