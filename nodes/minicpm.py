@@ -160,7 +160,7 @@ class MiniCPMNode(CachedModelNode):
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate"
-    CATEGORY = "VLM Nodes/MiniCPM-V"
+    CATEGORY = "VLM Nodes/Legacy/Model Loaders"
 
     def generate(
         self,

@@ -118,7 +118,7 @@ class Joytag(CachedModelNode):
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "tags"
-    CATEGORY = "VLM Nodes/JoyTag"
+    CATEGORY = "VLM Nodes/Vision/Tagging"
 
     def tags(
         self,

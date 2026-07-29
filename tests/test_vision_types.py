@@ -13,11 +13,15 @@ DETECTIONS_SCHEMA = vision_types.DETECTIONS_SCHEMA
 EVENTS_SCHEMA = vision_types.EVENTS_SCHEMA
 POINTS_SCHEMA = vision_types.POINTS_SCHEMA
 SCHEMA_VERSION = vision_types.SCHEMA_VERSION
+SCENE_STATE_SCHEMA = vision_types.SCENE_STATE_SCHEMA
 TRACKS_SCHEMA = vision_types.TRACKS_SCHEMA
+VIDEO_SELECTION_SCHEMA = vision_types.VIDEO_SELECTION_SCHEMA
 VLM_DETECTIONS = vision_types.VLM_DETECTIONS
 VLM_EVENTS = vision_types.VLM_EVENTS
 VLM_POINTS = vision_types.VLM_POINTS
+VLM_SCENE_STATE = vision_types.VLM_SCENE_STATE
 VLM_TRACKS = vision_types.VLM_TRACKS
+VLM_VIDEO_SELECTION = vision_types.VLM_VIDEO_SELECTION
 Detection = vision_types.Detection
 DetectionSequence = vision_types.DetectionSequence
 EventSequence = vision_types.EventSequence
@@ -86,11 +90,15 @@ def test_public_socket_and_schema_names_are_stable():
     assert VLM_TRACKS == "VLM_TRACKS"
     assert VLM_POINTS == "VLM_POINTS"
     assert VLM_EVENTS == "VLM_EVENTS"
+    assert VLM_VIDEO_SELECTION == "VLM_VIDEO_SELECTION"
+    assert VLM_SCENE_STATE == "VLM_SCENE_STATE"
     assert SCHEMA_VERSION == 1
     assert DETECTIONS_SCHEMA == "comfyui-vlm/detections"
     assert TRACKS_SCHEMA == "comfyui-vlm/tracks"
     assert POINTS_SCHEMA == "comfyui-vlm/points"
     assert EVENTS_SCHEMA == "comfyui-vlm/events"
+    assert VIDEO_SELECTION_SCHEMA == "comfyui-vlm/video-selection"
+    assert SCENE_STATE_SCHEMA == "comfyui-vlm/scene-state"
 
 
 def test_detection_payload_is_validated_immutable_and_mask_safe():

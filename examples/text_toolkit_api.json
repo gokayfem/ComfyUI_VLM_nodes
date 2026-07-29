@@ -1,0 +1,57 @@
+{
+  "1": {
+    "class_type": "SimpleText",
+    "inputs": {
+      "input_text": "Model response:\n```json\n{\"scene\":{\"subject\":\"warehouse robot\",\"action\":\"moving a blue crate\"}}\n```"
+    }
+  },
+  "2": {
+    "class_type": "VLMJSONExtract",
+    "inputs": {
+      "text": [
+        "1",
+        0
+      ],
+      "path": "$.scene.action",
+      "output_format": "Text",
+      "if_missing": "Error",
+      "default_value": ""
+    }
+  },
+  "3": {
+    "class_type": "VLMTextTemplate",
+    "inputs": {
+      "template": "{instruction}\n\nObserved action: {text1}",
+      "variables_json": "{\"instruction\":\"Write one concise video-generation prompt.\"}",
+      "missing_values": "Error",
+      "text1": [
+        "2",
+        0
+      ]
+    }
+  },
+  "4": {
+    "class_type": "VLMTextClean",
+    "inputs": {
+      "text": [
+        "3",
+        0
+      ],
+      "unicode_normalization": "NFC",
+      "whitespace": "Normalize line endings",
+      "trim_edges": true,
+      "remove_outer_markdown_fence": false,
+      "deduplicate_lines": false,
+      "max_characters": 0
+    }
+  },
+  "5": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "4",
+        0
+      ]
+    }
+  }
+}

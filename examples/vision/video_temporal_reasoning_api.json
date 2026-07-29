@@ -1,0 +1,91 @@
+{
+  "1": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "video_understanding_input.mp4"
+    }
+  },
+  "2": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "1",
+        0
+      ]
+    }
+  },
+  "3": {
+    "class_type": "VLMVideoTemporalReasoner",
+    "inputs": {
+      "frames": [
+        "2",
+        0
+      ],
+      "fps": [
+        "2",
+        2
+      ],
+      "task": "Detailed temporal summary",
+      "question": "Describe what happens over time and identify the visible evidence.",
+      "model": "Qwen 3 VL 2B Instruct",
+      "custom_model_id": "",
+      "memory_mode": "ComfyUI managed (BF16)",
+      "max_frames": 16,
+      "max_events": 24,
+      "max_new_tokens": 768,
+      "strategy": "Hybrid: scene + motion + tracks",
+      "minimum_gap_seconds": 0.15,
+      "analysis_max_side": 448,
+      "attention_mode": "Auto (SDPA)",
+      "enable_thinking": false,
+      "strict_output": true,
+      "unload_after": false,
+      "stream_output": true
+    }
+  },
+  "4": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "3",
+        0
+      ]
+    }
+  },
+  "5": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "3",
+        6
+      ]
+    }
+  },
+  "6": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "3",
+        7
+      ]
+    }
+  },
+  "7": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "3",
+        5
+      ]
+    }
+  },
+  "8": {
+    "class_type": "PreviewImage",
+    "inputs": {
+      "images": [
+        "3",
+        3
+      ]
+    }
+  }
+}

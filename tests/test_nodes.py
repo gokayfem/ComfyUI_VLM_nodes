@@ -40,6 +40,7 @@ def test_every_module_imports_and_expected_nodes_exist():
     assert package.IMPORT_ERRORS == {}
     expected = {
         "ModernVLM",
+        "LegacyModernVLM",
         "VLMRuntimeDiagnostics",
         "Florence2",
         "Paligemma",
@@ -410,6 +411,37 @@ def test_modern_catalog_has_current_quality_and_low_vram_tiers():
     assert "ibm-granite/granite-vision-4.1-4b" in repositories
 
 
+def test_modern_picker_is_curated_and_legacy_models_remain_compatible():
+    visible = tuple(modern_vlm.ModernVLM.INPUT_TYPES()["required"]["model"][0])
+    legacy = tuple(
+        modern_vlm.LegacyModernVLM.INPUT_TYPES()["required"]["model"][0]
+    )
+    assert visible == modern_vlm.RECOMMENDED_MODEL_LABELS
+    assert legacy == modern_vlm.LEGACY_MODEL_LABELS
+    assert len(visible) == 12
+    assert set(visible).isdisjoint(legacy)
+    assert set(visible) | set(legacy) == set(modern_vlm.MODEL_CATALOG)
+    assert (
+        modern_vlm.ModernVLM.VALIDATE_INPUTS(
+            "Qwen 2.5 VL 3B Instruct (legacy workflows)"
+        )
+        is True
+    )
+    for node_name in (
+        "Kosmos2model",
+        "MCLLaVAModel",
+        "MiniCPMNode",
+        "MolmoNode",
+        "MoonDream",
+        "Paligemma",
+        "Qwen2VLNode",
+        "UformGen2QwenNode",
+    ):
+        assert package.NODE_CLASS_MAPPINGS[node_name].CATEGORY.startswith(
+            "VLM Nodes/Legacy/"
+        )
+
+
 def test_modern_video_is_primary_input_and_thinking_is_explicit():
     assert "image" in modern_vlm.ModernVLM.INPUT_TYPES()["optional"]
     assert "image" in qwen2vl.Qwen2VLNode.INPUT_TYPES()["optional"]
@@ -513,6 +545,11 @@ def test_view_text_frontend_rehydrates_and_uses_native_progress_channel():
     assert 'api.addEventListener("progress_text"' in source
     assert "onNodeOutputsUpdated(nodeOutputs)" in source
     assert "connectedViewTextNodes(source)" in source
+    assert '"VLMVideoTemporalReasoner"' in source
+    assert 'makeButton("Save"' in source
+    assert 'makeButton("Wrap: on"' in source
+    assert 'makeButton("Follow: on"' in source
+    assert "isReroute(target)" in source
 
 
 def test_internvl_video_uses_an_even_vision_patch_grid():

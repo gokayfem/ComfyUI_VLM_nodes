@@ -31,6 +31,7 @@ node_list = [
     "suggest",
     "tracking",
     "uform",
+    "video_intelligence",
     "vision_utils",
 ]
 

@@ -134,7 +134,7 @@ class Moondream2model(CachedModelNode):
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "moondream2_generate_predictions"
-    CATEGORY = "VLM Nodes/Moondream2"
+    CATEGORY = "VLM Nodes/Modern/Edge"
 
     def moondream2_generate_predictions(
         self,

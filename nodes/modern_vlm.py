@@ -32,6 +32,7 @@ from .runtime import (
     tensor_batch_to_pil,
     torch_dtype,
 )
+from .vision_types import VLM_VIDEO_SELECTION, VideoFrameSelection
 
 
 @dataclass(frozen=True)
@@ -189,6 +190,24 @@ MODEL_CATALOG = {
         trust_remote_code=True,
     ),
 }
+
+RECOMMENDED_MODEL_LABELS = (
+    "Qwen 3.5 0.8B (fastest current)",
+    "Qwen 3.5 4B (recommended)",
+    "Qwen 3 VL 2B Instruct",
+    "Qwen 3 VL 4B Instruct",
+    "Qwen 3 VL 8B Instruct",
+    "SmolVLM2 500M Video (low VRAM)",
+    "SmolVLM2 2.2B Video",
+    "LFM2.5 VL 450M (edge)",
+    "InternVL 3.5 1B HF",
+    "Granite Vision 4.1 4B (structured documents)",
+    "Gemma 3 4B IT (license acceptance required)",
+    "Custom Hugging Face model",
+)
+LEGACY_MODEL_LABELS = tuple(
+    label for label in MODEL_CATALOG if label not in RECOMMENDED_MODEL_LABELS
+)
 
 MEMORY_MODES = (
     "ComfyUI managed (BF16)",
@@ -445,6 +464,7 @@ class ModernVLMPredictor:
         fps: float = 1.0,
         enable_thinking: bool = False,
         stream_callback: Callable[[str], None] | None = None,
+        video_selection: VideoFrameSelection | None = None,
     ) -> str:
         primary_images = (
             tensor_batch_to_pil(images) if images is not None else []
@@ -461,6 +481,27 @@ class ModernVLMPredictor:
                 f"{self.spec.family} does not advertise video support. "
                 "Disconnect video_frames or select Qwen/SmolVLM2."
             )
+        if video_selection is not None:
+            if video is None:
+                raise ValueError(
+                    "video_selection requires a connected video_frames batch."
+                )
+            if not isinstance(video_selection, VideoFrameSelection):
+                raise TypeError("video_selection must be a VLM Video Selection.")
+            if len(video_selection.frames) != len(video):
+                raise ValueError(
+                    "video_selection frame count must match video_frames."
+                )
+            source_aspect = video_selection.width / video_selection.height
+            analysis_aspect = video[0].width / video[0].height
+            if abs(source_aspect - analysis_aspect) > max(
+                0.01,
+                source_aspect * 0.01,
+            ):
+                raise ValueError(
+                    "video_selection and video_frames must have the same "
+                    "aspect ratio."
+                )
 
         results = []
         # A connected video is the primary visual input. Including ComfyUI's
@@ -483,25 +524,49 @@ class ModernVLMPredictor:
                 if video is not None
                 else [{"type": "image", "image": image}]
             )
-            effective_prompt = (
-                f"The video frames are sampled at {float(fps):g} FPS.\n\n{prompt}"
-                if video is not None
-                else prompt
-            )
+            if video is not None and video_selection is not None:
+                timeline = ", ".join(
+                    f"{position}=frame {frame.source_frame_index} "
+                    f"at {frame.timestamp:.6f}s"
+                    for position, frame in enumerate(video_selection.frames)
+                )
+                effective_prompt = (
+                    "The supplied video images are irregular samples from one "
+                    f"{video_selection.source_frame_count}-frame video at "
+                    f"{video_selection.fps:g} FPS. Supplied-image mapping: "
+                    f"{timeline}.\n\n{prompt}"
+                )
+            elif video is not None:
+                effective_prompt = (
+                    f"The video frames are sampled at {float(fps):g} FPS.\n\n"
+                    f"{prompt}"
+                )
+            else:
+                effective_prompt = prompt
             content.append({"type": "text", "text": effective_prompt})
             messages.append({"role": "user", "content": content})
 
             metadata = None
             if video is not None:
-                frame_rate = float(fps)
-                metadata = {
-                    "total_num_frames": len(video),
-                    "fps": frame_rate,
-                    "duration": len(video) / frame_rate,
-                    "frames_indices": list(range(len(video))),
-                    "width": video[0].width,
-                    "height": video[0].height,
-                }
+                if video_selection is not None:
+                    metadata = {
+                        "total_num_frames": video_selection.source_frame_count,
+                        "fps": video_selection.fps,
+                        "duration": video_selection.duration,
+                        "frames_indices": list(video_selection.indices),
+                        "width": video[0].width,
+                        "height": video[0].height,
+                    }
+                else:
+                    frame_rate = float(fps)
+                    metadata = {
+                        "total_num_frames": len(video),
+                        "fps": frame_rate,
+                        "duration": len(video) / frame_rate,
+                        "frames_indices": list(range(len(video))),
+                        "width": video[0].width,
+                        "height": video[0].height,
+                    }
             inputs = self._inputs(
                 messages,
                 enable_thinking,
@@ -607,7 +672,7 @@ class ModernVLM(CachedModelNode):
                     },
                 ),
                 "model": (
-                    list(MODEL_CATALOG),
+                    list(RECOMMENDED_MODEL_LABELS),
                     {"default": "Qwen 3 VL 2B Instruct"},
                 ),
                 "custom_model_id": ("STRING", {"default": ""}),
@@ -638,6 +703,7 @@ class ModernVLM(CachedModelNode):
                     },
                 ),
                 "video_frames": ("IMAGE",),
+                "video_selection": (VLM_VIDEO_SELECTION,),
                 "fps": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.1, "max": 60.0, "step": 0.1},
@@ -666,6 +732,15 @@ class ModernVLM(CachedModelNode):
     FUNCTION = "run"
     CATEGORY = "VLM Nodes/Modern"
 
+    @classmethod
+    def VALIDATE_INPUTS(cls, model):
+        # The visible combo is deliberately curated. Accepting every known
+        # catalog value here keeps workflows saved before the curation fully
+        # executable even when their model now lives under Legacy.
+        if model not in MODEL_CATALOG:
+            return f"Unsupported Modern VLM model {model!r}."
+        return True
+
     def run(
         self,
         prompt,
@@ -678,6 +753,7 @@ class ModernVLM(CachedModelNode):
         image=None,
         system_prompt="You are an expert visual analyst.",
         video_frames=None,
+        video_selection=None,
         fps=1.0,
         attention_mode="Auto (SDPA)",
         enable_thinking=False,
@@ -705,25 +781,45 @@ class ModernVLM(CachedModelNode):
         try:
             return (
                 predictor.generate(
-                    image,
-                    prompt,
-                    system_prompt,
-                    max_new_tokens,
-                    temperature,
-                    top_p,
-                    video_frames,
-                    fps,
-                    enable_thinking,
-                    stream_callback,
+                    images=image,
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    video_frames=video_frames,
+                    fps=fps,
+                    video_selection=video_selection,
+                    enable_thinking=enable_thinking,
+                    stream_callback=stream_callback,
                 ),
             )
         finally:
             self.maybe_clear_model(unload_after)
 
 
-NODE_CLASS_MAPPINGS = {"ModernVLM": ModernVLM}
+class LegacyModernVLM(ModernVLM):
+    """Compatibility surface for redundant, superseded, and very large tiers."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        inputs = super().INPUT_TYPES()
+        inputs["required"]["model"] = (
+            list(LEGACY_MODEL_LABELS),
+            {"default": LEGACY_MODEL_LABELS[0]},
+        )
+        return inputs
+
+    CATEGORY = "VLM Nodes/Legacy/Model Loaders"
+
+
+NODE_CLASS_MAPPINGS = {
+    "ModernVLM": ModernVLM,
+    "LegacyModernVLM": LegacyModernVLM,
+}
 NODE_DISPLAY_NAME_MAPPINGS = {
     "ModernVLM": (
         "Modern VLM (Qwen / SmolVLM2 / LFM / InternVL / Granite / Gemma)"
-    )
+    ),
+    "LegacyModernVLM": "[Legacy] Modern VLM Compatibility",
 }
