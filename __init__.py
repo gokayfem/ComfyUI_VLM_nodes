@@ -10,6 +10,7 @@ node_list = [
     "audioldm2",
     "diagnostics",
     "florence2",
+    "grounding",
     "joytag",
     "kosmos2",
     "llavaloader",
@@ -22,9 +23,14 @@ node_list = [
     "paligemma",
     "playmusic",
     "qwen2vl",
+    "sam2",
+    "sam3_adapter",
     "simpletext",
+    "spatial_parser",
     "suggest",
+    "tracking",
     "uform",
+    "vision_utils",
 ]
 
 NODE_CLASS_MAPPINGS = {}

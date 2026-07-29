@@ -1,0 +1,45 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "grounding_input.png"
+    }
+  },
+  "2": {
+    "class_type": "VLMOpenVocabularyDetection",
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ],
+      "model": "Grounding DINO Tiny (fast)",
+      "labels": "person, dog, bicycle",
+      "box_threshold": 0.3,
+      "text_threshold": 0.25,
+      "max_detections": 100,
+      "fps": 1.0,
+      "nms_threshold": 0.5,
+      "precision": "auto",
+      "batch_size": 1,
+      "unload_after": false
+    }
+  },
+  "3": {
+    "class_type": "PreviewImage",
+    "inputs": {
+      "images": [
+        "2",
+        2
+      ]
+    }
+  },
+  "4": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "2",
+        1
+      ]
+    }
+  }
+}

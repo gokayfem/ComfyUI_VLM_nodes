@@ -1,10 +1,11 @@
 [project]
 name = "comfyui_vlm_nodes"
-version = "2.3.0"
+version = "3.0.0"
 description = "Production-ready local and API vision-language nodes for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
   "accelerate>=1.1,<2",
   "bitsandbytes>=0.50,<1; (sys_platform == 'linux' and platform_machine == 'x86_64') or (sys_platform == 'linux' and platform_machine == 'aarch64') or (sys_platform == 'win32' and platform_machine == 'AMD64') or (sys_platform == 'win32' and platform_machine == 'ARM64') or (sys_platform == 'darwin' and platform_machine == 'arm64')",
@@ -15,6 +16,7 @@ dependencies = [
   "pydantic>=2.7,<3",
   "qwen-vl-utils>=0.0.14",
   "safetensors>=0.4.3",
+  "scipy>=1.10,<2",
   "soundfile>=0.12",
   "symusic>=0.5",
   "transformers>=5.4,<6",
@@ -50,3 +52,23 @@ Issues = "https://github.com/gokayfem/ComfyUI_VLM_nodes/issues"
 PublisherId = "gokayfem"
 DisplayName = "ComfyUI VLM Nodes"
 Icon = ""
+
+[tool.setuptools]
+packages = [
+  "comfyui_vlm_nodes",
+  "comfyui_vlm_nodes.nodes",
+  "comfyui_vlm_nodes.nodes.joytagger",
+  "comfyui_vlm_nodes.web",
+  "comfyui_vlm_nodes.web.js",
+]
+include-package-data = true
+
+[tool.setuptools.package-dir]
+comfyui_vlm_nodes = "."
+
+[tool.setuptools.package-data]
+comfyui_vlm_nodes = [
+  "*.json",
+  "requirements*.txt",
+]
+"comfyui_vlm_nodes.web.js" = ["*.js"]
