@@ -103,9 +103,10 @@ useful model capabilities:
   expression segmentation, with structured JSON, mask, and overlay outputs.
 - **PaLI-Gemma**: caption/VQA plus the official 16-token VQ-VAE segmentation
   decoder; segmentation tokens are no longer misinterpreted as polygon points.
-- **Moondream2**: pinned query API with explicit decoding controls. Its current
-  checkpoint is not marked passed on the tested Torch/Transformers stack; use a
-  small Modern VLM preset for production.
+- **Moondream2**: pinned query API with explicit decoding controls. The official
+  checkpoint is loaded through its native safetensors state dict, avoiding the
+  silent empty-output regression in Transformers 5 while retaining ComfyUI
+  managed loading and unloading.
 - **Qwen2-VL**: image batches and real video-frame batches.
 - **Legacy Molmo, Kosmos-2, UForm, MCLLaVA, and MiniCPM-V 2.6 GGUF**, plus
   maintained JoyTag.
@@ -397,6 +398,12 @@ Linux/Windows and Apple Silicon on macOS 13 or newer. It does not currently
 provide local ROCm, Intel GPU, or CPU execution. Those platforms retain every
 portable Transformers, GGUF, API, and vision utility node in this pack.
 
+On CUDA 12 x86-64 systems the isolated requirements deliberately install
+`nvidia-cuda-runtime-cu12==12.9.79`. Kestrel 0.4.6's AOT kernels require the
+`cudaLibraryLoadData` entry point, which is absent from the CUDA 12.6 runtime
+bundled by cu126 PyTorch. This pin updates only Photon's private runtime; it
+does not replace ComfyUI's PyTorch build or the host NVIDIA driver.
+
 GGUF nodes use optional `llama-cpp-python`. Install a wheel built for the
 desired CUDA, ROCm/HIP, Metal, Vulkan, SYCL, or CPU backend:
 
@@ -447,10 +454,13 @@ Gemma 3 and PaLI-Gemma require accepting their model licenses on Hugging Face.
   exact isolated process. `unload_after=true` gracefully shuts it down and
   terminates that process if necessary, which releases Photon model, KV-cache,
   and CUDA-graph allocations without flushing unrelated ComfyUI models. The
+  sidecar intentionally does not inherit ComfyUI's PyTorch allocator override;
+  Photon's CUDA-graph capture uses the native allocator in its own process. The
   worker does not inherit unrelated provider keys or proxy credentials; only
   `HF_TOKEN`, and `MOONDREAM_API_KEY` for an explicitly selected adapter, may
-  cross into its server-side environment. Its random IPC secret is not placed
-  on the process command line.
+  cross into its server-side environment. Base-model sidecars honor
+  `DO_NOT_TRACK` locally and do not start Kestrel's anonymous telemetry task.
+  Its random IPC secret is not placed on the process command line.
 - A connected `video_frames` batch becomes the primary visual input. The
   optional still-image socket is ignored for video inference so smaller models
   cannot silently answer from the wrong media.

@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import inspect
 import json
@@ -257,6 +258,8 @@ def test_worker_auth_is_not_exposed_in_process_arguments_and_logs_are_redacted(
     monkeypatch.setenv("HF_TOKEN", "hf-server-side")
     monkeypatch.setenv("MOONDREAM_API_KEY", "adapter-only")
     monkeypatch.setenv("HTTPS_PROXY", "https://user:password@example.test")
+    monkeypatch.setenv("PYTORCH_ALLOC_CONF", "backend:cudaMallocAsync")
+    monkeypatch.setenv("PYTORCH_CUDA_ALLOC_CONF", "backend:cudaMallocAsync")
     base_environment = module._worker_environment(
         tmp_path,
         b"\x01" * 32,
@@ -267,6 +270,8 @@ def test_worker_auth_is_not_exposed_in_process_arguments_and_logs_are_redacted(
     assert "OPENAI_API_KEY" not in base_environment
     assert "MOONDREAM_API_KEY" not in base_environment
     assert "HTTPS_PROXY" not in base_environment
+    assert "PYTORCH_ALLOC_CONF" not in base_environment
+    assert "PYTORCH_CUDA_ALLOC_CONF" not in base_environment
     assert base_environment["MOONDREAM_WORKER_AUTH"] == "01" * 32
 
     adapter_environment = module._worker_environment(
@@ -325,3 +330,32 @@ def test_worker_registers_official_31_id_only_when_upstream_is_missing(
     assert registered.checkpoint_format == "md3"
     assert not worker._register_moondream31_if_needed("moondream3.1-9B-A2B")
     assert not worker._register_moondream31_if_needed("custom-model")
+
+
+def test_worker_honors_do_not_track_for_base_models(monkeypatch):
+    class SimpleClient:
+        def __init__(self):
+            self.closed = False
+
+        async def aclose(self):
+            self.closed = True
+
+    class Reporter:
+        def __init__(self):
+            self._client = SimpleClient()
+
+    fake = types.ModuleType("kestrel.photon")
+    fake.PhotonReporter = Reporter
+    monkeypatch.setitem(sys.modules, "kestrel.photon", fake)
+    monkeypatch.setenv("DO_NOT_TRACK", "1")
+    monkeypatch.delenv("MOONDREAM_API_KEY", raising=False)
+
+    assert worker._honor_do_not_track()
+    reporter = Reporter()
+    assert asyncio.run(reporter.validate_api_key()) is False
+    assert reporter.start() is None
+    asyncio.run(reporter.shutdown())
+    assert reporter._client.closed
+
+    monkeypatch.setenv("MOONDREAM_API_KEY", "finetune-key")
+    assert not worker._honor_do_not_track()

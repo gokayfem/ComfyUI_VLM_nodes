@@ -1,6 +1,20 @@
-"""Current Moondream 2 node using the model's supported query API."""
+"""Current Moondream 2 node using the model's supported query API.
+
+The pinned checkpoint was authored against Transformers 4.52.4. Loading it
+through Transformers 5's ``from_pretrained`` compatibility path can silently
+produce an all-EOS model even when every tensor is reported as loaded. The
+checkpoint itself is a normal safetensors state dict, so instantiate its
+official wrapper and load that state dict directly. This keeps Moondream in
+ComfyUI's managed VRAM lifecycle without downgrading Transformers for the rest
+of the node pack.
+"""
 
 from __future__ import annotations
+
+import importlib
+import sys
+from pathlib import Path
+from types import ModuleType
 
 import torch
 
@@ -18,12 +32,59 @@ from .runtime import (
 
 MODEL_ID = "vikhyatk/moondream2"
 MODEL_REVISION = "2025-06-21"
+_CHECKPOINT_PACKAGE = "_comfyui_vlm_moondream2_checkpoint"
+
+
+def _checkpoint_module(model_path: str | Path):
+    """Import the checkpoint's relative modules without HF's generated cache.
+
+    Hugging Face's dynamic-module cache can omit transitive relative imports
+    for a local snapshot. Giving the snapshot a private package namespace lets
+    Python resolve the checkpoint's own ``.config``, ``.vision``, and related
+    modules directly and deterministically.
+    """
+
+    source = str(Path(model_path).resolve())
+    package = sys.modules.get(_CHECKPOINT_PACKAGE)
+    if package is None:
+        package = ModuleType(_CHECKPOINT_PACKAGE)
+        package.__path__ = [source]
+        package.__package__ = _CHECKPOINT_PACKAGE
+        sys.modules[_CHECKPOINT_PACKAGE] = package
+    elif list(getattr(package, "__path__", ())) != [source]:
+        raise RuntimeError(
+            "Moondream2 checkpoint source changed inside a running process. "
+            "Restart ComfyUI before loading a different snapshot."
+        )
+    return importlib.import_module(f"{_CHECKPOINT_PACKAGE}.hf_moondream")
+
+
+def _load_native_checkpoint(model_path: str | Path):
+    checkpoint = _checkpoint_module(model_path)
+    safetensors = require_module("safetensors.torch")
+    config = checkpoint.HfConfig.from_pretrained(
+        model_path,
+        local_files_only=True,
+    )
+    model = checkpoint.HfMoondream(config)
+    weights = Path(model_path) / "model.safetensors"
+    if not weights.is_file():
+        raise FileNotFoundError(f"Moondream2 weights are missing: {weights}")
+    missing, unexpected = safetensors.load_model(
+        model,
+        str(weights),
+        strict=True,
+    )
+    if missing or unexpected:
+        raise RuntimeError(
+            "Moondream2 checkpoint did not load exactly: "
+            f"missing={sorted(missing)}, unexpected={sorted(unexpected)}"
+        )
+    return model.eval()
 
 
 class Moondream2Predictor:
     def __init__(self):
-        transformers = require_module("transformers")
-        dynamic_modules = require_module("transformers.dynamic_module_utils")
         model_path = snapshot_download(
             MODEL_ID,
             "moondream2",
@@ -31,31 +92,7 @@ class Moondream2Predictor:
             ignore_patterns=["*.bin", "*.gguf"],
         )
         self.dtype = torch_dtype("bfloat16")
-        config = transformers.AutoConfig.from_pretrained(
-            model_path,
-            revision=MODEL_REVISION,
-            trust_remote_code=True,
-        )
-        remote_class = dynamic_modules.get_class_from_dynamic_module(
-            "hf_moondream.HfMoondream",
-            model_path,
-            local_files_only=True,
-        )
-
-        class Transformers5Moondream(remote_class):
-            def __init__(self, model_config):
-                super().__init__(model_config)
-                # The pinned remote wrapper predates the Transformers 5 model
-                # loader and does not declare its tied-weight metadata. Calling
-                # the full post_init would reinitialize custom Moondream state.
-                self.all_tied_weights_keys = {}
-
-        model = Transformers5Moondream.from_pretrained(
-            model_path,
-            config=config,
-            dtype=self.dtype,
-        )
-        model.eval()
+        model = _load_native_checkpoint(model_path)
         self.handle = ManagedTorchModel(model)
 
     def close(self):
@@ -92,9 +129,9 @@ class Moondream2Predictor:
                 response = response.get("answer", response)
             if not str(response).strip():
                 raise RuntimeError(
-                    "Moondream2 returned an empty response on this "
-                    "Torch/Transformers build. Use the Modern VLM node with "
-                    "LFM2.5-VL 450M, InternVL 3.5 1B, or Qwen3-VL 2B."
+                    "Moondream2 returned an empty response. Verify that the "
+                    f"{MODEL_REVISION} snapshot is complete, then restart "
+                    "ComfyUI so its checkpoint modules are reloaded."
                 )
             results.append(str(response))
         return batch_text(results)

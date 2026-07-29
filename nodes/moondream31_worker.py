@@ -25,6 +25,38 @@ from typing import Any
 from PIL import Image
 
 
+def _honor_do_not_track() -> bool:
+    """Disable anonymous Photon reporting when the sidecar requests privacy.
+
+    Kestrel 0.4.2 does not currently inspect the conventional DO_NOT_TRACK
+    environment variable. Base-model inference does not need its reporter, so
+    keep validation local, skip the telemetry loop, and still close the HTTP
+    client during engine shutdown. Finetune inference retains upstream auth
+    and reporting behavior because it explicitly receives an API key.
+    """
+
+    if os.environ.get("DO_NOT_TRACK") != "1":
+        return False
+    if os.environ.get("MOONDREAM_API_KEY", "").strip():
+        return False
+
+    from kestrel.photon import PhotonReporter
+
+    async def validate_api_key(self) -> bool:
+        return False
+
+    def start(self) -> None:
+        return None
+
+    async def shutdown(self) -> None:
+        await self._client.aclose()
+
+    PhotonReporter.validate_api_key = validate_api_key
+    PhotonReporter.start = start
+    PhotonReporter.shutdown = shutdown
+    return True
+
+
 def _register_moondream31_if_needed(model_name: str) -> bool:
     """Bridge the official model-card ID on runtimes released before the ID.
 
@@ -283,6 +315,7 @@ def main() -> int:
 
         base_model = _base_model_name(args.model)
         compatibility_registration = _register_moondream31_if_needed(base_model)
+        telemetry_disabled = _honor_do_not_track()
         supported_skills = _model_skills(args.model)
         kwargs: dict[str, Any] = {
             "local": True,
@@ -303,6 +336,7 @@ def main() -> int:
                 "status": "ready",
                 "moondream_version": package_version,
                 "compatibility_registration": compatibility_registration,
+                "telemetry_disabled": telemetry_disabled,
                 "skills": sorted(supported_skills),
                 "pid": os.getpid(),
             }
