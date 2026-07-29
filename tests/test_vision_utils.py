@@ -24,12 +24,18 @@ VLMDetectionsToJSON = vision_utils.VLMDetectionsToJSON
 VLMDetectionsToMasks = vision_utils.VLMDetectionsToMasks
 VLMDetectionsToPoints = vision_utils.VLMDetectionsToPoints
 VLMFilterDetections = vision_utils.VLMFilterDetections
+VLMMaskComposite = vision_utils.VLMMaskComposite
+VLMMaskProcessor = vision_utils.VLMMaskProcessor
 VLMRenderDetections = vision_utils.VLMRenderDetections
 VLMSelectDetection = vision_utils.VLMSelectDetection
 bounding_boxes_payload = vision_utils.bounding_boxes_payload
+composite_with_mask = vision_utils.composite_with_mask
 crop_detections = vision_utils.crop_detections
 detection_centers = vision_utils.detection_centers
 filter_detection_sequence = vision_utils.filter_detection_sequence
+instance_map_images = vision_utils.instance_map_images
+masks_to_images = vision_utils.masks_to_images
+process_masks = vision_utils.process_masks
 render_detections = vision_utils.render_detections
 select_detection_sequence = vision_utils.select_detection_sequence
 sequence_masks = vision_utils.sequence_masks
@@ -184,6 +190,88 @@ def test_centers_and_masks_preserve_frame_mapping_and_empty_shapes():
     assert empty_mapping == []
 
 
+def test_creator_mask_outputs_are_binary_previewable_and_instance_colored():
+    sequence = sample_sequence()
+    unions, individuals, _mapping = sequence_masks(sequence)
+    union_images = masks_to_images(unions)
+    individual_images = masks_to_images(individuals)
+    instance_maps = instance_map_images(sequence)
+
+    assert set(torch.unique(unions).tolist()) <= {0.0, 1.0}
+    assert set(torch.unique(individuals).tolist()) <= {0.0, 1.0}
+    assert union_images.shape == (2, 16, 20, 3)
+    assert individual_images.shape == (3, 16, 20, 3)
+    assert torch.equal(union_images[..., 0], unions)
+    assert torch.equal(union_images[..., 0], union_images[..., 2])
+    assert instance_maps.shape == (2, 16, 20, 3)
+    assert instance_maps.sum() > 0
+    assert torch.equal(instance_maps, instance_map_images(sequence))
+
+
+def test_mask_processing_grow_shrink_feather_and_inverse_are_batch_safe():
+    mask = torch.zeros((2, 9, 9))
+    mask[:, 4, 4] = 1
+    grown, grown_binary, grown_inverse = process_masks(
+        mask,
+        threshold=0.5,
+        grow_shrink=1,
+        feather_radius=0,
+    )
+    assert grown.shape == mask.shape
+    assert grown[0].sum() == 9
+    assert torch.equal(grown, grown_binary)
+    assert torch.allclose(grown + grown_inverse, torch.ones_like(grown))
+
+    soft, binary, inverse = process_masks(
+        mask,
+        threshold=0.5,
+        grow_shrink=2,
+        feather_radius=2,
+    )
+    assert binary[0].sum() == 25
+    assert torch.any((soft > 0) & (soft < 1))
+    assert torch.allclose(soft + inverse, torch.ones_like(soft), atol=1e-6)
+
+    full = torch.ones((1, 9, 9))
+    shrunk, _, _ = process_masks(full, grow_shrink=-1)
+    assert shrunk[0, 0].sum() == 0
+    assert shrunk[0, -1].sum() == 0
+    with pytest.raises(ValueError, match="threshold"):
+        process_masks(mask, threshold=2)
+
+
+def test_mask_composite_splits_foreground_and_broadcasts_video_batches():
+    image = torch.zeros((2, 4, 5, 3))
+    image[..., 0] = 1
+    mask = torch.zeros((1, 4, 5))
+    mask[:, :, :2] = 1
+    replacement = torch.zeros((1, 4, 5, 3))
+    replacement[..., 2] = 1
+
+    composite, foreground, background_only, mask_image = composite_with_mask(
+        image,
+        mask,
+        background=replacement,
+    )
+    assert composite.shape == image.shape
+    assert foreground.shape == image.shape
+    assert background_only.shape == image.shape
+    assert mask_image.shape == image.shape
+    assert torch.all(composite[:, :, :2, 0] == 1)
+    assert torch.all(composite[:, :, 2:, 2] == 1)
+    assert foreground[:, :, 2:].sum() == 0
+    assert background_only[:, :, :2].sum() == 0
+
+    solid, *_ = composite_with_mask(
+        image[:1],
+        mask,
+        background_color="#0f0",
+    )
+    assert torch.all(solid[:, :, 2:, 1] == 1)
+    with pytest.raises(ValueError, match="dimensions"):
+        composite_with_mask(image, torch.zeros((1, 3, 3)))
+
+
 def test_rendering_is_deterministic_batch_safe_and_empty_safe():
     image = torch.zeros((2, 16, 20, 3), dtype=torch.float32)
     sequence = sample_sequence()
@@ -264,10 +352,31 @@ def test_utility_node_contracts_and_json_round_trip():
     assert json.loads(boxes_json) == boxes
     points, points_json = VLMDetectionsToPoints().convert(sequence)
     assert json.loads(points_json) == points.to_dict()
-    union, individual, mask_json = VLMDetectionsToMasks().convert(sequence)
+    (
+        union,
+        individual,
+        mask_json,
+        inverse,
+        union_images,
+        individual_images,
+        instance_maps,
+    ) = VLMDetectionsToMasks().convert(sequence)
     assert union.shape[0] == 2
     assert individual.shape[0] == 3
     assert len(json.loads(mask_json)) == 3
+    assert torch.allclose(union + inverse, torch.ones_like(union))
+    assert union_images.shape == (2, 16, 20, 3)
+    assert individual_images.shape == (3, 16, 20, 3)
+    assert instance_maps.shape == (2, 16, 20, 3)
+
+    processed = VLMMaskProcessor().process(union, 0.5, 1, 1)
+    assert [value.shape[0] for value in processed] == [2, 2, 2, 2]
+    composited = VLMMaskComposite().composite(
+        torch.ones((2, 16, 20, 3)),
+        union,
+        "#000000",
+    )
+    assert all(value.shape == (2, 16, 20, 3) for value in composited)
 
     image = torch.zeros((2, 16, 20, 3))
     assert (
@@ -297,6 +406,8 @@ def test_every_utility_node_accepts_its_declared_inputs():
         "VLMDetectionsToBoundingBoxes",
         "VLMDetectionsToPoints",
         "VLMDetectionsToMasks",
+        "VLMMaskProcessor",
+        "VLMMaskComposite",
         "VLMRenderDetections",
         "VLMCropDetections",
     }

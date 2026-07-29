@@ -9,6 +9,7 @@ from typing import Any, Iterable
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from PIL import Image, ImageDraw
 
 from .geometry import (
@@ -251,6 +252,223 @@ def sequence_masks(
         )
     )
     return unions, individuals, mapping
+
+
+def normalize_masks(mask: torch.Tensor) -> torch.Tensor:
+    """Normalize common Comfy mask layouts to finite float ``[N, H, W]``."""
+
+    if not isinstance(mask, torch.Tensor):
+        raise TypeError("mask must be a torch.Tensor.")
+    if mask.ndim == 2:
+        mask = mask.unsqueeze(0)
+    elif mask.ndim == 4 and mask.shape[1] == 1:
+        mask = mask[:, 0]
+    elif mask.ndim == 4 and mask.shape[-1] == 1:
+        mask = mask[..., 0]
+    if mask.ndim != 3:
+        raise ValueError(
+            "mask must have shape [height, width], [batch, height, width], "
+            "[batch, 1, height, width], or [batch, height, width, 1]."
+        )
+    value = mask.to(dtype=torch.float32)
+    return torch.nan_to_num(value, nan=0.0, posinf=1.0, neginf=0.0).clamp(0, 1)
+
+
+def masks_to_images(mask: torch.Tensor) -> torch.Tensor:
+    """Return ready-to-preview black-and-white RGB images for a mask batch."""
+
+    value = normalize_masks(mask)
+    return value.unsqueeze(-1).expand(-1, -1, -1, 3).clone()
+
+
+def instance_map_images(sequence: DetectionSequence) -> torch.Tensor:
+    """Render stable object/track colors over black for every source frame."""
+
+    if not isinstance(sequence, DetectionSequence):
+        raise TypeError("detections must be a DetectionSequence.")
+    output = torch.zeros(
+        (sequence.frame_count, sequence.height, sequence.width, 3),
+        dtype=torch.float32,
+    )
+    frame_lookup = {frame.frame_index: frame for frame in sequence.frames}
+    for frame_index in range(sequence.frame_count):
+        frame = frame_lookup.get(frame_index)
+        if frame is None:
+            continue
+        for detection_index, detection in enumerate(frame.detections):
+            identity = (
+                detection.track_id
+                if detection.track_id is not None
+                else detection.label or detection_index
+            )
+            color = torch.tensor(
+                deterministic_color(identity),
+                dtype=torch.float32,
+            ).div_(255.0)
+            mask = detection_to_mask(
+                detection,
+                sequence.width,
+                sequence.height,
+            )
+            output[frame_index][mask > 0.5] = color
+    return output
+
+
+def _morph_masks(mask: torch.Tensor, grow_shrink: int) -> torch.Tensor:
+    radius = abs(int(grow_shrink))
+    if radius == 0:
+        return mask
+    kernel = radius * 2 + 1
+    value = mask.unsqueeze(1)
+    if grow_shrink > 0:
+        value = F.max_pool2d(value, kernel, stride=1, padding=radius)
+    else:
+        value = -F.max_pool2d(
+            -F.pad(
+                value,
+                (radius, radius, radius, radius),
+                mode="constant",
+                value=0.0,
+            ),
+            kernel,
+            stride=1,
+        )
+    return value[:, 0].clamp(0, 1)
+
+
+def _blur_masks(mask: torch.Tensor, radius: int) -> torch.Tensor:
+    radius = int(radius)
+    if radius <= 0:
+        return mask
+    sigma = max(radius / 3.0, 0.5)
+    coordinates = torch.arange(
+        -radius,
+        radius + 1,
+        device=mask.device,
+        dtype=mask.dtype,
+    )
+    kernel = torch.exp(-(coordinates.square()) / (2.0 * sigma * sigma))
+    kernel = kernel / kernel.sum()
+    value = mask.unsqueeze(1)
+    value = F.pad(value, (radius, radius, 0, 0), mode="replicate")
+    value = F.conv2d(value, kernel.reshape(1, 1, 1, -1))
+    value = F.pad(value, (0, 0, radius, radius), mode="replicate")
+    value = F.conv2d(value, kernel.reshape(1, 1, -1, 1))
+    return value[:, 0].clamp(0, 1)
+
+
+def process_masks(
+    mask: torch.Tensor,
+    *,
+    threshold: float = 0.5,
+    grow_shrink: int = 0,
+    feather_radius: int = 0,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Create a soft matte, strict binary mask, and inverse matte."""
+
+    if not 0.0 <= float(threshold) <= 1.0:
+        raise ValueError("threshold must be between 0 and 1.")
+    if not isinstance(grow_shrink, int):
+        raise TypeError("grow_shrink must be an integer.")
+    if not isinstance(feather_radius, int) or feather_radius < 0:
+        raise ValueError("feather_radius must be a non-negative integer.")
+    binary = (normalize_masks(mask) >= float(threshold)).to(torch.float32)
+    binary = _morph_masks(binary, grow_shrink)
+    processed = _blur_masks(binary, feather_radius)
+    return processed, binary, 1.0 - processed
+
+
+def _rgb_images(value: torch.Tensor, name: str) -> torch.Tensor:
+    images = _images(value)
+    if images.shape[-1] == 1:
+        images = images.expand(-1, -1, -1, 3)
+    elif images.shape[-1] == 4:
+        images = images[..., :3]
+    return torch.nan_to_num(
+        images.to(dtype=torch.float32),
+        nan=0.0,
+        posinf=1.0,
+        neginf=0.0,
+    ).clamp(0, 1)
+
+
+def _parse_color(value: str) -> tuple[float, float, float]:
+    text = str(value).strip()
+    if text.startswith("#"):
+        text = text[1:]
+    if len(text) == 3 and all(
+        character in "0123456789abcdefABCDEF" for character in text
+    ):
+        text = "".join(character * 2 for character in text)
+    if len(text) == 6 and all(
+        character in "0123456789abcdefABCDEF" for character in text
+    ):
+        return tuple(int(text[index : index + 2], 16) / 255.0 for index in (0, 2, 4))
+    try:
+        channels = tuple(float(channel.strip()) for channel in text.split(","))
+    except ValueError as error:
+        raise ValueError(
+            "background_color must be #RRGGBB, #RGB, or three 0-255 channels."
+        ) from error
+    if len(channels) != 3 or any(channel < 0 or channel > 255 for channel in channels):
+        raise ValueError(
+            "background_color must be #RRGGBB, #RGB, or three 0-255 channels."
+        )
+    return tuple(channel / 255.0 for channel in channels)
+
+
+def _repeat_batch(value: torch.Tensor, batch: int, name: str) -> torch.Tensor:
+    if value.shape[0] == batch:
+        return value
+    if value.shape[0] == 1:
+        return value.expand(batch, *value.shape[1:])
+    raise ValueError(f"{name} batch must contain one item or {batch} items.")
+
+
+def composite_with_mask(
+    image: torch.Tensor,
+    mask: torch.Tensor,
+    *,
+    background: torch.Tensor | None = None,
+    background_color: str = "#000000",
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Split and composite an image/video batch with predictable broadcasting."""
+
+    images = _rgb_images(image, "image")
+    masks = normalize_masks(mask)
+    if tuple(masks.shape[-2:]) != tuple(images.shape[1:3]):
+        raise ValueError("Mask dimensions must match the image dimensions.")
+    background_images = (
+        _rgb_images(background, "background") if background is not None else None
+    )
+    if background_images is not None and tuple(background_images.shape[1:3]) != tuple(
+        images.shape[1:3]
+    ):
+        raise ValueError("Background dimensions must match the image dimensions.")
+
+    batch = max(
+        images.shape[0],
+        masks.shape[0],
+        background_images.shape[0] if background_images is not None else 1,
+    )
+    images = _repeat_batch(images, batch, "image")
+    masks = _repeat_batch(masks, batch, "mask")
+    if background_images is None:
+        color = images.new_tensor(_parse_color(background_color))
+        background_images = color.reshape(1, 1, 1, 3).expand(
+            batch,
+            images.shape[1],
+            images.shape[2],
+            3,
+        )
+    else:
+        background_images = _repeat_batch(background_images, batch, "background")
+
+    alpha = masks.unsqueeze(-1)
+    foreground = images * alpha
+    background_only = images * (1.0 - alpha)
+    composite = foreground + background_images * (1.0 - alpha)
+    return composite, foreground, background_only, masks_to_images(masks)
 
 
 def _images(value: torch.Tensor) -> torch.Tensor:
@@ -659,10 +877,30 @@ class VLMDetectionsToMasks:
     def INPUT_TYPES(cls):
         return {"required": {"detections": (VLM_DETECTIONS,)}}
 
-    RETURN_TYPES = ("MASK", "MASK", "STRING")
-    RETURN_NAMES = ("union_masks", "individual_masks", "mask_map_json")
+    RETURN_TYPES = (
+        "MASK",
+        "MASK",
+        "STRING",
+        "MASK",
+        "IMAGE",
+        "IMAGE",
+        "IMAGE",
+    )
+    RETURN_NAMES = (
+        "union_masks",
+        "individual_masks",
+        "mask_map_json",
+        "inverse_union_masks",
+        "union_mask_images",
+        "individual_mask_images",
+        "instance_maps",
+    )
     FUNCTION = "convert"
     CATEGORY = "VLM Nodes/Vision/Utilities"
+    DESCRIPTION = (
+        "Convert detections to combined and per-object black/white masks, "
+        "inverse masks, previewable mask images, and stable-color instance maps."
+    )
 
     def convert(self, detections):
         unions, individuals, mapping = sequence_masks(detections)
@@ -670,6 +908,117 @@ class VLMDetectionsToMasks:
             unions,
             individuals,
             json.dumps(mapping, ensure_ascii=False, allow_nan=False),
+            1.0 - unions,
+            masks_to_images(unions),
+            masks_to_images(individuals),
+            instance_map_images(detections),
+        )
+
+
+class VLMMaskProcessor:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "mask": ("MASK",),
+                "threshold": (
+                    "FLOAT",
+                    {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01},
+                ),
+                "grow_shrink": (
+                    "INT",
+                    {
+                        "default": 0,
+                        "min": -1024,
+                        "max": 1024,
+                        "step": 1,
+                        "tooltip": "Positive grows; negative shrinks the mask.",
+                    },
+                ),
+                "feather_radius": (
+                    "INT",
+                    {"default": 0, "min": 0, "max": 1024, "step": 1},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("MASK", "MASK", "MASK", "IMAGE")
+    RETURN_NAMES = (
+        "processed_mask",
+        "binary_mask",
+        "inverse_mask",
+        "mask_image",
+    )
+    FUNCTION = "process"
+    CATEGORY = "VLM Nodes/Vision/Mask Tools"
+    DESCRIPTION = (
+        "Threshold, grow/shrink, and feather any VLM or Comfy mask. Returns "
+        "the soft matte, strict binary mask, inverse matte, and black/white image."
+    )
+
+    def process(
+        self,
+        mask,
+        threshold=0.5,
+        grow_shrink=0,
+        feather_radius=0,
+    ):
+        processed, binary, inverse = process_masks(
+            mask,
+            threshold=threshold,
+            grow_shrink=grow_shrink,
+            feather_radius=feather_radius,
+        )
+        return processed, binary, inverse, masks_to_images(processed)
+
+
+class VLMMaskComposite:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "mask": ("MASK",),
+                "background_color": (
+                    "STRING",
+                    {
+                        "default": "#000000",
+                        "tooltip": "#RRGGBB, #RGB, or R,G,B in the 0-255 range.",
+                    },
+                ),
+            },
+            "optional": {
+                "background": ("IMAGE",),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "IMAGE", "IMAGE", "IMAGE")
+    RETURN_NAMES = (
+        "composite",
+        "foreground",
+        "background_only",
+        "mask_image",
+    )
+    FUNCTION = "composite"
+    CATEGORY = "VLM Nodes/Vision/Mask Tools"
+    DESCRIPTION = (
+        "Apply a mask to still-image or video batches. Composite the selected "
+        "foreground over a solid color or optional background image and also "
+        "return isolated foreground, original background, and mask preview."
+    )
+
+    def composite(
+        self,
+        image,
+        mask,
+        background_color="#000000",
+        background=None,
+    ):
+        return composite_with_mask(
+            image,
+            mask,
+            background=background,
+            background_color=background_color,
         )
 
 
@@ -765,6 +1114,8 @@ NODE_CLASS_MAPPINGS = {
     "VLMDetectionsToBoundingBoxes": VLMDetectionsToBoundingBoxes,
     "VLMDetectionsToPoints": VLMDetectionsToPoints,
     "VLMDetectionsToMasks": VLMDetectionsToMasks,
+    "VLMMaskProcessor": VLMMaskProcessor,
+    "VLMMaskComposite": VLMMaskComposite,
     "VLMRenderDetections": VLMRenderDetections,
     "VLMCropDetections": VLMCropDetections,
 }
@@ -777,6 +1128,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "VLMDetectionsToBoundingBoxes": "VLM Detections to Bounding Boxes",
     "VLMDetectionsToPoints": "VLM Detection Centers",
     "VLMDetectionsToMasks": "VLM Detections to Masks",
+    "VLMMaskProcessor": "VLM Mask Processor",
+    "VLMMaskComposite": "VLM Mask Composite",
     "VLMRenderDetections": "Render VLM Detections",
     "VLMCropDetections": "Crop VLM Detections",
 }
@@ -792,12 +1145,19 @@ __all__ = [
     "VLMDetectionsToMasks",
     "VLMDetectionsToPoints",
     "VLMFilterDetections",
+    "VLMMaskComposite",
+    "VLMMaskProcessor",
     "VLMRenderDetections",
     "VLMSelectDetection",
     "bounding_boxes_payload",
+    "composite_with_mask",
     "crop_detections",
     "detection_centers",
     "filter_detection_sequence",
+    "instance_map_images",
+    "masks_to_images",
+    "normalize_masks",
+    "process_masks",
     "render_detections",
     "select_detection_sequence",
     "sequence_masks",

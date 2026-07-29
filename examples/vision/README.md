@@ -68,3 +68,25 @@ ComfyUI returns image/video previews in the execution history and text reports
 in the output-node UI payload. Canonical JSON is also available on the linked
 string outputs. Dense masks intentionally stay as tensors rather than being
 embedded in the JSON report.
+
+## Creator mask outputs
+
+`VLM Detections to Masks` preserves its original first three outputs and
+appends creator-ready derivatives:
+
+| Index | Output |
+| ---: | --- |
+| 0 | Per-frame combined/union `MASK` |
+| 1 | Flattened per-object `MASK` batch |
+| 2 | JSON mapping each object mask to its frame/detection/track |
+| 3 | Per-frame inverse/background `MASK` |
+| 4 | Combined masks as black-and-white `IMAGE` batches |
+| 5 | Individual masks as black-and-white `IMAGE` batches |
+| 6 | Stable-color per-frame instance maps |
+
+All binary mask values are exactly zero or one. `VLM Mask Processor` can grow,
+shrink, and feather any of these masks and returns processed, binary, inverse,
+and black-and-white image outputs. `VLM Mask Composite` accepts the resulting
+mask plus still-image or video frames and returns a composite, isolated
+foreground, background-only plate, and mask image. Connect an optional
+background image/video batch to replace the solid background color.

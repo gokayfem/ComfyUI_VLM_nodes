@@ -81,12 +81,22 @@ The utility layer converts without model-specific glue:
   normalized 0–1000 JSON from any VLM into `VLM_DETECTIONS` and `VLM_POINTS`.
   `VLMSpatialPromptBuilder` creates the matching constrained prompt.
 - `VLMDetectionsToBoundingBoxes`, `VLMDetectionsToPoints`, and
-  `VLMDetectionsToMasks` emit Comfy core boxes, center points, and union plus
-  individual masks. Polygon/quad masks are rasterized when present, otherwise
-  the bounding box is used.
+  `VLMDetectionsToMasks` emit Comfy core boxes, center points, combined and
+  individual binary masks, inverse masks, ready-to-preview black-and-white
+  images, and stable-color instance maps. Polygon/quad masks are rasterized
+  when present, otherwise the bounding box is used. Existing output indexes
+  remain stable; the creator-facing mask images and instance map are appended.
 - `VLMFilterDetections`, `VLMSelectDetection`, `VLMCropDetections`, and
   `VLMRenderDetections` provide label/score/area/frame selection, padded crops,
   and deterministic overlays.
+- `VLMMaskProcessor` accepts any Comfy `MASK`, including SAM2/SAM3 masks, and
+  returns a feathered matte, strict binary mask, inverse mask, and
+  black-and-white image. Its grow/shrink and Gaussian feathering run in Torch
+  without OpenCV or SciPy.
+- `VLMMaskComposite` applies still-image or video mask batches to a source and
+  returns the replacement composite, isolated foreground, original
+  background-only plate, and black-and-white mask image. A single mask or
+  background broadcasts safely across a video batch.
 - `VLMDetectionsFromJSON` and `VLMDetectionsToJSON` are the explicit API and
   persistence boundary for the versioned detection schema.
 
