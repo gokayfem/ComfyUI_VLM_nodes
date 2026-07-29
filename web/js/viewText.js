@@ -5,6 +5,8 @@ const OUTPUT_NAME = "output_text";
 const VIEW_TEXT_NODE = "ViewText";
 const STREAMING_SOURCE_NODES = new Set([
     "ModernVLM",
+    "Moondream31Query",
+    "Moondream31Caption",
     "PromptGenerateAPI",
     "HostedVLMAPI",
     "VLMVideoTemporalReasoner",

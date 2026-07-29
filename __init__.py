@@ -7,6 +7,7 @@ LOGGER = logging.getLogger("ComfyUI_VLM_nodes")
 register_model_folder()
 
 node_list = [
+    "acceleration",
     "audioldm2",
     "diagnostics",
     "florence2",
@@ -19,6 +20,7 @@ node_list = [
     "minicpm",
     "modern_vlm",
     "molmo",
+    "moondream31",
     "moondream2",
     "moondream_script",
     "paligemma",

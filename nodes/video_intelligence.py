@@ -132,13 +132,13 @@ def _visual_signals(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Return normalized per-frame motion and coarse scene-change scores."""
 
-    rgb = (
-        frames[..., :3]
-        .detach()
-        .to(dtype=torch.float32)
-        .movedim(-1, 1)
-        .clamp(0, 1)
-    )
+    # Downsample before clamping or moving to CPU. Comfy IMAGE tensors are
+    # normally float32 already, so this avoids a second full-resolution video
+    # allocation merely to compute small scene/motion thumbnails.
+    rgb = frames[..., :3].detach()
+    if rgb.dtype != torch.float32:
+        rgb = rgb.to(dtype=torch.float32)
+    rgb = rgb.movedim(-1, 1)
     side = min(int(thumbnail_size), int(frames.shape[1]), int(frames.shape[2]))
     thumbnails = F.interpolate(
         rgb,
@@ -146,7 +146,7 @@ def _visual_signals(
         mode="bilinear",
         align_corners=False,
         antialias=True,
-    )
+    ).clamp(0, 1)
     gray = (
         thumbnails[:, 0] * 0.299
         + thumbnails[:, 1] * 0.587

@@ -1,0 +1,7 @@
+# Install this file only into the isolated Moondream sidecar environment.
+# Do not install it into ComfyUI's main environment: moondream 1.3 pins
+# Pillow <11 while current ComfyUI uses a newer Pillow release.
+moondream==1.3.0
+# moondream 1.3.0 expects this exact runtime API. 0.4.7+ renamed the
+# prefix-mask kernel and is not source-compatible with kestrel 0.4.2.
+kestrel-kernels==0.4.6

@@ -1,0 +1,98 @@
+{
+  "1": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "vlm_api_people_birds.mp4"
+    }
+  },
+  "2": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "1",
+        0
+      ]
+    }
+  },
+  "3": {
+    "class_type": "VLMPerformanceProfile",
+    "inputs": {
+      "profile": "Fast video"
+    }
+  },
+  "4": {
+    "class_type": "VLMAdaptiveFrameSampler",
+    "inputs": {
+      "frames": [
+        "2",
+        0
+      ],
+      "fps": [
+        "2",
+        2
+      ],
+      "max_frames": [
+        "3",
+        0
+      ],
+      "strategy": "Hybrid: scene + motion + tracks",
+      "minimum_gap_seconds": 0.15,
+      "thumbnail_size": 96
+    }
+  },
+  "5": {
+    "class_type": "VLMImagePixelBudget",
+    "inputs": {
+      "images": [
+        "4",
+        0
+      ],
+      "max_megapixels": [
+        "3",
+        1
+      ],
+      "max_edge": [
+        "3",
+        2
+      ],
+      "multiple": "14",
+      "resize_quality": "Fast (area)"
+    }
+  },
+  "6": {
+    "class_type": "PreviewImage",
+    "inputs": {
+      "images": [
+        "5",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "4",
+        3
+      ]
+    }
+  },
+  "8": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "5",
+        3
+      ]
+    }
+  },
+  "9": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "3",
+        5
+      ]
+    }
+  }
+}
