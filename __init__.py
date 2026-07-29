@@ -11,6 +11,7 @@ node_list = [
     "diagnostics",
     "florence2",
     "grounding",
+    "hosted_api",
     "joytag",
     "kosmos2",
     "llavaloader",

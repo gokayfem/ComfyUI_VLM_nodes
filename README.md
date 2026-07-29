@@ -1,7 +1,7 @@
 # ComfyUI VLM Nodes
 
 Production-oriented vision-language, structured prompting, audio, and utility
-nodes for ComfyUI. Version 2.3 supports ComfyUI's selected NVIDIA CUDA, AMD
+nodes for ComfyUI. Version 3.1 supports ComfyUI's selected NVIDIA CUDA, AMD
 ROCm, Apple Metal, Intel XPU, and CPU device without replacing its PyTorch
 build. It removes startup installers and global accelerator cache flushes,
 adds real image/video batches and live token streaming, and uses ComfyUI model
@@ -285,10 +285,96 @@ are not available for the installed PyTorch/backend combination.
 
 ## API nodes
 
-`PromptGenerateAPI` supports the current OpenAI Responses API, the legacy Chat
-Completions API, and compatible base URLs. API keys can be supplied by node or
-environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
-`GROQ_API_KEY`). Keys are never persisted by this repository.
+**Hosted LLM API (Secure)** and **Hosted VLM API (Secure)** share a provider
+layer built around the current OpenAI Responses and Chat Completions request
+shapes, with Anthropic using its native Messages/vision contract and Gemini
+switching to its native multimodal contract for grounded or structured calls.
+The VLM node
+accepts a still image or a video-frame batch, samples
+frames uniformly, resizes and JPEG-compresses them, and enforces per-image and
+total request limits before upload. Both nodes can stream text into a connected
+`ViewText` node.
+
+Both API nodes also expose:
+
+- **Native web search** for OpenAI, Gemini, Anthropic, xAI, and any compatible
+  model routed through OpenRouter. Unsupported presets fail clearly before a
+  model request instead of silently pretending to search. Search can add
+  provider cost and has provider-specific data terms, so it is off by default.
+- **JSON object** and **JSON Schema** output. Completed JSON is always parsed
+  locally, JSON Schema results are validated locally, and invalid results fail
+  the node instead of flowing into downstream automation.
+- **Open-source structured VLM output** through Custom / Local endpoints.
+  OpenAI-standard mode supports vLLM, Ollama, and compatible servers;
+  `llama.cpp JSON Schema` emits llama.cpp's direct schema dialect; and
+  `JSON object + local validation` is a portable fallback for servers that
+  implement only JSON mode.
+
+User-provided schemas are capped at 64,000 characters, bounded by depth/node
+count, checked against their declared JSON Schema draft, and may use only local
+fragment `$ref` values. Remote/file references are rejected so validation can
+never turn into an unexpected network or filesystem lookup.
+
+Curated production profiles include:
+
+| Provider | Presets | Server environment variable |
+| --- | --- | --- |
+| OpenAI | GPT-5.6 Terra, Sol, Luna | `OPENAI_API_KEY` |
+| Google | Gemini 3.6 Flash, 3.5 Flash, 3.5 Flash-Lite | `GEMINI_API_KEY` |
+| Anthropic | Claude Fable 5, Opus 5, Sonnet 5, Haiku 4.5 | `ANTHROPIC_API_KEY` |
+| xAI | Grok 4.5 | `XAI_API_KEY` |
+| DeepSeek | V4 Flash, V4 Pro | `DEEPSEEK_API_KEY` |
+| Groq | Qwen 3.6 27B Vision, GPT-OSS 20B | `GROQ_API_KEY` |
+| Mistral | Mistral Large, Mistral Small, Ministral 14B | `MISTRAL_API_KEY` |
+| Together AI | Kimi K2.5, Qwen 3.5 9B | `TOGETHER_API_KEY` |
+| OpenRouter | Any compatible model ID | `OPENROUTER_API_KEY` |
+| Custom/local | OpenAI-compatible endpoint | `CUSTOM_API_KEY` |
+
+Preset IDs were reviewed on 2026-07-29 against the official
+[OpenAI](https://developers.openai.com/api/docs/models),
+[Gemini](https://ai.google.dev/gemini-api/docs/models),
+[Claude](https://platform.claude.com/docs/en/about-claude/models/overview),
+[xAI](https://docs.x.ai/developers/models),
+[DeepSeek](https://api-docs.deepseek.com/updates/),
+[Groq](https://console.groq.com/docs/models),
+[Mistral](https://docs.mistral.ai/models/), and
+[Together](https://docs.together.ai/docs/inference/recommended-models), plus
+[OpenRouter's multimodal compatibility](https://openrouter.ai/docs/guides/overview/multimodal/overview)
+catalogs. Use `model_override` when a provider exposes a newer compatible model
+before the next node-pack release.
+
+The capability routing follows the current official
+[OpenAI web-search](https://developers.openai.com/api/docs/guides/tools-web-search)
+and [structured-output](https://developers.openai.com/api/docs/guides/structured-outputs)
+contracts,
+[Gemini grounding](https://ai.google.dev/gemini-api/docs/google-search) and
+[structured output](https://ai.google.dev/gemini-api/docs/structured-output),
+[Claude web-search](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool)
+and [structured-output](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
+contracts, [xAI web search](https://docs.x.ai/developers/tools/web-search) and
+[structured outputs](https://docs.x.ai/developers/model-capabilities/text/structured-outputs),
+and [OpenRouter server-side search](https://openrouter.ai/docs/guides/features/server-tools/web-search).
+The local dialect is based on the
+[llama.cpp server API](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md).
+
+API keys are not node inputs. A workflow contains only the provider selection,
+and the server resolves that provider's fixed environment variable at execution
+time. Built-in credentials are pinned to the provider's official HTTPS host;
+only the custom profile accepts a URL, and it can read only `CUSTOM_API_KEY`.
+Remote custom URLs require HTTPS, while keyless HTTP is restricted to
+`localhost`/loopback. Redirect following and environment proxies are disabled
+by default, API calls are stateless, OpenAI Responses explicitly use
+`store=false`, and provider exceptions are redacted before ComfyUI receives
+them.
+
+Web search sends the prompt (and, where supported, the same multimodal request)
+to the selected provider's server-side search system. Do not enable it for
+content that must not be processed under that provider's search terms.
+
+Opening an older `PromptGenerateAPI` workflow automatically clears its former
+plaintext key widget before the graph is configured. Save the migrated workflow
+to overwrite the old file, and rotate any key that was previously saved or
+shared. See [SECURITY.md](SECURITY.md) for setup and the exact threat model.
 
 ## Reliability guarantees
 

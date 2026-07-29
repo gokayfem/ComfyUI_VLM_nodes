@@ -3,7 +3,11 @@ import { api } from "../../../scripts/api.js";
 
 const OUTPUT_NAME = "output_text";
 const VIEW_TEXT_NODE = "ViewText";
-const MODERN_VLM_NODE = "ModernVLM";
+const STREAMING_SOURCE_NODES = new Set([
+    "ModernVLM",
+    "PromptGenerateAPI",
+    "HostedVLMAPI",
+]);
 
 function ensureOutputWidget(node) {
     let widget = node.widgets?.find((item) => item.name === OUTPUT_NAME);
@@ -131,7 +135,7 @@ function updateFromProgress({ nodeId, text }) {
         setOutput(source, text, "Streaming…");
         return;
     }
-    if (source.type !== MODERN_VLM_NODE) {
+    if (!STREAMING_SOURCE_NODES.has(source.type)) {
         return;
     }
     for (const target of connectedViewTextNodes(source)) {
