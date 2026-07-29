@@ -173,6 +173,15 @@ python -m pip install llama-cpp-python \
   --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/vulkan
 ```
 
+If an Apple Metal wheel is unavailable or fails archive validation, build the
+same optional requirement from source:
+
+```bash
+CMAKE_ARGS="-DGGML_METAL=on" python -m pip install \
+  --no-cache-dir --no-binary llama-cpp-python \
+  -r ComfyUI/custom_nodes/ComfyUI_VLM_nodes/requirements-llama-cpp.txt
+```
+
 The official Windows HIP Radeon index is:
 
 ```powershell
