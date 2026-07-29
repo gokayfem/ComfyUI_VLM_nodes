@@ -8,7 +8,6 @@ producing stricter output.
 from __future__ import annotations
 
 import json
-import os
 import re
 from typing import Any, Literal, Optional
 
@@ -16,7 +15,7 @@ import folder_paths
 import torch
 from pydantic import BaseModel, Field
 
-from .prompts import system_msg_prompts, system_msg_simple
+from .prompts import system_msg_prompts
 from .runtime import (
     LlamaHandle,
     close_handle,
@@ -155,222 +154,6 @@ def _structured_chat(
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"The model did not return valid JSON: {raw[:500]}") from exc
     return raw, parsed
-
-
-API_MODELS = [
-    "GPT-5.6 Terra",
-    "GPT-5.6 Sol",
-    "GPT-5.6 Luna",
-    "DeepSeek",
-    "Custom / OpenAI-compatible",
-    # Kept so saved workflows continue to deserialize without substitutions.
-    "ChatGPT-3.5",
-    "ChatGPT-4",
-    "gpt-3.5-turbo",
-    "gpt-3.5-turbo-0125",
-    "gpt-35-turbo",
-    "gpt-3.5-turbo-16k",
-    "gpt-3.5-turbo-16k-0613",
-    "gpt-4-0613",
-    "gpt-4-1106-preview",
-    "glm-4",
-]
-
-API_ROUTES = {
-    "GPT-5.6 Sol": ("gpt-5.6-sol", None, "Responses"),
-    "GPT-5.6 Terra": ("gpt-5.6-terra", None, "Responses"),
-    "GPT-5.6 Luna": ("gpt-5.6-luna", None, "Responses"),
-    "DeepSeek": ("deepseek-chat", "https://api.deepseek.com/v1", "Chat Completions"),
-    "ChatGPT-3.5": ("gpt-3.5-turbo", None, "Chat Completions"),
-    "ChatGPT-4": ("gpt-4", None, "Chat Completions"),
-    "gpt-35-turbo": ("gpt-35-turbo", None, "Chat Completions"),
-    "glm-4": ("glm-4", None, "Chat Completions"),
-}
-
-
-class PromptGenerateAPI:
-    def __init__(self):
-        self.session_history: list[dict[str, str]] = []
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "model_name": (API_MODELS, {"default": "GPT-5.6 Terra"}),
-                "chat_type": (
-                    "BOOLEAN",
-                    {
-                        "default": True,
-                        "label_on": "Prompt Generator",
-                        "label_off": "Simple Chat",
-                    },
-                ),
-                "api_key": (
-                    "STRING",
-                    {
-                        "default": "",
-                        "tooltip": (
-                            "Leave blank to use OPENAI_API_KEY, DEEPSEEK_API_KEY, "
-                            "or VLM_API_KEY."
-                        ),
-                    },
-                ),
-                "description": (
-                    "STRING",
-                    {"multiline": True, "default": ""},
-                ),
-                "question": (
-                    "STRING",
-                    {"multiline": True, "default": ""},
-                ),
-                "context_size": (
-                    "INT",
-                    {"default": 5, "min": 0, "max": 30, "step": 1},
-                ),
-                "seed": (
-                    "INT",
-                    {
-                        "default": 0,
-                        "min": 0,
-                        "max": 0xFFFFFFFFFFFFFFFF,
-                        "step": 1,
-                    },
-                ),
-            },
-            "optional": {
-                "base_url": (
-                    "STRING",
-                    {
-                        "default": "",
-                        "tooltip": (
-                            "OpenAI-compatible base URL, e.g. http://127.0.0.1:8000/v1."
-                        ),
-                    },
-                ),
-                "model_override": (
-                    "STRING",
-                    {
-                        "default": "",
-                        "tooltip": "Exact provider model ID. Overrides the picker.",
-                    },
-                ),
-                "api_mode": (
-                    ["Auto", "Responses", "Chat Completions"],
-                    {"default": "Auto"},
-                ),
-                "timeout_seconds": (
-                    "FLOAT",
-                    {"default": 120.0, "min": 1.0, "max": 1800.0},
-                ),
-                "reasoning_effort": (
-                    ["none", "low", "medium", "high", "xhigh", "max"],
-                    {"default": "none"},
-                ),
-            },
-        }
-
-    RETURN_TYPES = ("STRING",)
-    FUNCTION = "generate_prompt"
-    CATEGORY = "VLM Nodes/LLM"
-
-    def _route(
-        self, model_name, model_override, base_url, api_mode
-    ) -> tuple[str, str | None, str]:
-        route = API_ROUTES.get(model_name)
-        if route is None:
-            if model_name in API_MODELS and model_name not in {
-                "Custom / OpenAI-compatible"
-            }:
-                route = (model_name, None, "Chat Completions")
-            else:
-                route = ("", None, "Chat Completions")
-        model, route_url, route_mode = route
-        model = (model_override or model).strip()
-        if not model:
-            raise ValueError("A model ID is required for Custom / OpenAI-compatible.")
-        effective_url = (base_url or route_url or "").strip() or None
-        mode = route_mode if api_mode == "Auto" else api_mode
-        return model, effective_url, mode
-
-    def generate_prompt(
-        self,
-        model_name,
-        chat_type,
-        api_key,
-        description,
-        question,
-        context_size,
-        seed,
-        base_url="",
-        model_override="",
-        api_mode="Auto",
-        timeout_seconds=120.0,
-        reasoning_effort="none",
-    ):
-        openai = require_module("openai", "openai")
-        model, effective_url, mode = self._route(
-            model_name, model_override, base_url, api_mode
-        )
-        key = (
-            api_key.strip()
-            or (os.getenv("DEEPSEEK_API_KEY", "") if model_name == "DeepSeek" else "")
-            or os.getenv("VLM_API_KEY", "")
-            or os.getenv("OPENAI_API_KEY", "")
-        )
-        if not key:
-            raise ValueError(
-                "No API key was supplied. Set OPENAI_API_KEY, "
-                "DEEPSEEK_API_KEY, or VLM_API_KEY, or enter the key in the node."
-            )
-
-        client_kwargs: dict[str, Any] = {
-            "api_key": key,
-            "timeout": float(timeout_seconds),
-            "max_retries": 2,
-        }
-        if effective_url:
-            client_kwargs["base_url"] = effective_url
-        client = openai.OpenAI(**client_kwargs)
-
-        system = system_msg_prompts if chat_type else system_msg_simple
-        user_message = (
-            f"Description:\n{description.strip()}\n\n"
-            f"Optional question:\n{question.strip()}"
-        ).strip()
-        history_limit = max(0, int(context_size)) * 2
-        history = self.session_history[-history_limit:] if history_limit else []
-
-        if mode == "Responses":
-            response = client.responses.create(
-                model=model,
-                instructions=system,
-                input=history + [{"role": "user", "content": user_message}],
-                reasoning={"effort": reasoning_effort},
-            )
-            result = response.output_text
-        else:
-            messages = (
-                [{"role": "system", "content": system}]
-                + history
-                + [{"role": "user", "content": user_message}]
-            )
-            request: dict[str, Any] = {
-                "model": model,
-                "messages": messages,
-                "seed": int(seed),
-            }
-            if model.startswith("gpt-5.6"):
-                request["reasoning_effort"] = reasoning_effort
-            completion = client.chat.completions.create(**request)
-            result = completion.choices[0].message.content or ""
-
-        self.session_history.extend(
-            [
-                {"role": "user", "content": user_message},
-                {"role": "assistant", "content": result},
-            ]
-        )
-        return (result,)
 
 
 class LLMLoader:
@@ -1206,7 +989,6 @@ NODE_CLASS_MAPPINGS = {
     "KeywordExtraction": KeywordExtraction,
     "LLavaPromptGenerator": LLavaPromptGenerator,
     "Suggester": Suggester,
-    "PromptGenerateAPI": PromptGenerateAPI,
     "CreativeArtPromptGenerator": CreativeArtPromptGenerator,
     "ChatMusician": ChatMusician,
     "StructuredOutput": StructuredOutput,
@@ -1221,7 +1003,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "KeywordExtraction": "Structured Keyword Extraction",
     "LLavaPromptGenerator": "Structured Prompt Generator",
     "Suggester": "Prompt Suggester",
-    "PromptGenerateAPI": "OpenAI-Compatible Prompt API",
     "CreativeArtPromptGenerator": "Creative Art Prompt Generator",
     "ChatMusician": "Chat Musician",
     "StructuredOutput": "Structured Output",
