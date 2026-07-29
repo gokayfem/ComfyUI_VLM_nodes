@@ -1,6 +1,6 @@
 [project]
 name = "comfyui_vlm_nodes"
-version = "3.2.0"
+version = "3.3.0"
 description = "Production-ready local and API vision-language nodes for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -21,6 +21,7 @@ dependencies = [
   "scipy>=1.10,<2",
   "soundfile>=0.12",
   "symusic>=0.5",
+  "svgelements>=1.9.6,<2",
   "transformers>=5.4,<6",
 ]
 classifiers = [

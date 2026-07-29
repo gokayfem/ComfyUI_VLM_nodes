@@ -49,6 +49,33 @@ cannot execute BF16. This is a portability fallback, not proof that every
 model family has been run on every vendor device. See
 [MODEL_VALIDATION.md](MODEL_VALIDATION.md) for real-hardware evidence.
 
+### Moondream 3 / 3.1 Photon
+
+Moondream Photon is deliberately isolated from ComfyUI's main Python environment
+because `moondream==1.3.0` requires Pillow 10 while current ComfyUI uses a
+newer Pillow. Its worker cache, virtual environment, and logs live under
+`models/LLavacheckpoints/moondream31-runtime`; it never replaces ComfyUI's
+PyTorch or Pillow.
+
+| Platform | Official local Photon support | This integration |
+| --- | --- | --- |
+| Linux/WSL + NVIDIA Ampere or newer | Supported | 3.1 query/caption/detection/pointing; 3 Preview SVG segmentation |
+| Windows + NVIDIA Ampere or newer | Supported | Same isolated worker contract |
+| Apple Silicon macOS 13+ | Supported with MPS | Same contract; use a conservative KV-cache profile on low-memory systems |
+| AMD ROCm, Intel GPU, CPU | Not currently provided upstream | Node stays importable and fails before model work with an actionable support message |
+
+The final Moondream 3.1 model card lists query, caption, detect, and point; it
+does not list segment. Native SVG segment uses `moondream3-preview`, and the
+loader rejects a 3.1/segment mismatch before inference.
+
+`max_batch_size` controls Photon's scheduler capacity. The detection, point,
+and preview-segmentation nodes issue `parallel_requests` frame requests concurrently,
+allowing Photon to build GPU batches. `frame_stride` bounds work for high-frame
+rate sources. Performance JSON records warm worker time, end-to-end time,
+processed/skipped frames, worker/sustained FPS, target sampled FPS, and
+real-time factor; it is a measurement from the current run, not a universal
+benchmark claim.
+
 ### Video memory and chunking
 
 - Core `Video Slice` should bound work before `GetVideoComponents` materializes
@@ -81,6 +108,10 @@ model card before redistributing weights or outputs.
   `ComfyUI/models/checkpoints`.
 - `HF_TOKEN` is used when Hugging Face requires authenticated access. Tokens
   must be supplied by the environment and must not be embedded in workflows.
+- Moondream 3.1 uses the Moondream Model License 1.0. The Loader requires an
+  explicit workflow acknowledgement. The license permits local product use
+  but restricts offering general-purpose hosted Moondream access; review the
+  current upstream terms for the intended deployment.
 
 Authoritative references:
 
@@ -88,6 +119,8 @@ Authoritative references:
 - [Meta SAM3 license](https://huggingface.co/facebook/sam3/blob/main/LICENSE)
 - [ComfyUI SAM3.1 checkpoint](https://huggingface.co/Comfy-Org/sam3.1)
 - [SAM2.1 Hiera Tiny model card](https://huggingface.co/facebook/sam2.1-hiera-tiny)
+- [Moondream 3.1 model card](https://huggingface.co/moondream/moondream3.1-9B-A2B)
+- [Moondream Model License 1.0](https://moondream.ai/licenses/model/1.0)
 
 ## Dependency behavior
 
@@ -99,6 +132,8 @@ Authoritative references:
   from blocking the whole node pack.
 - `requirements-quantization.txt` is available for an explicit quantization
   install or source-build environment.
+- `requirements-moondream31.txt` belongs only in the isolated Photon sidecar;
+  installing it into ComfyUI's environment would create a Pillow conflict.
 - Model downloads, imports, and package compilation never occur during node
   discovery.
 

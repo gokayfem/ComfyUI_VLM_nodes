@@ -31,6 +31,7 @@ from PIL import Image
 
 LOGGER = logging.getLogger("ComfyUI_VLM_nodes")
 GGUF_EXTENSIONS = {".gguf"}
+PIL_CONVERSION_CHUNK_BYTES = 128 * 1024**2
 LLAMA_FLASH_ATTENTION_CHOICES = ("Auto", "Enabled", "Disabled")
 LLAMA_SPLIT_MODE_CHOICES = ("Layer", "Row", "Single GPU")
 LLAMA_VISION_HANDLER_CHOICES = (
@@ -157,39 +158,67 @@ def hf_download(repo_id: str, filename: str, subdirectory: str, **kwargs: Any) -
     return Path(hub.hf_hub_download(**download_kwargs))
 
 
+def _tensor_image_batch_to_uint8(images: torch.Tensor) -> np.ndarray:
+    """Convert HWC/CHW/BHWC/BCHW image data in one vectorized transfer.
+
+    Video nodes previously moved and normalized every frame independently.
+    Converting a bounded batch at once reduces Python dispatch and host-device
+    transfer overhead while preserving the same clipping contract. The caller
+    chunks long videos to cap peak temporary memory. The returned array is
+    always contiguous BHWC RGB uint8.
+    """
+
+    if not isinstance(images, torch.Tensor):
+        raise TypeError(f"Expected a torch.Tensor, got {type(images).__name__}.")
+    value = images.detach()
+    if value.ndim == 2:
+        value = value.unsqueeze(-1)
+    if value.ndim == 3:
+        value = value.unsqueeze(0)
+    if value.ndim != 4:
+        raise ValueError(
+            f"Expected an HWC/BHWC or CHW/BCHW image tensor, got {tuple(value.shape)}."
+        )
+
+    # ComfyUI uses BHWC. BCHW is accepted for compatibility with older nodes.
+    if value.shape[-1] not in (1, 3, 4) and value.shape[1] in (1, 3, 4):
+        value = value.permute(0, 2, 3, 1)
+    if value.shape[-1] not in (1, 3, 4):
+        raise ValueError(f"Unsupported image channel shape: {tuple(value.shape)}.")
+
+    value = torch.nan_to_num(
+        value.to(device="cpu", dtype=torch.float32),
+        nan=0.0,
+        posinf=1.0,
+        neginf=0.0,
+    )
+    if value.numel():
+        flat = value.reshape(value.shape[0], -1)
+        needs_byte_scale = (
+            (flat.amax(dim=1) > 1.0) | (flat.amin(dim=1) < 0.0)
+        ).view(-1, 1, 1, 1)
+        value = torch.where(needs_byte_scale, value / 255.0, value)
+    value = value.clamp(0.0, 1.0).mul(255.0).round().to(torch.uint8)
+    if value.shape[-1] == 1:
+        value = value.expand(*value.shape[:-1], 3)
+    elif value.shape[-1] == 4:
+        value = value[..., :3]
+    return np.ascontiguousarray(value.numpy())
+
+
 def tensor_to_pil(image: torch.Tensor, index: int = 0) -> Image.Image:
     """Convert a Comfy IMAGE tensor to an RGB PIL image without torchvision."""
 
     if not isinstance(image, torch.Tensor):
         raise TypeError(f"Expected a torch.Tensor, got {type(image).__name__}.")
-    value = image.detach()
+    value = image
     if value.ndim == 4:
         if not 0 <= index < value.shape[0]:
             raise IndexError(f"Image batch index {index} is out of range.")
         value = value[index]
-    if value.ndim == 2:
-        value = value.unsqueeze(-1)
-    if value.ndim != 3:
-        raise ValueError(
-            f"Expected an HWC/BHWC or CHW/BCHW image tensor, got {tuple(value.shape)}."
-        )
-
-    # ComfyUI uses HWC. CHW is accepted for compatibility with older callers.
-    if value.shape[-1] not in (1, 3, 4) and value.shape[0] in (1, 3, 4):
-        value = value.permute(1, 2, 0)
-    if value.shape[-1] not in (1, 3, 4):
-        raise ValueError(f"Unsupported image channel shape: {tuple(value.shape)}.")
-
-    value = torch.nan_to_num(
-        value.to(device="cpu", dtype=torch.float32), nan=0.0, posinf=1.0, neginf=0.0
-    )
-    if value.numel() and (value.max() > 1.0 or value.min() < 0.0):
-        value = value / 255.0
-    array = value.clamp(0.0, 1.0).mul(255.0).round().to(torch.uint8).numpy()
-    if array.shape[-1] == 1:
-        array = np.repeat(array, 3, axis=-1)
-    elif array.shape[-1] == 4:
-        array = array[..., :3]
+    elif index != 0:
+        raise IndexError("A single image only has batch index 0.")
+    array = _tensor_image_batch_to_uint8(value)[0]
     return Image.fromarray(array, mode="RGB")
 
 
@@ -198,7 +227,24 @@ def tensor_batch_to_pil(images: torch.Tensor) -> list[Image.Image]:
         return [tensor_to_pil(images)]
     if images.ndim != 4:
         raise ValueError(f"Expected an IMAGE batch, got {tuple(images.shape)}.")
-    return [tensor_to_pil(images, index) for index in range(images.shape[0])]
+    if images.shape[0] == 0:
+        return []
+    if images.device.type == "cpu":
+        # Per-frame conversion benchmarks faster for ordinary CPU-resident
+        # Comfy IMAGE batches and keeps the transient working set tiny.
+        return [tensor_to_pil(images, index) for index in range(images.shape[0])]
+    # Convert several frames per tensor operation without creating an
+    # unbounded full-video float32 temporary. On accelerator-resident batches,
+    # this amortizes device synchronization and transfers across many frames.
+    # The 128 MiB working-set ceiling keeps long HD/4K videos reliable.
+    frame_elements = max(1, int(images[0].numel()))
+    working_bytes = frame_elements * max(4, images.element_size())
+    chunk_frames = max(1, PIL_CONVERSION_CHUNK_BYTES // working_bytes)
+    output: list[Image.Image] = []
+    for start in range(0, int(images.shape[0]), chunk_frames):
+        frames = _tensor_image_batch_to_uint8(images[start : start + chunk_frames])
+        output.extend(Image.fromarray(frame, mode="RGB") for frame in frames)
+    return output
 
 
 def pil_to_tensor(image: Image.Image) -> torch.Tensor:
@@ -540,18 +586,21 @@ class CachedModelNode:
     def __init__(self) -> None:
         self._model_handle = None
         self._model_key = None
+        self._model_lock = threading.RLock()
 
     def get_or_create_model(self, key: Any, factory: Callable[[], Any]):
-        if self._model_handle is None or self._model_key != key:
-            close_handle(self._model_handle)
-            self._model_handle = factory()
-            self._model_key = key
-        return self._model_handle
+        with self._model_lock:
+            if self._model_handle is None or self._model_key != key:
+                close_handle(self._model_handle)
+                self._model_handle = factory()
+                self._model_key = key
+            return self._model_handle
 
     def clear_model(self) -> None:
-        close_handle(self._model_handle)
-        self._model_handle = None
-        self._model_key = None
+        with self._model_lock:
+            close_handle(self._model_handle)
+            self._model_handle = None
+            self._model_key = None
 
     def maybe_clear_model(self, unload_after: bool) -> None:
         if unload_after:

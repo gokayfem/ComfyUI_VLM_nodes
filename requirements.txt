@@ -16,4 +16,5 @@ safetensors>=0.4.3
 scipy>=1.10,<2
 soundfile>=0.12
 symusic>=0.5
+svgelements>=1.9.6,<2
 transformers>=5.4,<6

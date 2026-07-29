@@ -29,6 +29,38 @@ Runs Grounding DINO Tiny over `grounding_input.png`. Node 2 outputs:
 
 `PreviewImage` displays output 2 and `ViewText` reports output 1.
 
+### `vlm_performance_preflight_api.json`
+
+Loads `vlm_api_people_birds.mp4` with Comfy core video nodes, applies the
+`Fast video` performance profile, runs the track-aware adaptive sampler, and
+then applies a 14-pixel-aligned image budget. The preview shows the exact batch
+that can be connected to any local or hosted VLM. Three `ViewText` nodes report
+the selected source indices/timestamps, pixel reduction, and active profile.
+
+### `moondream3_preview_svg_segment_api.json`
+
+Runs the official Moondream 3 Preview SVG segmentation skill over
+`moondream_segment_input.png`. Read the linked model license and change
+`license_accepted` to `true` before queueing. The graph previews the
+black/white mask, isolated foreground cutout, and mask/box/polygon overlay;
+`ViewText` receives the exact native SVG path plus its normalized bbox.
+
+Moondream's path coordinates are normalized within the returned bbox. The
+node preserves that path verbatim, safely flattens curves/arcs, applies an
+even-odd fill for subpath holes, and supersamples the raster edge. The
+canonical detection keeps both the primary polygon and the full in-process
+mask.
+
+### `moondream31_video_detect_api.json`
+
+Loads `moondream_video_input.mp4`, passes the real frame batch and source FPS
+to Moondream, and analyzes every frame with four concurrent requests. Photon
+uses the Loader's `max_batch_size=4` scheduler capacity to form dynamic
+batches. `ViewText` reports measured throughput and real-time factor. Increase
+`frame_stride` to 2, 3, or more when full-frame analysis cannot keep up with
+the source FPS; the canonical results preserve original frame indices and
+timestamps.
+
 ### `sam2_video_tracking_api.json`
 
 Runs this bounded pipeline:

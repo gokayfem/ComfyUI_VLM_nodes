@@ -1,0 +1,76 @@
+{
+  "1": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "moondream_video_input.mp4"
+    }
+  },
+  "2": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "1",
+        0
+      ]
+    }
+  },
+  "3": {
+    "class_type": "Moondream31Loader",
+    "inputs": {
+      "license_accepted": false,
+      "device": "Auto",
+      "max_batch_size": 4,
+      "kv_cache_profile": "Balanced (8K pages)",
+      "model_or_adapter": "moondream3.1-9B-A2B"
+    }
+  },
+  "4": {
+    "class_type": "Moondream31Detect",
+    "inputs": {
+      "model": [
+        "3",
+        0
+      ],
+      "image": [
+        "2",
+        0
+      ],
+      "object": "person",
+      "fps": [
+        "2",
+        2
+      ],
+      "frame_stride": 1,
+      "parallel_requests": 4,
+      "max_objects": 100,
+      "unload_after": false
+    }
+  },
+  "5": {
+    "class_type": "PreviewImage",
+    "inputs": {
+      "images": [
+        "4",
+        2
+      ]
+    }
+  },
+  "6": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "4",
+        6
+      ]
+    }
+  },
+  "7": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "4",
+        1
+      ]
+    }
+  }
+}

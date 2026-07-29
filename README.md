@@ -1,7 +1,7 @@
 # ComfyUI VLM Nodes
 
 Production-oriented vision-language, structured prompting, audio, and utility
-nodes for ComfyUI. Version 3.2 supports ComfyUI's selected NVIDIA CUDA, AMD
+nodes for ComfyUI. Version 3.3 supports ComfyUI's selected NVIDIA CUDA, AMD
 ROCm, Apple Metal, Intel XPU, and CPU device without replacing its PyTorch
 build. It removes startup installers and global accelerator cache flushes,
 adds real image/video batches and live token streaming, and uses ComfyUI model
@@ -91,6 +91,14 @@ or context accounting matters.
 Specialized nodes remain available where a generic chat node would discard
 useful model capabilities:
 
+- **Moondream 3.1 9B-A2B**: official 2B-active Photon runtime with query,
+  caption, and high-throughput image/video detection and pointing.
+- **Moondream 3 Preview segment**: native SVG segmentation through the same
+  isolated Photon loader. The SVG is preserved and also converted into antialiased
+  `MASK`, black/white previews, foreground cutouts, overlays, polygons,
+  canonical `VLM_DETECTIONS`, and core bounding boxes. Detection/pointing
+  submit frames concurrently so Photon can dynamically batch them; every run
+  reports measured worker FPS, end-to-end FPS, and real-time factor.
 - **Florence-2**: captioning, OCR, detection, region captioning, and referring
   expression segmentation, with structured JSON, mask, and overlay outputs.
 - **PaLI-Gemma**: caption/VQA plus the official 16-token VQ-VAE segmentation
@@ -149,6 +157,39 @@ The utility layer converts without model-specific glue:
   background broadcasts safely across a video batch.
 - `VLMDetectionsFromJSON` and `VLMDetectionsToJSON` are the explicit API and
   persistence boundary for the versioned detection schema.
+
+### Universal VLM performance utilities
+
+The performance nodes sit before any local or hosted VLM, so their savings do
+not depend on CUDA, ROCm, MPS, XPU, CPU, Transformers, llama.cpp, or Photon:
+
+- `VLM Performance Profile` emits coherent `max_frames`, pixel budget,
+  longest-edge, batch-size, and `unload_after` values. `Live / robotics`,
+  `Fast video`, `Balanced`, `High detail`, and `Low VRAM handoff` are explicit
+  starting points rather than hidden global flags.
+- `VLM Adaptive Frame Sampler` is the existing track-aware temporal gate. It
+  combines uniform coverage, scene changes, motion, and optional track changes
+  while preserving source frame indices and timestamps.
+- `VLM Image Pixel Budget` downsizes the selected analysis copy once, preserves
+  aspect ratio, never upscales, and can align dimensions to 14/28-pixel VLM
+  patches or 32-pixel detector backbones. Fast area and antialiased bicubic
+  modes are available.
+
+The recommended order is `Video Slice` → `VLM Adaptive Frame Sampler` →
+`VLM Image Pixel Budget` → any VLM. A model's own official processor still
+performs its required normalization/crop; the pixel-budget node simply prevents
+every downstream model from repeatedly receiving unnecessary source pixels.
+Local torch models remain registered with ComfyUI's smart model manager, while
+external allocators reserve space before loading and close only the handle they
+own.
+
+On the real `vlm_api_people_birds.mp4` input in this repository's D-drive test
+environment, the utilities selected 10 of 60 1280×720 frames and resized them
+to 938×518 in about 0.44 seconds on a cold WSL run. That reduced the
+frame×pixel analysis workload by 11.38× before model inference. This is an
+input-work reduction measurement, not a claim that every model runs 11.38×
+faster; token generation and model-specific vision encoders still determine
+end-to-end speed.
 
 ### Adaptive video intelligence
 
@@ -289,9 +330,12 @@ image visualization. Region tasks reject ambiguous multi-box input; use
 API-format examples are in [`examples/vision`](examples/vision):
 
 - [`grounding_dino_image_api.json`](examples/vision/grounding_dino_image_api.json)
+- [`moondream3_preview_svg_segment_api.json`](examples/vision/moondream3_preview_svg_segment_api.json)
+- [`moondream31_video_detect_api.json`](examples/vision/moondream31_video_detect_api.json)
 - [`sam2_video_tracking_api.json`](examples/vision/sam2_video_tracking_api.json)
 - [`sam3_core_adapter_blueprint_api.json`](examples/vision/sam3_core_adapter_blueprint_api.json)
 - [`video_temporal_reasoning_api.json`](examples/vision/video_temporal_reasoning_api.json)
+- [`vlm_performance_preflight_api.json`](examples/vision/vlm_performance_preflight_api.json)
 
 The dependency-free text-toolkit example is
 [`examples/text_toolkit_api.json`](examples/text_toolkit_api.json).
@@ -313,6 +357,45 @@ this repository: ComfyUI's own installer selects CUDA, ROCm, XPU, Metal, or CPU.
 Current official bitsandbytes wheels are installed automatically only on their
 supported OS/architecture combinations. Unsupported machines retain all
 non-quantized nodes.
+
+### Moondream 3 / 3.1 isolated runtime
+
+Moondream's official Photon package pins Pillow below version 11 while
+current ComfyUI uses a newer Pillow. It therefore runs in a dedicated sidecar
+environment and never changes ComfyUI's Python packages. Read and accept the
+[Moondream Model License 1.0](https://moondream.ai/licenses/model/1.0), then
+create the environment under the registered `LLavacheckpoints` model folder.
+
+Linux/WSL/macOS:
+
+```bash
+runtime="ComfyUI/models/LLavacheckpoints/moondream31-runtime"
+uv venv "$runtime/.venv" --python 3.12
+uv pip install --python "$runtime/.venv/bin/python" \
+  -r ComfyUI/custom_nodes/ComfyUI_VLM_nodes/requirements-moondream31.txt
+```
+
+Windows PowerShell:
+
+```powershell
+$runtime = "ComfyUI\models\LLavacheckpoints\moondream31-runtime"
+uv venv "$runtime\.venv" --python 3.12
+uv pip install --python "$runtime\.venv\Scripts\python.exe" `
+  -r "ComfyUI\custom_nodes\ComfyUI_VLM_nodes\requirements-moondream31.txt"
+```
+
+The first Loader execution downloads the selected official model below that
+runtime's `cache` directory. Use `moondream3.1-9B-A2B` for query, caption,
+detection, and pointing. Use `moondream3-preview` only for the SVG segment
+skill; the final 3.1 model card does not list segment. Set the server-side
+`MOONDREAM_PYTHON` environment variable
+when using a different isolated environment. Do not put this path or any
+credential in a workflow.
+
+Official Photon local inference currently supports NVIDIA Ampere-or-newer on
+Linux/Windows and Apple Silicon on macOS 13 or newer. It does not currently
+provide local ROCm, Intel GPU, or CPU execution. Those platforms retain every
+portable Transformers, GGUF, API, and vision utility node in this pack.
 
 GGUF nodes use optional `llama-cpp-python`. Install a wheel built for the
 desired CUDA, ROCm/HIP, Metal, Vulkan, SYCL, or CPU backend:
@@ -357,7 +440,17 @@ Gemma 3 and PaLI-Gemma require accepting their model licenses on Hugging Face.
   The runtime reports llama.cpp's own compiled backend, GPU-offload, mmap, and
   mlock capabilities in **VLM Runtime Diagnostics**.
 - `unload_after=false` caches one model per node instance for fast repeated
-  queues. Turn it on for maximum reclamation between prompts.
+  queues. Cache creation is serialized, so concurrent API work cannot make the
+  same node allocate duplicate model handles. Turn it on for maximum
+  reclamation between prompts.
+- Moondream Photon asks ComfyUI to make room before it starts, then owns one
+  exact isolated process. `unload_after=true` gracefully shuts it down and
+  terminates that process if necessary, which releases Photon model, KV-cache,
+  and CUDA-graph allocations without flushing unrelated ComfyUI models. The
+  worker does not inherit unrelated provider keys or proxy credentials; only
+  `HF_TOKEN`, and `MOONDREAM_API_KEY` for an explicitly selected adapter, may
+  cross into its server-side environment. Its random IPC secret is not placed
+  on the process command line.
 - A connected `video_frames` batch becomes the primary visual input. The
   optional still-image socket is ignored for video inference so smaller models
   cannot silently answer from the wrong media.
