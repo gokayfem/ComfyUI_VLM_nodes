@@ -120,6 +120,10 @@ def test_dependency_metadata_matches_installer_requirements():
         if line.strip() and not line.lstrip().startswith("#")
     }
     assert project_requirements == installer_requirements
+    assert any(
+        Requirement(value).name == "num2words"
+        for value in metadata["project"]["dependencies"]
+    )
 
     bitsandbytes = next(
         Requirement(value)
