@@ -100,7 +100,7 @@ class Kosmos2model(CachedModelNode):
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "new_model_generate_predictions"
-    CATEGORY = "VLM Nodes/Kosmos-2"
+    CATEGORY = "VLM Nodes/Legacy/Model Loaders"
 
     def new_model_generate_predictions(
         self,

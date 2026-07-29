@@ -19,12 +19,16 @@ VLM_DETECTIONS = "VLM_DETECTIONS"
 VLM_TRACKS = "VLM_TRACKS"
 VLM_POINTS = "VLM_POINTS"
 VLM_EVENTS = "VLM_EVENTS"
+VLM_VIDEO_SELECTION = "VLM_VIDEO_SELECTION"
+VLM_SCENE_STATE = "VLM_SCENE_STATE"
 
 SCHEMA_VERSION = 1
 DETECTIONS_SCHEMA = "comfyui-vlm/detections"
 TRACKS_SCHEMA = "comfyui-vlm/tracks"
 POINTS_SCHEMA = "comfyui-vlm/points"
 EVENTS_SCHEMA = "comfyui-vlm/events"
+VIDEO_SELECTION_SCHEMA = "comfyui-vlm/video-selection"
+SCENE_STATE_SCHEMA = "comfyui-vlm/scene-state"
 
 PointXY = tuple[float, float]
 BoxXYXY = tuple[float, float, float, float]
@@ -972,6 +976,403 @@ class EventSequence:
             raise ValueError(f"Invalid event JSON: {exc.msg}.") from exc
 
 
+@dataclass(frozen=True, slots=True)
+class SelectedVideoFrame:
+    """One source-frame reference preserved through adaptive sampling."""
+
+    source_frame_index: int
+    timestamp: float
+    score: float = 0.0
+    reasons: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.source_frame_index, int)
+            or self.source_frame_index < 0
+        ):
+            raise ValueError("source_frame_index must be a non-negative integer.")
+        object.__setattr__(
+            self,
+            "timestamp",
+            _non_negative(self.timestamp, "timestamp"),
+        )
+        score = _finite(self.score, "selection score")
+        if not 0.0 <= score <= 1.0:
+            raise ValueError("selection score must be between 0 and 1.")
+        object.__setattr__(self, "score", score)
+        reasons = tuple(self.reasons)
+        if any(not isinstance(reason, str) or not reason.strip() for reason in reasons):
+            raise TypeError("selection reasons must be non-empty strings.")
+        object.__setattr__(self, "reasons", reasons)
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "source_frame_index": self.source_frame_index,
+            "timestamp": self.timestamp,
+            "score": self.score,
+        }
+        if self.reasons:
+            result["reasons"] = list(self.reasons)
+        return result
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> SelectedVideoFrame:
+        if not isinstance(value, Mapping):
+            raise TypeError("A selected video frame must be a JSON object.")
+        return cls(
+            source_frame_index=value["source_frame_index"],
+            timestamp=value["timestamp"],
+            score=value.get("score", 0.0),
+            reasons=tuple(value.get("reasons", ())),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class VideoFrameSelection:
+    """Immutable map from a sampled IMAGE batch back to its source video."""
+
+    width: int
+    height: int
+    source_frame_count: int
+    fps: float
+    frames: tuple[SelectedVideoFrame, ...]
+    strategy: str = "adaptive"
+    source: str | None = None
+    metadata: FrozenDict = field(default_factory=FrozenDict)
+    version: int = SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        if self.version != SCHEMA_VERSION:
+            raise ValueError(
+                f"Unsupported video selection schema version {self.version}."
+            )
+        if not isinstance(self.width, int) or self.width <= 0:
+            raise ValueError("width must be a positive integer.")
+        if not isinstance(self.height, int) or self.height <= 0:
+            raise ValueError("height must be a positive integer.")
+        if (
+            not isinstance(self.source_frame_count, int)
+            or self.source_frame_count <= 0
+        ):
+            raise ValueError("source_frame_count must be a positive integer.")
+        fps = _finite(self.fps, "fps")
+        if fps <= 0:
+            raise ValueError("fps must be positive.")
+        frames = tuple(self.frames)
+        if not frames:
+            raise ValueError("A video selection requires at least one frame.")
+        if any(not isinstance(frame, SelectedVideoFrame) for frame in frames):
+            raise TypeError("frames must contain SelectedVideoFrame values.")
+        indices = [frame.source_frame_index for frame in frames]
+        if indices != sorted(set(indices)):
+            raise ValueError(
+                "Selected source frame indices must be unique and increasing."
+            )
+        if indices[-1] >= self.source_frame_count:
+            raise ValueError("A selected frame lies outside the source video.")
+        expected_timestamps = [index / fps for index in indices]
+        if any(
+            abs(frame.timestamp - expected) > max(1.0e-6, 0.51 / fps)
+            for frame, expected in zip(frames, expected_timestamps)
+        ):
+            raise ValueError(
+                "Selected frame timestamps do not match source indices and fps."
+            )
+        strategy = str(self.strategy).strip()
+        if not strategy:
+            raise ValueError("strategy must not be empty.")
+        object.__setattr__(self, "fps", fps)
+        object.__setattr__(self, "frames", frames)
+        object.__setattr__(self, "strategy", strategy)
+        object.__setattr__(self, "source", _optional_text(self.source, "source"))
+        object.__setattr__(self, "metadata", _metadata(self.metadata))
+
+    @property
+    def duration(self) -> float:
+        return self.source_frame_count / self.fps
+
+    @property
+    def indices(self) -> tuple[int, ...]:
+        return tuple(frame.source_frame_index for frame in self.frames)
+
+    @property
+    def timestamps(self) -> tuple[float, ...]:
+        return tuple(frame.timestamp for frame in self.frames)
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "schema": VIDEO_SELECTION_SCHEMA,
+            "version": self.version,
+            "media": {
+                "width": self.width,
+                "height": self.height,
+                "source_frame_count": self.source_frame_count,
+                "fps": self.fps,
+                "duration": self.duration,
+            },
+            "strategy": self.strategy,
+            "frames": [frame.to_dict() for frame in self.frames],
+        }
+        if self.source is not None:
+            result["source"] = self.source
+        if self.metadata:
+            result["metadata"] = self.metadata.to_dict()
+        return result
+
+    def to_json(self, *, indent: int | None = None) -> str:
+        return json.dumps(
+            self.to_dict(),
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            indent=indent,
+        )
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> VideoFrameSelection:
+        if not isinstance(value, Mapping):
+            raise TypeError("Video selection JSON must contain an object.")
+        if value.get("schema") != VIDEO_SELECTION_SCHEMA:
+            raise ValueError(f"Expected schema {VIDEO_SELECTION_SCHEMA!r}.")
+        if value.get("version") != SCHEMA_VERSION:
+            raise ValueError(
+                f"Unsupported video selection schema version "
+                f"{value.get('version')!r}."
+            )
+        media = value.get("media")
+        if not isinstance(media, Mapping):
+            raise ValueError("Video selection JSON requires a media object.")
+        return cls(
+            width=media["width"],
+            height=media["height"],
+            source_frame_count=media["source_frame_count"],
+            fps=media["fps"],
+            frames=tuple(
+                SelectedVideoFrame.from_dict(frame)
+                for frame in value.get("frames", ())
+            ),
+            strategy=value.get("strategy", "adaptive"),
+            source=value.get("source"),
+            metadata=value.get("metadata"),
+            version=value["version"],
+        )
+
+    @classmethod
+    def from_json(cls, value: str) -> VideoFrameSelection:
+        try:
+            return cls.from_dict(json.loads(value))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid video selection JSON: {exc.msg}.") from exc
+
+
+@dataclass(frozen=True, slots=True)
+class SceneObjectState:
+    """Compact latest state derived from a temporally consistent object track."""
+
+    track_id: int
+    first_seen: float
+    last_seen: float
+    last_bbox_xyxy: BoxXYXY
+    observation_count: int
+    label: str | None = None
+    state: str = "active"
+    mean_confidence: float | None = None
+    velocity_xy_px_s: PointXY = (0.0, 0.0)
+    metadata: FrozenDict = field(default_factory=FrozenDict)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.track_id, int) or self.track_id < 0:
+            raise ValueError("track_id must be a non-negative integer.")
+        first_seen = _non_negative(self.first_seen, "first_seen")
+        last_seen = _non_negative(self.last_seen, "last_seen")
+        if last_seen < first_seen:
+            raise ValueError("last_seen must be at or after first_seen.")
+        if (
+            not isinstance(self.observation_count, int)
+            or self.observation_count <= 0
+        ):
+            raise ValueError("observation_count must be a positive integer.")
+        state = str(self.state).strip()
+        if not state:
+            raise ValueError("state must not be empty.")
+        velocity = tuple(_finite(value, "velocity") for value in self.velocity_xy_px_s)
+        if len(velocity) != 2:
+            raise ValueError("velocity_xy_px_s must contain exactly two values.")
+        object.__setattr__(self, "first_seen", first_seen)
+        object.__setattr__(self, "last_seen", last_seen)
+        object.__setattr__(self, "last_bbox_xyxy", _box(self.last_bbox_xyxy))
+        object.__setattr__(self, "label", _optional_text(self.label, "label"))
+        object.__setattr__(self, "state", state)
+        object.__setattr__(
+            self,
+            "mean_confidence",
+            _optional_score(self.mean_confidence),
+        )
+        object.__setattr__(self, "velocity_xy_px_s", velocity)
+        object.__setattr__(self, "metadata", _metadata(self.metadata))
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "track_id": self.track_id,
+            "first_seen": self.first_seen,
+            "last_seen": self.last_seen,
+            "last_bbox_xyxy": list(self.last_bbox_xyxy),
+            "observation_count": self.observation_count,
+            "state": self.state,
+            "velocity_xy_px_s": list(self.velocity_xy_px_s),
+        }
+        if self.label is not None:
+            result["label"] = self.label
+        if self.mean_confidence is not None:
+            result["mean_confidence"] = self.mean_confidence
+        if self.metadata:
+            result["metadata"] = self.metadata.to_dict()
+        return result
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> SceneObjectState:
+        if not isinstance(value, Mapping):
+            raise TypeError("A scene object must be a JSON object.")
+        return cls(
+            track_id=value["track_id"],
+            first_seen=value["first_seen"],
+            last_seen=value["last_seen"],
+            last_bbox_xyxy=value["last_bbox_xyxy"],
+            observation_count=value["observation_count"],
+            label=value.get("label"),
+            state=value.get("state", "active"),
+            mean_confidence=value.get("mean_confidence"),
+            velocity_xy_px_s=tuple(value.get("velocity_xy_px_s", (0.0, 0.0))),
+            metadata=value.get("metadata"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SceneState:
+    """Persistent, serializable world-state summary for video reasoning."""
+
+    width: int
+    height: int
+    frame_count: int
+    fps: float | None
+    objects: tuple[SceneObjectState, ...] = ()
+    events: tuple[TemporalEvent, ...] = ()
+    source: str | None = None
+    metadata: FrozenDict = field(default_factory=FrozenDict)
+    version: int = SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        if self.version != SCHEMA_VERSION:
+            raise ValueError(f"Unsupported scene state schema version {self.version}.")
+        if not isinstance(self.width, int) or self.width <= 0:
+            raise ValueError("width must be a positive integer.")
+        if not isinstance(self.height, int) or self.height <= 0:
+            raise ValueError("height must be a positive integer.")
+        if not isinstance(self.frame_count, int) or self.frame_count < 0:
+            raise ValueError("frame_count must be a non-negative integer.")
+        fps = None if self.fps is None else _finite(self.fps, "fps")
+        if fps is not None and fps <= 0:
+            raise ValueError("fps must be positive.")
+        objects = tuple(self.objects)
+        if any(not isinstance(item, SceneObjectState) for item in objects):
+            raise TypeError("objects must contain SceneObjectState values.")
+        ids = [item.track_id for item in objects]
+        if ids != sorted(set(ids)):
+            raise ValueError("Scene objects must have unique increasing track IDs.")
+        events = tuple(self.events)
+        if any(not isinstance(item, TemporalEvent) for item in events):
+            raise TypeError("events must contain TemporalEvent values.")
+        if list(events) != sorted(
+            events,
+            key=lambda event: (event.start_time, event.end_time),
+        ):
+            raise ValueError("Scene events must be ordered by start_time.")
+        object.__setattr__(self, "fps", fps)
+        object.__setattr__(self, "objects", objects)
+        object.__setattr__(self, "events", events)
+        object.__setattr__(self, "source", _optional_text(self.source, "source"))
+        object.__setattr__(self, "metadata", _metadata(self.metadata))
+
+    @property
+    def duration(self) -> float | None:
+        return (
+            self.frame_count / self.fps
+            if self.fps is not None and self.frame_count
+            else None
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        media: dict[str, Any] = {
+            "width": self.width,
+            "height": self.height,
+            "frame_count": self.frame_count,
+        }
+        if self.fps is not None:
+            media["fps"] = self.fps
+        if self.duration is not None:
+            media["duration"] = self.duration
+        result: dict[str, Any] = {
+            "schema": SCENE_STATE_SCHEMA,
+            "version": self.version,
+            "media": media,
+            "objects": [item.to_dict() for item in self.objects],
+            "events": [item.to_dict() for item in self.events],
+        }
+        if self.source is not None:
+            result["source"] = self.source
+        if self.metadata:
+            result["metadata"] = self.metadata.to_dict()
+        return result
+
+    def to_json(self, *, indent: int | None = None) -> str:
+        return json.dumps(
+            self.to_dict(),
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            indent=indent,
+        )
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> SceneState:
+        if not isinstance(value, Mapping):
+            raise TypeError("Scene state JSON must contain an object.")
+        if value.get("schema") != SCENE_STATE_SCHEMA:
+            raise ValueError(f"Expected schema {SCENE_STATE_SCHEMA!r}.")
+        if value.get("version") != SCHEMA_VERSION:
+            raise ValueError(
+                f"Unsupported scene state schema version "
+                f"{value.get('version')!r}."
+            )
+        media = value.get("media")
+        if not isinstance(media, Mapping):
+            raise ValueError("Scene state JSON requires a media object.")
+        return cls(
+            width=media["width"],
+            height=media["height"],
+            frame_count=media["frame_count"],
+            fps=media.get("fps"),
+            objects=tuple(
+                SceneObjectState.from_dict(item)
+                for item in value.get("objects", ())
+            ),
+            events=tuple(
+                TemporalEvent.from_dict(item)
+                for item in value.get("events", ())
+            ),
+            source=value.get("source"),
+            metadata=value.get("metadata"),
+            version=value["version"],
+        )
+
+    @classmethod
+    def from_json(cls, value: str) -> SceneState:
+        try:
+            return cls.from_dict(json.loads(value))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid scene state JSON: {exc.msg}.") from exc
+
+
 __all__ = [
     "BoxXYXY",
     "DETECTIONS_SCHEMA",
@@ -985,7 +1386,11 @@ __all__ = [
     "PointSequence",
     "PointXY",
     "Polygon",
+    "SCENE_STATE_SCHEMA",
     "SCHEMA_VERSION",
+    "SceneObjectState",
+    "SceneState",
+    "SelectedVideoFrame",
     "TRACKS_SCHEMA",
     "TemporalEvent",
     "Track",
@@ -993,6 +1398,10 @@ __all__ = [
     "VLM_DETECTIONS",
     "VLM_EVENTS",
     "VLM_POINTS",
+    "VLM_SCENE_STATE",
     "VLM_TRACKS",
+    "VLM_VIDEO_SELECTION",
+    "VIDEO_SELECTION_SCHEMA",
+    "VideoFrameSelection",
     "VisionPoint",
 ]

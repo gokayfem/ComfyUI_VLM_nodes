@@ -263,7 +263,7 @@ class Paligemma(CachedModelNode):
     RETURN_TYPES = ("STRING", "MASK", "IMAGE")
     RETURN_NAMES = ("description", "mask", "visualization")
     FUNCTION = "process_task"
-    CATEGORY = "VLM Nodes/Paligemma"
+    CATEGORY = "VLM Nodes/Legacy/Model Loaders"
 
     def process_task(
         self,

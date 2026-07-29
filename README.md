@@ -1,7 +1,7 @@
 # ComfyUI VLM Nodes
 
 Production-oriented vision-language, structured prompting, audio, and utility
-nodes for ComfyUI. Version 3.1 supports ComfyUI's selected NVIDIA CUDA, AMD
+nodes for ComfyUI. Version 3.2 supports ComfyUI's selected NVIDIA CUDA, AMD
 ROCm, Apple Metal, Intel XPU, and CPU device without replacing its PyTorch
 build. It removes startup installers and global accelerator cache flushes,
 adds real image/video batches and live token streaming, and uses ComfyUI model
@@ -9,18 +9,39 @@ residency and offloading.
 
 ## Modern model coverage
 
-The **Modern VLM** node provides one stable interface for:
+The **Modern VLM** node provides one stable interface with a deliberately
+small, 12-choice production picker:
 
-- Qwen 3.5 0.8B, 2B, 4B, 9B, 27B, and 35B-A3B
-- Qwen 3.6 27B
-- Qwen 3 VL 2B, 4B, 8B, and 30B-A3B Instruct
-- Qwen 2.5 VL 3B and 7B for existing workflows
-- Gemma 3 4B, 12B, and 27B IT
-- SmolVLM2 256M, 500M, and 2.2B video models
-- Liquid LFM2.5-VL 450M and 1.6B edge models
-- InternVL 3.5 1B and 2B standard Hugging Face checkpoints
-- Granite Vision 3.3 2B and 4.1 4B for documents, charts, and OCR
+- Qwen 3.5 0.8B and 4B
+- Qwen 3 VL 2B, 4B, and 8B Instruct
+- SmolVLM2 500M and 2.2B Video
+- Liquid LFM2.5-VL 450M
+- InternVL 3.5 1B
+- Granite Vision 4.1 4B
+- Gemma 3 4B IT
 - a compatible custom Hugging Face image-to-text repository
+
+The separate **[Legacy] Modern VLM Compatibility** node contains redundant,
+superseded, experimental, and very large tiers:
+
+- Qwen 3.5 2B, 9B, 27B, and 35B-A3B
+- Qwen 3.6 27B
+- Qwen 3 VL 30B-A3B Instruct
+- Qwen 2.5 VL 3B and 7B for existing workflows
+- Gemma 3 12B and 27B IT
+- SmolVLM2 256M Video
+- Liquid LFM2.5-VL 1.6B
+- InternVL 3.5 2B
+- Granite Vision 3.3 2B
+
+Previously saved `ModernVLM` workflows remain valid even when their selected
+model moved to Legacy. The server accepts every known catalog value for
+backward compatibility; only the visible new-workflow picker is curated.
+Dedicated Molmo, PaLI-Gemma, Qwen2-VL, MiniCPM-V, Kosmos-2, MC-LLaVA, UForm,
+and script-style MoonDream nodes are also collected under
+`VLM Nodes/Legacy/Model Loaders`. Maintained creator-facing Florence-2,
+Moondream2, JoyTag, llama.cpp/GGUF, detection, segmentation, tracking, API,
+and video-intelligence nodes stay in their functional categories.
 
 Sixteen curated sub-4B/low-VRAM choices are marked internally as the
 small-and-fast tier. The default is Qwen 3 VL 2B: it is much quicker to load
@@ -41,6 +62,32 @@ when ComfyUI rehydrates workflow output history. Disable `stream_output` for
 API-only or headless runs that do not need incremental UI updates. Streaming is
 best-effort and never changes the final `STRING` output or makes inference fail.
 
+## Text workflow toolkit
+
+The original `SimpleText`, `JsonToText`, and `ViewText` node IDs and their
+first `STRING` outputs remain stable for saved workflows. They now live in
+organized `VLM Nodes/Text` subcategories and expose descriptive names, search
+aliases, tooltips, appended metrics, and strict error messages:
+
+| Node | Purpose |
+| --- | --- |
+| `Text` (`SimpleText`) | Multiline/dynamic prompt source with optional edge/newline normalization and character, word, and line outputs |
+| `View Text (Streaming)` | Read-only live output with counts, copy, UTF-8 download, line wrapping, stream following, reroute traversal, and history rehydration |
+| `JSON to Text` | Plain or fenced JSON parsing with readable, values-only, key/value, pretty, and compact render modes |
+| `Text Join` | Join up to eight prompt/context values with empty-value removal and stable deduplication |
+| `Text Template` | Safe named placeholders from a JSON object plus four convenient live text sockets, with explicit missing-key policy |
+| `Text Clean` | Unicode NFC/NFKC, newline/whitespace cleanup, enclosing Markdown-fence removal, line deduplication, and deterministic length caps |
+| `Text Replace` | Literal or regex substitution with case, count, and missing-pattern controls |
+| `JSON Extract` | JSONPath-lite (`$.items[0]`) and RFC 6901 JSON Pointer extraction from plain or fenced model responses |
+| `Text Split / Batch` | Lines, paragraphs, delimiters, regex, CSV, or JSON arrays converted to a real mapped Comfy `STRING` list |
+| `Text Inspector` | Pass-through text plus characters, UTF-8 bytes, words, lines, rough token budget, SHA-256, and JSON metadata |
+
+The JSON utilities never evaluate code, follow references, access files, or
+make network requests. Template fields are direct names rather than Python
+attribute/index expressions. `approx_tokens` is deliberately labeled as a
+rough UTF-8 budget estimate; use the target model tokenizer when exact billing
+or context accounting matters.
+
 Specialized nodes remain available where a generic chat node would discard
 useful model capabilities:
 
@@ -52,7 +99,8 @@ useful model capabilities:
   checkpoint is not marked passed on the tested Torch/Transformers stack; use a
   small Modern VLM preset for production.
 - **Qwen2-VL**: image batches and real video-frame batches.
-- **Molmo, Kosmos-2, UForm, MCLLaVA, JoyTag, and MiniCPM-V 2.6 GGUF**.
+- **Legacy Molmo, Kosmos-2, UForm, MCLLaVA, and MiniCPM-V 2.6 GGUF**, plus
+  maintained JoyTag.
 - **llama.cpp LLaVA/GGUF**, structured prompt suggestions, OpenAI-compatible
   prompting, and AudioLDM2.
 
@@ -67,6 +115,8 @@ lists between nodes:
 | `VLM_TRACKS` | `comfyui-vlm/tracks`, version 1 | Durable object IDs with ordered observations over time |
 | `VLM_POINTS` | `comfyui-vlm/points`, version 1 | Pixel-coordinate points, including detection centers |
 | `VLM_EVENTS` | `comfyui-vlm/events`, version 1 | Ordered temporal events for downstream video analysis |
+| `VLM_VIDEO_SELECTION` | `comfyui-vlm/video-selection`, version 1 | Exact mapping from sampled images to source frame indices and timestamps |
+| `VLM_SCENE_STATE` | `comfyui-vlm/scene-state`, version 1 | Compact persistent objects, motion, visibility, and validated events |
 
 All spatial coordinates are source-image pixels. Bounding boxes are
 `[x1, y1, x2, y2]` with an exclusive right/bottom edge; polygons contain at
@@ -99,6 +149,45 @@ The utility layer converts without model-specific glue:
   background broadcasts safely across a video batch.
 - `VLMDetectionsFromJSON` and `VLMDetectionsToJSON` are the explicit API and
   persistence boundary for the versioned detection schema.
+
+### Adaptive video intelligence
+
+The video-intelligence layer keeps generative VLM inference out of the
+per-frame loop:
+
+- `VLMAdaptiveFrameSampler` combines scene-change, motion, track-change, and
+  uniform-coverage signals. It always preserves the real source frame index
+  and timestamp, enforces a frame budget, and returns selection/diagnostic
+  JSON. `Uniform coverage`, motion, scene, and track-priority modes remain
+  available for deterministic experiments.
+- `VLMVideoTemporalReasoner` is the one-node path. It adaptively samples the
+  input, downsizes only the VLM analysis copy (448-pixel longest side by
+  default), runs a recommended video-capable model, parses the result into
+  validated `VLM_EVENTS`, and returns summary, events, selection, sampled
+  previews, raw response, diagnostics, event JSON, and selection JSON.
+- `VLMVideoReasoningPrompt` and `VLMEventsFromVideoJSON` expose the same strict
+  timestamp/evidence contract for custom local or hosted VLM workflows.
+- `VLMTrackAwareCrops` chooses representative observations for each durable
+  track, adds configurable context, and letterboxes crops to one batch size.
+  This lets a VLM label identities without rereading every full frame.
+- `VLMBuildSceneState` converts tracks plus optional events into a compact
+  persistent world-state summary with first/last observation, current box,
+  confidence, state, and pixel velocity.
+
+Small VLMs commonly return evidence as positions in the supplied image batch
+even when asked for source indices. The parser accepts that form only when
+every value is an unambiguous valid supplied-image position, maps it back to
+the immutable source selection, and records the normalization mode. Arbitrary
+or unsupplied evidence frames, out-of-range timestamps, invalid confidence,
+duplicate evidence, malformed JSON, and non-finite values fail validation.
+
+On the repository's real-data smoke test (RTX 3090, Qwen3-VL 2B, 157-frame
+896x448 H.264 clip), hybrid sampling selected 12 frames in 0.30 seconds,
+reduced temporal inputs by 92.36%, reduced analysis pixels by 75%, used
+4.24 GiB peak allocated VRAM in the standalone runner, and produced a valid
+timestamped result in 35.17 seconds. The equivalent live ComfyUI `/prompt`
+graph completed in 37.45 seconds. These are one-machine measurements, not
+portable performance guarantees.
 
 ### Open-vocabulary image and video detection
 
@@ -202,6 +291,10 @@ API-format examples are in [`examples/vision`](examples/vision):
 - [`grounding_dino_image_api.json`](examples/vision/grounding_dino_image_api.json)
 - [`sam2_video_tracking_api.json`](examples/vision/sam2_video_tracking_api.json)
 - [`sam3_core_adapter_blueprint_api.json`](examples/vision/sam3_core_adapter_blueprint_api.json)
+- [`video_temporal_reasoning_api.json`](examples/vision/video_temporal_reasoning_api.json)
+
+The dependency-free text-toolkit example is
+[`examples/text_toolkit_api.json`](examples/text_toolkit_api.json).
 
 Upload the named media to ComfyUI's input directory, adjust the filenames and
 labels, then submit the JSON object as the `prompt` value to `/prompt`. These

@@ -25,7 +25,7 @@ class MoonDream(CachedModelNode):
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "answer_questions"
-    CATEGORY = "VLM Nodes/MoonDream"
+    CATEGORY = "VLM Nodes/Legacy/Model Loaders"
 
     def answer_questions(self, image, question, unload_after=False):
         predictor = self.get_or_create_model(

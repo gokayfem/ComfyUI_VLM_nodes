@@ -105,7 +105,7 @@ class UformGen2QwenNode(CachedModelNode):
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "uform_gen2_qwen_chat"
-    CATEGORY = "VLM Nodes/UformGen2Qwen"
+    CATEGORY = "VLM Nodes/Legacy/Model Loaders"
 
     def uform_gen2_qwen_chat(
         self, image, question, max_new_tokens=512, unload_after=False

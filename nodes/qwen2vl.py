@@ -347,7 +347,7 @@ class Qwen2VLNode(CachedModelNode):
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate"
-    CATEGORY = "VLM Nodes/Qwen2-VL"
+    CATEGORY = "VLM Nodes/Legacy/Model Loaders"
 
     def generate(
         self,

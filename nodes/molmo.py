@@ -155,7 +155,7 @@ class MolmoNode(CachedModelNode):
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate"
-    CATEGORY = "VLM Nodes/Molmo"
+    CATEGORY = "VLM Nodes/Legacy/Model Loaders"
 
     def generate(
         self,

@@ -126,7 +126,7 @@ class MCLLaVAModel(CachedModelNode):
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "generate_image_description"
-    CATEGORY = "VLM Nodes/MC-LLaVA"
+    CATEGORY = "VLM Nodes/Legacy/Model Loaders"
 
     def generate_image_description(
         self,
