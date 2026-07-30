@@ -1,0 +1,14 @@
+version: 2
+updates:
+  # Action versions only. Python dependency ranges are deliberately loose
+  # because ComfyUI owns torch, numpy, and Pillow in the shared environment.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]

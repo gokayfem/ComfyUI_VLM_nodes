@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: llama-cpp-python installation help
+    url: https://github.com/abetlen/llama-cpp-python#installation
+    about: >-
+      Build or GPU-offload failures for GGUF nodes are almost always
+      llama-cpp-python installation issues. Install the wheel matching your
+      accelerator first.
+  - name: ComfyUI Manager and installation problems
+    url: https://github.com/Comfy-Org/ComfyUI-Manager/issues
+    about: For problems installing or updating custom nodes in general.

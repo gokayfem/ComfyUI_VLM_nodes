@@ -1,0 +1,104 @@
+name: Bug report
+description: A node fails, errors, or produces wrong output.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Most unresolvable reports are missing the environment details below.
+        Please run the **VLM Runtime Diagnostics** node and paste its output —
+        it captures your OS, Python, PyTorch, accelerator backend, and which
+        optional backends are installed.
+
+  - type: input
+    id: version
+    attributes:
+      label: Node pack version
+      description: From ComfyUI Manager, or the `version` in `pyproject.toml`.
+      placeholder: "3.3.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - ComfyUI Manager
+        - Comfy Registry
+        - git clone into custom_nodes
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: comfy
+    attributes:
+      label: ComfyUI flavour
+      options:
+        - ComfyUI Desktop
+        - ComfyUI Portable (python_embeded)
+        - Manual install (venv)
+        - Manual install (conda)
+        - Cloud / RunPod / other host
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: VLM Runtime Diagnostics output
+      description: Add the node to any workflow, run it, and paste the result.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Which node fails?
+      placeholder: "LLMSampler, LLavaSamplerSimple, ModernVLM, ..."
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Which model / GGUF file?
+      description: Include the exact filename or Hugging Face repo id.
+      placeholder: "Qwen 3 VL 4B Instruct, or llava-1.6-mistral-7b.Q4_K_M.gguf"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect, and what happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Full console output
+      description: |
+        The complete traceback from the ComfyUI terminal, not just the last
+        line. Include the startup log if the pack failed to import.
+      render: shell
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I updated to the latest version of this node pack and ComfyUI.
+          required: true
+        - label: I searched existing open and closed issues.
+          required: true
+        - label: >-
+            If this involves GGUF or `llama-cpp-python`, I installed it with
+            the arguments for my accelerator from the
+            [llama-cpp-python install guide](https://github.com/abetlen/llama-cpp-python#installation).
+          required: false
