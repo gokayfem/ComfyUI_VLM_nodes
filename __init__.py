@@ -26,6 +26,7 @@ node_list = [
     "paligemma",
     "playmusic",
     "qwen2vl",
+    "robotics",
     "sam2",
     "sam3_adapter",
     "simpletext",

@@ -1,6 +1,6 @@
 [project]
 name = "comfyui_vlm_nodes"
-version = "3.3.1"
+version = "3.4.0"
 description = "Production-ready local and API vision-language nodes for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -46,6 +46,11 @@ quantization = [
 ]
 gguf = [
   "llama-cpp-python>=0.3.20,<1",
+]
+robotics-client = [
+  "msgpack>=1.0.8,<2",
+  "pyzmq>=26,<28",
+  "websockets>=14,<17",
 ]
 
 [project.urls]
@@ -95,6 +100,7 @@ Icon = ""
 packages = [
   "comfyui_vlm_nodes",
   "comfyui_vlm_nodes.examples",
+  "comfyui_vlm_nodes.examples.robotics",
   "comfyui_vlm_nodes.examples.vision",
   "comfyui_vlm_nodes.nodes",
   "comfyui_vlm_nodes.nodes.joytagger",
@@ -111,6 +117,9 @@ comfyui_vlm_nodes = [
   "*.json",
   "SECURITY.md",
   "examples/*.json",
+  "examples/robotics/*.py",
+  "examples/robotics/*.md",
+  "examples/robotics/*.json",
   "examples/vision/*.json",
   "requirements*.txt",
 ]

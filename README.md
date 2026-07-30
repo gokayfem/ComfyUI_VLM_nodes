@@ -1,7 +1,7 @@
 # ComfyUI VLM Nodes
 
 Production-oriented vision-language, structured prompting, audio, and utility
-nodes for ComfyUI. Version 3.3 supports ComfyUI's selected NVIDIA CUDA, AMD
+nodes for ComfyUI. Version 3.4 supports ComfyUI's selected NVIDIA CUDA, AMD
 ROCm, Apple Metal, Intel XPU, and CPU device without replacing its PyTorch
 build. It removes startup installers and global accelerator cache flushes,
 adds real image/video batches and live token streaming, and uses ComfyUI model
@@ -340,6 +340,9 @@ API-format examples are in [`examples/vision`](examples/vision):
 
 The dependency-free text-toolkit example is
 [`examples/text_toolkit_api.json`](examples/text_toolkit_api.json).
+Robotics policy, safety, and sidecar examples are in
+[`examples/robotics`](examples/robotics), including a complete universal
+HTTP policy graph.
 
 Upload the named media to ComfyUI's input directory, adjust the filenames and
 labels, then submit the JSON object as the `prompt` value to `/prompt`. These
@@ -347,7 +350,7 @@ are API graphs, not frontend workflow-export JSON.
 
 ## Node reference
 
-All 78 registered nodes, grouped by their menu category. The **Node ID** is the
+All 89 registered nodes, grouped by their menu category. The **Node ID** is the
 `class_type` written into workflow and API JSON — search for that string when
 you need to find a node you saw on a canvas.
 
@@ -477,6 +480,26 @@ projector (mmproj).
 | Hosted VLM API (Secure) | `HostedVLMAPI` | `STRING`, `STRING`, `INT` |
 | Hosted LLM API (Secure) | `PromptGenerateAPI` | `STRING` |
 
+### Robotics / VLA policies
+
+These nodes build and inspect policy observations/actions. They never send
+commands to robot hardware. Heavy policy runtimes stay in isolated LeRobot,
+openpi, GR00T, OpenVLA/OFT, or JAX environments.
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| VLA Embodiment Profile | `VLAEmbodimentProfile` | `VLA_EMBODIMENT`, `STRING`, `INT`, `INT` |
+| VLA Observation Builder | `VLAObservationBuilder` | `VLA_OBSERVATION`, `STRING`, `INT` |
+| VLA Policy — Universal HTTP | `VLAHTTPPolicy` | `VLA_ACTIONS`, `STRING` |
+| VLA Policy — OpenPI WebSocket | `VLAOpenPIWebSocketPolicy` | `VLA_ACTIONS`, `STRING` |
+| VLA Policy — GR00T N1.7 ZMQ | `VLAGr00tZMQPolicy` | `VLA_ACTIONS`, `STRING` |
+| VLA Action Safety Gate | `VLAActionSafety` | `VLA_ACTIONS`, `STRING`, `BOOLEAN` |
+| VLA Actions From JSON | `VLAActionsFromJSON` | `VLA_ACTIONS`, `STRING` |
+| VLA Action Chunk Replan | `VLAActionChunkReplan` | `VLA_ACTIONS`, `STRING` |
+| VLA Action Inspect | `VLAActionInspect` | `STRING`, `STRING`, `INT`, `INT` |
+| VLA Trajectory Preview | `VLATrajectoryPreview` | `IMAGE` |
+| VLA Model Catalog | `VLAModelCatalog` | `STRING`, `STRING`, `STRING`, `STRING` |
+
 ### Text toolkit
 
 Dependency-free string handling, so a VLM response can be shaped without an
@@ -545,6 +568,35 @@ this repository: ComfyUI's own installer selects CUDA, ROCm, XPU, Metal, or CPU.
 Current official bitsandbytes wheels are installed automatically only on their
 supported OS/architecture combinations. Unsupported machines retain all
 non-quantized nodes.
+
+### Robotics / VLA isolated runtimes
+
+The robotics nodes keep policy dependencies outside ComfyUI. The universal
+HTTP client works without another package. Native openpi WebSocket and
+GR00T ZeroMQ clients use the lightweight optional extra:
+
+```bash
+python -m pip install \
+  -r ComfyUI/custom_nodes/ComfyUI_VLM_nodes/requirements-robotics-client.txt
+```
+
+`VLA Model Catalog` covers current SmolVLA, X-VLA, π0/π0-FAST/π0.5,
+GR00T N1.7, WALL-OSS, MolmoAct2, VLA-JEPA, LingBot-VA, FastWAM, EO-1,
+EVO-1, OpenVLA-OFT, and Octo routes. “Available” means a supported isolated
+runtime/checkpoint path; base and architecture-only entries still require
+embodiment-specific training and transforms.
+
+Start with SmolVLA for small consumer hardware. The included authenticated
+LeRobot sidecar loads one chosen policy, uses its serialized processors,
+returns action chunks over bounded JSON/JPEG, keeps it resident for speed,
+and can offload it to CPU after an idle timeout. Remote policy URLs require
+encrypted transport and explicit opt-in. Tokens are fixed environment
+variables (`VLA_POLICY_TOKEN`, `OPENPI_API_KEY`, or `GROOT_API_TOKEN`) and are
+never workflow inputs.
+
+See [`examples/robotics/README.md`](examples/robotics/README.md) for D-drive
+WSL setup, platform boundaries, current model readiness, observation schemas,
+action safety semantics, and the runnable API example.
 
 ### Moondream 3 / 3.1 isolated runtime
 

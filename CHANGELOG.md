@@ -9,6 +9,36 @@ Versions are published to the [Comfy Registry](https://registry.comfy.org/)
 from `pyproject.toml`. A release is only published when `version` changes, so
 every user-visible fix needs a version bump.
 
+## [3.4.0] - 2026-07-31
+
+### Added
+
+- A robotics-safe VLA layer with typed embodiment, observation, and action
+  contracts; bounded multi-camera history; trajectory inspection and preview;
+  action-chunk replanning; and explicit bounds, rate, dimension, horizon, and
+  non-finite-value checks before handoff.
+- Native policy clients for OpenPI's WebSocket protocol and NVIDIA Isaac
+  GR00T's ZeroMQ protocol, plus a portable authenticated HTTP/JPEG protocol for
+  isolated policy runtimes.
+- An isolated current-LeRobot policy server with pre/postprocessor support,
+  serialized inference, optional idle CPU offload, checkpoint feature metadata,
+  and environment-only bearer authentication.
+- A curated 15-model VLA catalog covering SmolVLA, X-VLA, the OpenPI family,
+  GR00T N1.7, WALL-OSS, MolmoAct2, VLA-JEPA, LingBot-VA, FastWAM, EO-1, EVO-1,
+  OpenVLA-OFT, and Octo with explicit readiness and fine-tuning requirements.
+- A complete API workflow, setup guide, compatibility matrix, security
+  guidance, and real-weight SmolVLA validation on an RTX 3090.
+
+### Security
+
+- Workflow JSON never stores robotics API keys. The clients read only
+  `VLA_POLICY_TOKEN`, `OPENPI_API_KEY`, or `GROOT_API_TOKEN` from the
+  environment, redact them from errors/reports, reject embedded URL
+  credentials, and require encrypted transports plus explicit opt-in for
+  remote endpoints where the upstream protocol supports encryption.
+- The included policy server bounds request, camera, history, and response
+  sizes and never uses pickle across the network.
+
 ## [3.3.1] - 2026-07-30
 
 ### Fixed
@@ -142,6 +172,7 @@ Tagging began at 3.3.0. Earlier versions link to the commit that declared
 them, because retroactively tagging them would run current CI against code
 that predates it.
 
+[3.4.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/compare/v3.3.1...v3.4.0
 [3.3.1]: https://github.com/gokayfem/ComfyUI_VLM_nodes/compare/v3.3.0...v3.3.1
 [3.3.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/releases/tag/v3.3.0
 [3.2.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/commit/44fefcb

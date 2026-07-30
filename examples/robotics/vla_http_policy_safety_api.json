@@ -1,0 +1,130 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "robot_front.png"
+    }
+  },
+  "2": {
+    "class_type": "VLAEmbodimentProfile",
+    "inputs": {
+      "preset": "Generic 7-DoF joint + gripper",
+      "control_hz": 20.0,
+      "state_names_json": "",
+      "action_names_json": "",
+      "action_min_json": "",
+      "action_max_json": "",
+      "max_delta_json": "",
+      "camera_names_json": "",
+      "action_mode_override": ""
+    }
+  },
+  "3": {
+    "class_type": "VLAObservationBuilder",
+    "inputs": {
+      "task": "Pick up the blue cube and place it in the tray.",
+      "state_json": "[0, 0, 0, 0, 0, 0, 0, 0]",
+      "primary_image": [
+        "1",
+        0
+      ],
+      "primary_camera": "observation.images.front",
+      "history_fps": 10.0,
+      "timestamp": 0.0,
+      "embodiment": [
+        "2",
+        0
+      ]
+    }
+  },
+  "4": {
+    "class_type": "VLAHTTPPolicy",
+    "inputs": {
+      "observation": [
+        "3",
+        0
+      ],
+      "endpoint": "http://127.0.0.1:8787",
+      "timeout_seconds": 120.0,
+      "include_history": true,
+      "allow_remote": false
+    }
+  },
+  "5": {
+    "class_type": "VLAActionSafety",
+    "inputs": {
+      "actions": [
+        "4",
+        0
+      ],
+      "embodiment": [
+        "2",
+        0
+      ],
+      "mode": "Clamp safely",
+      "execution_horizon": 8,
+      "previous_action_json": "[0, 0, 0, 0, 0, 0, 0, 0]"
+    }
+  },
+  "6": {
+    "class_type": "VLATrajectoryPreview",
+    "inputs": {
+      "actions": [
+        "5",
+        0
+      ],
+      "width": 960,
+      "height": 480,
+      "embodiment": [
+        "2",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "VLAActionInspect",
+    "inputs": {
+      "actions": [
+        "5",
+        0
+      ],
+      "step_index": 0
+    }
+  },
+  "8": {
+    "class_type": "PreviewImage",
+    "inputs": {
+      "images": [
+        "6",
+        0
+      ]
+    }
+  },
+  "9": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "4",
+        1
+      ]
+    }
+  },
+  "10": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "5",
+        1
+      ]
+    }
+  },
+  "11": {
+    "class_type": "ViewText",
+    "inputs": {
+      "text": [
+        "7",
+        0
+      ]
+    }
+  }
+}
