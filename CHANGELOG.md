@@ -136,13 +136,17 @@ suggestion generators, AudioLDM2, and ChatMusician. See the
 [commit history](https://github.com/gokayfem/ComfyUI_VLM_nodes/commits/main)
 for detail.
 
+Tagging began at 3.3.0. Earlier versions link to the commit that declared
+them, because retroactively tagging them would run current CI against code
+that predates it.
+
 [3.3.1]: https://github.com/gokayfem/ComfyUI_VLM_nodes/compare/v3.3.0...v3.3.1
-[3.3.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/compare/v3.2.0...v3.3.0
-[3.2.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/compare/v3.1.0...v3.2.0
-[3.1.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/compare/v3.0.0...v3.1.0
-[3.0.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/compare/v2.3.0...v3.0.0
-[2.3.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/compare/v2.2.0...v2.3.0
-[2.2.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/compare/v2.1.0...v2.2.0
-[2.1.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/compare/v2.0.1...v2.1.0
-[2.0.1]: https://github.com/gokayfem/ComfyUI_VLM_nodes/compare/v2.0.0...v2.0.1
-[2.0.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/releases/tag/v2.0.0
+[3.3.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/releases/tag/v3.3.0
+[3.2.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/commit/44fefcb
+[3.1.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/commit/505b324
+[3.0.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/commit/39fc116
+[2.3.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/commit/239c904
+[2.2.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/commit/0da5070
+[2.1.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/commit/4c200c4
+[2.0.1]: https://github.com/gokayfem/ComfyUI_VLM_nodes/commit/460b27a
+[2.0.0]: https://github.com/gokayfem/ComfyUI_VLM_nodes/commit/b89f628
