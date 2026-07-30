@@ -1,10 +1,10 @@
 [project]
 name = "comfyui_vlm_nodes"
-version = "3.3.0"
+version = "3.3.1"
 description = "Production-ready local and API vision-language nodes for ComfyUI"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = "Apache-2.0"
 license-files = ["LICENSE"]
 dependencies = [
   "accelerate>=1.1,<2",
@@ -51,6 +51,40 @@ gguf = [
 [project.urls]
 Repository = "https://github.com/gokayfem/ComfyUI_VLM_nodes"
 Issues = "https://github.com/gokayfem/ComfyUI_VLM_nodes/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# manual_*.py download multi-gigabyte checkpoints and are run by hand.
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["default"]
+
+[tool.ruff]
+line-length = 100
+# nodes/joytagger is vendored upstream code kept byte-compatible with its
+# source, including tab indentation. Reformatting it would break that.
+extend-exclude = ["nodes/joytagger"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "C4", "B", "SIM"]
+ignore = [
+  # zip(strict=) changes behaviour when lengths differ; enabling it needs a
+  # per-call-site audit rather than a blanket flag.
+  "B905",
+  # The streaming closures in modern_vlm are started and joined inside the
+  # same loop iteration, so the loop variable cannot change under them.
+  "B023",
+  # try/except/pass around optional backends stays readable as-is;
+  # contextlib.suppress would hide which dependency is being probed.
+  "SIM105",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Prompt templates are data. Rewrapping them changes the model input.
+"nodes/prompts.py" = ["E501"]
+# The manual smoke scripts must bootstrap the package onto sys.path before
+# they can import from it.
+"tests/manual_*.py" = ["E402"]
 
 [tool.comfy]
 PublisherId = "gokayfem"
