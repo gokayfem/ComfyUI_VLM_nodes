@@ -13,7 +13,6 @@ import time
 
 import torch
 
-
 BACKENDS = (
     "florence-base",
     "florence-large",

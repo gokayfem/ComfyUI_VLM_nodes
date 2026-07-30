@@ -24,14 +24,13 @@ from .runtime import (
     normalize_hf_model_id,
     pil_mask_to_tensor,
     pil_to_tensor,
-    require_quantization_backend,
     require_module,
+    require_quantization_backend,
     reserve_external_vram,
     snapshot_download,
     tensor_batch_to_pil,
     torch_dtype,
 )
-
 
 PALIGEMMA_MODELS = [
     "gokaygokay/sd3-long-captioner-v2",

@@ -1,9 +1,8 @@
 import json
 from pathlib import Path
 
-import pytest
-
 import ComfyUI_VLM_nodes as package
+import pytest
 from ComfyUI_VLM_nodes.nodes import simpletext
 
 

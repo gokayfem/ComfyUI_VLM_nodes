@@ -11,9 +11,8 @@ from __future__ import annotations
 
 import json
 
-from transformers import AutoConfig, AutoProcessor
-
 from ComfyUI_VLM_nodes.nodes.modern_vlm import MODEL_CATALOG
+from transformers import AutoConfig, AutoProcessor
 
 
 def main() -> int:

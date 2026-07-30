@@ -8,8 +8,8 @@ keeps the baseline portable across CUDA, ROCm, MPS, XPU, and CPU systems.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment

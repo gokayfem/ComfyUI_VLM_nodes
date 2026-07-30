@@ -15,7 +15,6 @@ from typing import Any
 import torch
 import torch.nn.functional as functional
 
-
 RESIZE_QUALITY = (
     "Fast (area)",
     "Quality (bicubic)",

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Iterable
 from dataclasses import replace
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 import torch

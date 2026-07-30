@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 import torch
-
 from ComfyUI_VLM_nodes.nodes.video_intelligence import (
     NODE_CLASS_MAPPINGS,
     VLMAdaptiveFrameSampler,

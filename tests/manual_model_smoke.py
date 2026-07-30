@@ -14,7 +14,6 @@ import json
 import time
 
 import torch
-
 from ComfyUI_VLM_nodes.nodes.modern_vlm import MODEL_CATALOG, ModernVLMPredictor
 
 
