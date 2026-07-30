@@ -345,6 +345,193 @@ Upload the named media to ComfyUI's input directory, adjust the filenames and
 labels, then submit the JSON object as the `prompt` value to `/prompt`. These
 are API graphs, not frontend workflow-export JSON.
 
+## Node reference
+
+All 78 registered nodes, grouped by their menu category. The **Node ID** is the
+`class_type` written into workflow and API JSON — search for that string when
+you need to find a node you saw on a canvas.
+
+### Modern VLM
+
+The main entry point for current vision-language models.
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| Modern VLM (Qwen / SmolVLM2 / LFM / InternVL / Granite / Gemma) | `ModernVLM` | `STRING` |
+| Moondream 2 | `Moondream2model` | `STRING` |
+
+### Moondream 3
+
+Moondream 3 / 3.1 in an isolated Photon runtime. Load once, then reuse the
+`MOONDREAM31_MODEL` output across the task nodes.
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| Moondream 3 / 3.1 Loader (Isolated Photon) | `Moondream31Loader` | `MOONDREAM31_MODEL`, `STRING` |
+| Moondream 3 / 3.1 Caption | `Moondream31Caption` | `STRING`, `STRING` |
+| Moondream 3 / 3.1 Query | `Moondream31Query` | `STRING`, `STRING`, `STRING` |
+| Moondream 3 / 3.1 Detect (Image / Video) | `Moondream31Detect` | `VLM_DETECTIONS`, `STRING`, `IMAGE`, `MASK`, `BOUNDING_BOXES` |
+| Moondream 3 / 3.1 Point (Image / Video) | `Moondream31Point` | `VLM_POINTS`, `STRING`, `IMAGE`, `STRING` |
+| Moondream 3 Preview SVG Segment (Image / Video) | `Moondream31Segment` | `VLM_DETECTIONS`, `STRING`, `STRING`, `MASK`, `IMAGE`, ... |
+
+### Florence-2
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| Florence-2 Multitask Vision | `Florence2` | `STRING`, `STRING`, `MASK`, `IMAGE` |
+
+### Vision: detection, segmentation, tracking
+
+Open-vocabulary detection and video segmentation. These emit the structured
+`VLM_DETECTIONS` / `VLM_POINTS` / `VLM_TRACKS` types rather than loose strings.
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| VLM Open-Vocabulary Detection | `VLMOpenVocabularyDetection` | `VLM_DETECTIONS`, `STRING`, `IMAGE`, `MASK`, `BOUNDING_BOXES` |
+| VLM SAM2.1 Video Segmentation | `VLMSAM2VideoSegmentation` | `VLM_TRACKS`, `STRING`, `MASK`, `MASK`, `IMAGE` |
+| VLM SAM3 Track Adapter | `VLMSAM3TrackAdapter` | `VLM_TRACKS`, `SAM3_TRACK_DATA` |
+| VLM Track Detections | `VLMTrackDetections` | `VLM_TRACKS` |
+| VLM Track Report | `VLMTrackReport` | `STRING`, `STRING` |
+| JoyTag | `Joytag` | `STRING` |
+
+### Vision: spatial reasoning
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| VLM Spatial Prompt Builder | `VLMSpatialPromptBuilder` | `STRING` |
+| VLM Structured Spatial Parser | `VLMStructuredSpatialParser` | `VLM_DETECTIONS`, `VLM_POINTS`, `STRING` |
+
+### Vision: detection utilities
+
+Converters and filters between structured detections and ordinary Comfy types.
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| Filter VLM Detections | `VLMFilterDetections` | `VLM_DETECTIONS` |
+| Select VLM Detection | `VLMSelectDetection` | `VLM_DETECTIONS` |
+| Crop VLM Detections | `VLMCropDetections` | `IMAGE`, `STRING` |
+| Render VLM Detections | `VLMRenderDetections` | `IMAGE` |
+| VLM Detection Centers | `VLMDetectionsToPoints` | `VLM_POINTS`, `STRING` |
+| VLM Detections from JSON | `VLMDetectionsFromJSON` | `VLM_DETECTIONS` |
+| VLM Detections to JSON | `VLMDetectionsToJSON` | `STRING` |
+| VLM Detections to Bounding Boxes | `VLMDetectionsToBoundingBoxes` | `BOUNDING_BOXES`, `STRING` |
+| VLM Detections to Masks | `VLMDetectionsToMasks` | `MASK`, `MASK`, `STRING`, `MASK`, `IMAGE`, ... |
+
+### Vision: mask tools
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| VLM Mask Processor | `VLMMaskProcessor` | `MASK`, `MASK`, `MASK`, `IMAGE` |
+| VLM Mask Composite | `VLMMaskComposite` | `IMAGE`, `IMAGE`, `IMAGE`, `IMAGE` |
+
+### Video intelligence
+
+Adaptive frame selection and temporal reasoning for long videos.
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| VLM Adaptive Frame Sampler | `VLMAdaptiveFrameSampler` | `IMAGE`, `VLM_VIDEO_SELECTION`, `STRING`, `STRING` |
+| VLM Video Reasoning Prompt | `VLMVideoReasoningPrompt` | `STRING`, `STRING` |
+| VLM Video Temporal Reasoner | `VLMVideoTemporalReasoner` | `STRING`, `VLM_EVENTS`, `VLM_VIDEO_SELECTION`, `IMAGE` |
+| VLM Temporal Events From JSON | `VLMEventsFromVideoJSON` | `VLM_EVENTS`, `STRING`, `STRING` |
+| VLM Persistent Scene State | `VLMBuildSceneState` | `VLM_SCENE_STATE`, `STRING`, `STRING` |
+| VLM Track-Aware Semantic Crops | `VLMTrackAwareCrops` | `IMAGE`, `STRING` |
+
+### LLM (local GGUF)
+
+llama.cpp text models. `LLM Loader (GGUF)` produces the `CUSTOM` model handle
+the samplers consume; the *Managed Cache* variants own their own handle and can
+release it after each run.
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| LLM Loader (GGUF) | `LLMLoader` | `CUSTOM` |
+| LLM Sampler | `LLMSampler` | `STRING` |
+| LLM Prompt Generator | `LLMPromptGenerator` | `STRING` |
+| LLM (Managed Cache) | `LLMOptionalMemoryFreeSimple` | `STRING` |
+| LLM (Managed Cache, Advanced) | `LLMOptionalMemoryFreeAdvanced` | `STRING` |
+| Structured Output | `StructuredOutput` | `STRING` |
+| Structured Keyword Extraction | `KeywordExtraction` | `STRING` |
+| Structured Prompt Generator | `LLavaPromptGenerator` | `STRING` |
+| Creative Art Prompt Generator | `CreativeArtPromptGenerator` | `STRING` |
+| Prompt Suggester | `Suggester` | `STRING` |
+
+### LLaVA (local GGUF multimodal)
+
+Vision models through llama.cpp. These need both a GGUF and its vision
+projector (mmproj).
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| LLaVA Loader | `LLava Loader Simple` | `CUSTOM` |
+| LLaVA Vision Projector Loader | `LlavaClipLoader` | `CUSTOM` |
+| LLaVA Sampler | `LLavaSamplerSimple` | `STRING` |
+| LLaVA Sampler (Advanced) | `LLavaSamplerAdvanced` | `STRING` |
+| LLaVA (Managed Cache) | `LLavaOptionalMemoryFreeSimple` | `STRING` |
+| LLaVA (Managed Cache, Advanced) | `LLavaOptionalMemoryFreeAdvanced` | `STRING` |
+
+### Hosted APIs
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| Hosted VLM API (Secure) | `HostedVLMAPI` | `STRING`, `STRING`, `INT` |
+| Hosted LLM API (Secure) | `PromptGenerateAPI` | `STRING` |
+
+### Text toolkit
+
+Dependency-free string handling, so a VLM response can be shaped without an
+extra node pack.
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| Text | `SimpleText` | `STRING`, `INT`, `INT`, `INT` |
+| Text Join | `VLMTextJoin` | `STRING`, `STRING`, `INT` |
+| Text Template | `VLMTextTemplate` | `STRING`, `STRING`, `STRING` |
+| Text Clean | `VLMTextClean` | `STRING`, `STRING` |
+| Text Replace | `VLMTextReplace` | `STRING`, `INT`, `STRING` |
+| Text Split / Batch | `VLMTextSplit` | `STRING`, `STRING`, `INT` |
+| Text Inspector | `VLMTextInspect` | `STRING`, `INT`, `INT`, `INT`, `INT`, `INT`, ... |
+| View Text (Streaming) | `ViewText` | `STRING`, `INT`, `INT`, `INT`, `STRING` |
+| JSON Extract | `VLMJSONExtract` | `STRING`, `BOOLEAN`, `STRING`, `STRING` |
+| JSON to Text | `JsonToText` | `STRING`, `STRING`, `INT` |
+
+### Performance and diagnostics
+
+Run **VLM Runtime Diagnostics** before reporting a bug — it reports your
+device, backend, and which optional packages are installed.
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| VLM Runtime Diagnostics | `VLMRuntimeDiagnostics` | `STRING` |
+| VLM Performance Profile | `VLMPerformanceProfile` | `INT`, `FLOAT`, `INT`, `INT`, `BOOLEAN`, `STRING` |
+| VLM Image Pixel Budget | `VLMImagePixelBudget` | `IMAGE`, `INT`, `INT`, `STRING` |
+
+### Audio
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| AudioLDM2 | `AudioLDM2Node` | `*`, `INT`, `AUDIO` |
+| Chat Musician | `ChatMusician` | `STRING`, `*`, `INT`, `AUDIO` |
+| PlayMusic Node | `PlayMusic` | `*` |
+| Save Audio | `SaveAudioNode` | — |
+
+### Legacy model loaders
+
+Kept for existing workflows. New graphs should prefer **Modern VLM**, which
+covers most of these architectures through one interface.
+
+| Node | Node ID | Outputs |
+| --- | --- | --- |
+| Qwen2-VL | `Qwen2VLNode` | `STRING` |
+| MiniCPM-V 2.6 (GGUF) | `MiniCPMNode` | `STRING` |
+| Molmo Vision-Language Model | `MolmoNode` | `STRING` |
+| PaLI-Gemma (Official Segmentation) | `Paligemma` | `STRING`, `MASK`, `IMAGE` |
+| Kosmos-2 | `Kosmos2model` | `STRING` |
+| MC-LLaVA | `MCLLaVAModel` | `STRING` |
+| UForm Gen2 Qwen | `UformGen2QwenNode` | `STRING` |
+| MoonDream (Moondream 2) | `MoonDream` | `STRING` |
+| [Legacy] Modern VLM Compatibility | `LegacyModernVLM` | `STRING` |
+
 ## Install
 
 Install through ComfyUI Manager, or clone into `ComfyUI/custom_nodes` and run:
