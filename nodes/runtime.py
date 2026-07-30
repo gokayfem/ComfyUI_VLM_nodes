@@ -18,11 +18,12 @@ import os
 import platform
 import re
 import threading
+from collections.abc import Callable, Iterable, Mapping
 from contextlib import nullcontext
 from dataclasses import dataclass
 from importlib import metadata
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any
 
 import folder_paths
 import numpy as np
@@ -680,7 +681,10 @@ def llama_runtime_input_types() -> dict[str, tuple[Any, ...]]:
                 "min": 1,
                 "max": 8192,
                 "step": 1,
-                "tooltip": "Logical prompt batch. Lower this if context loading runs out of memory.",
+                "tooltip": (
+                    "Logical prompt batch. Lower this if context loading runs "
+                    "out of memory."
+                ),
             },
         ),
         "n_ubatch": (
@@ -697,7 +701,11 @@ def llama_runtime_input_types() -> dict[str, tuple[Any, ...]]:
             list(LLAMA_FLASH_ATTENTION_CHOICES),
             {
                 "default": "Auto",
-                "tooltip": "Auto enables llama.cpp flash attention only with accelerator offload and safely retries without it when unsupported.",
+                "tooltip": (
+                    "Auto enables llama.cpp flash attention only with "
+                    "accelerator offload and safely retries without it when "
+                    "unsupported."
+                ),
             },
         ),
         "use_mmap": (

@@ -8,8 +8,9 @@ small and large VLM families while keeping downloads and VRAM allocation lazy.
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 import torch
 
@@ -25,8 +26,8 @@ from .runtime import (
     model_device,
     move_inputs,
     normalize_hf_model_id,
-    require_quantization_backend,
     require_module,
+    require_quantization_backend,
     reserve_external_vram,
     snapshot_download,
     tensor_batch_to_pil,

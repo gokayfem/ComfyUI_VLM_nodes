@@ -17,14 +17,13 @@ from .runtime import (
     inference_context,
     model_device,
     move_inputs,
-    require_quantization_backend,
     require_module,
+    require_quantization_backend,
     reserve_external_vram,
     snapshot_download,
     tensor_batch_to_pil,
     torch_dtype,
 )
-
 
 QWEN2_VL_MODELS = {
     "Qwen2-VL-2B": "Qwen/Qwen2-VL-2B-Instruct",

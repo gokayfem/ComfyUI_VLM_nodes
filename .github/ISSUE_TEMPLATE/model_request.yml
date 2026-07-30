@@ -1,0 +1,46 @@
+name: Model or feature request
+description: Ask for support for a new VLM/LLM, or a new node.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like added?
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Model repository (if requesting a model)
+      description: A Hugging Face repo id, so the architecture can be checked.
+      placeholder: "Qwen/Qwen3-VL-8B-Instruct"
+
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Which backend would it use?
+      options:
+        - transformers (safetensors)
+        - llama.cpp (GGUF)
+        - Hosted API
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: What does it let you do that current nodes cannot?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: >-
+            I checked the README node reference to confirm this is not already
+            supported.
+          required: true

@@ -6,7 +6,6 @@ from types import SimpleNamespace
 
 import pytest
 import torch
-
 from ComfyUI_VLM_nodes.nodes import hosted_api
 
 

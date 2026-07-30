@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Literal, Optional
+from typing import Any
 
 import folder_paths
 import torch
@@ -68,7 +68,7 @@ class ArtisticTechniques(BaseModel):
 
 class ImageryTheme(BaseModel):
     core_subject: str
-    additional_elements: Optional[list[str]] = None
+    additional_elements: list[str] | None = None
 
 
 class VisualStyle(BaseModel):

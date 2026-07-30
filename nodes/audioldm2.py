@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import folder_paths
 import numpy as np
 import torch
-
-import folder_paths
 
 from .runtime import (
     CachedModelNode,

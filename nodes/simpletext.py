@@ -14,7 +14,6 @@ import re
 import unicodedata
 from typing import Any
 
-
 TEXT_CATEGORY = "VLM Nodes/Text"
 CREATE_CATEGORY = f"{TEXT_CATEGORY}/Create"
 TRANSFORM_CATEGORY = f"{TEXT_CATEGORY}/Transform"

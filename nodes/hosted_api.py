@@ -9,13 +9,14 @@ Custom endpoints can read only ``CUSTOM_API_KEY``.
 
 from __future__ import annotations
 
-import ipaddress
 import io
+import ipaddress
 import json
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import quote, quote_plus, urlsplit, urlunsplit
 
 import torch

@@ -1,0 +1,8 @@
+# Development and CI tooling. Not needed to run the nodes in ComfyUI.
+# Install with ComfyUI's Python alongside requirements.txt:
+#   python -m pip install -r requirements.txt -r requirements-dev.txt
+build>=1.2,<2
+packaging>=24
+pytest>=8,<9
+pytest-cov>=5,<8
+ruff>=0.14,<1

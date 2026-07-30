@@ -5,8 +5,8 @@ from __future__ import annotations
 import colorsys
 import hashlib
 import math
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Iterable, Mapping
 
 import numpy as np
 import torch

@@ -258,7 +258,7 @@ class Sam2VideoPredictor:
             ):
                 raise ValueError("seed_mask must have shape [objects, height, width].")
             object_ids = list(range(1, masks_for_seed.shape[0] + 1))
-            labels = {object_id: None for object_id in object_ids}
+            labels = dict.fromkeys(object_ids)
         if not object_ids:
             raise ValueError(
                 "Connect detections, a BOUNDING_BOX, or at least one seed mask."

@@ -11,7 +11,11 @@ import json
 import time
 from pathlib import Path
 
-from ComfyUI_VLM_nodes.nodes.runtime import (
+from _bootstrap import bootstrap
+
+bootstrap()
+
+from ComfyUI_VLM_nodes.nodes.runtime import (  # noqa: E402
     LlamaHandle,
     default_llama_threads,
     hf_download,
