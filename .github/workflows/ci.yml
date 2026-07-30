@@ -8,6 +8,22 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install lint tooling
+        run: python -m pip install -r requirements-dev.txt
+      - name: Ruff
+        run: python -m ruff check --output-format github .
+
   test:
     name: ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
@@ -20,18 +36,22 @@ jobs:
             os: ubuntu-latest
             python: "3.10"
             cpu_index: true
+            coverage: false
           - label: Linux / Python 3.13
             os: ubuntu-latest
             python: "3.13"
             cpu_index: true
+            coverage: true
           - label: Windows / Python 3.12
             os: windows-latest
             python: "3.12"
             cpu_index: true
+            coverage: false
           - label: macOS / Python 3.12
             os: macos-14
             python: "3.12"
             cpu_index: false
+            coverage: false
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -52,10 +72,24 @@ jobs:
       - name: Install ComfyUI and node dependencies
         run: |
           git clone --depth 1 https://github.com/Comfy-Org/ComfyUI.git ../ComfyUI
-          python -m pip install pytest packaging build
+          python -m pip install -r requirements-dev.txt
           python -m pip install -r ../ComfyUI/requirements.txt -r requirements.txt
       - name: Test
+        if: matrix.coverage == false
         run: python -m pytest -q
+      - name: Test with coverage
+        if: matrix.coverage == true
+        run: >-
+          python -m pytest -q
+          --cov=nodes --cov-report=term-missing:skip-covered
+          --cov-report=xml --cov-fail-under=70
+      - name: Upload coverage report
+        if: matrix.coverage == true && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: warn
       - name: Compile
         run: python -m compileall -q .
       - name: Build distribution
