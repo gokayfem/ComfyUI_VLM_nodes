@@ -40,6 +40,9 @@ restart ComfyUI:
 | Together AI | `TOGETHER_API_KEY` |
 | OpenRouter | `OPENROUTER_API_KEY` |
 | Custom remote endpoint | `CUSTOM_API_KEY` |
+| Universal VLA policy server | `VLA_POLICY_TOKEN` |
+| openpi WebSocket server | `OPENPI_API_KEY` |
+| Isaac-GR00T ZMQ server | `GROOT_API_TOKEN` |
 
 For an interactive POSIX/WSL session, this avoids putting the value in shell
 history:
@@ -58,6 +61,38 @@ Web search is disabled by default. Enabling it sends the request content to the
 selected provider's server-side search system and may have separate retention,
 regional-availability, and billing terms. Treat it as an explicit data-sharing
 choice; do not enable it for content that is outside those terms.
+
+## Robotics policy endpoints
+
+Robotics tokens are also server-side only. Workflow nodes select an endpoint,
+but cannot select an arbitrary environment variable or contain the secret
+value.
+
+- The universal policy client permits unencrypted HTTP only on loopback.
+  Remote use requires HTTPS plus `allow_remote=true`; redirects and
+  environment proxies are disabled.
+- The openpi client permits unencrypted WebSocket only on loopback. Remote use
+  requires WSS plus `allow_remote=true`.
+- GR00T's official ZeroMQ protocol has token authentication but no built-in
+  transport encryption. Keep it on loopback/private infrastructure or place it
+  inside an authenticated encrypted tunnel. Never expose its port directly to
+  the public internet.
+- Camera payloads are JPEG-compressed and bounded per frame and per request.
+  Response sizes, camera count, observation history, state/action dimensions,
+  and action horizons are bounded before use.
+- MessagePack ndarray decoders reject object/void dtypes and never deserialize
+  pickle. The included HTTP sidecar uses bounded JSON instead of LeRobot's
+  pickle-based asynchronous transport.
+- Errors redact the resolved token and authorization-like values. Reports
+  include only endpoint scheme/host/port, not request headers, full camera
+  payloads, or state data.
+
+Robot observations may expose people, homes, workplaces, proprietary tasks,
+and physical state. Treat them as sensitive even when no API key is present.
+The safety node is a data validation gate, not a certified control system.
+This package intentionally contains no ROS, serial, CAN, motor, or robot SDK
+transport; a separate controller must enforce emergency stop, deadman,
+watchdog, collision/workspace, command-age, and manufacturer limits.
 
 ## Legacy workflows
 

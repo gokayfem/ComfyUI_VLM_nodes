@@ -137,6 +137,38 @@ Authoritative references:
 - Model downloads, imports, and package compilation never occur during node
   discovery.
 
+## Robotics / VLA policy compatibility
+
+ComfyUI's robotics schemas, safety gate, trajectory tools, and universal HTTP
+client run wherever this node pack runs. Policy runtime compatibility is
+separate:
+
+| Policy route | ComfyUI client | Policy environment | Practical boundary |
+| --- | --- | --- | --- |
+| Universal VLA HTTP | Windows, Linux, macOS; CUDA, ROCm, Metal, XPU, CPU | Any host that implements `comfyui-vla-http-v1` | Loopback HTTP or trusted HTTPS; no pickle |
+| LeRobot sidecar | Same universal client | Current LeRobot supports Linux, Windows, and macOS; individual policy extras/operators vary | Python/PyTorch live outside ComfyUI; fine-tuned checkpoint required for the target embodiment |
+| openpi WebSocket | Lightweight optional client on every ComfyUI platform | Upstream currently tests Ubuntu 22.04 + NVIDIA, inference above 8 GB VRAM | Use WSL/Docker/Linux server; remote transport must be WSS |
+| Isaac-GR00T N1.7 ZMQ | Lightweight optional client on every ComfyUI platform | NVIDIA CUDA/Jetson Linux according to upstream deployment matrix | ZMQ has no transport encryption; use a private network/tunnel |
+| OpenVLA-OFT | Universal client with a project-specific bridge | Upstream PyTorch/CUDA environment | OFT is the preferred high-frequency multi-image OpenVLA route |
+| Octo | Universal client with a project-specific bridge | Isolated JAX environment | Kept as a lightweight research baseline, not the default maintained runtime |
+
+Install only the native client protocols into ComfyUI:
+
+```bash
+python -m pip install -r requirements-robotics-client.txt
+```
+
+Do not install `lerobot[all]`, openpi, Isaac-GR00T, OpenVLA, or JAX into
+ComfyUI's Python. The included LeRobot HTTP sidecar belongs in its own
+environment and optionally moves its owned policy to CPU after an idle
+interval. It does not flush ComfyUI's accelerator cache.
+
+An embodiment profile is a workflow contract, not a hardware certification.
+The supplied profiles are visibly labeled templates. Before real deployment,
+replace action bounds/deltas with the trained dataset's semantics and the
+manufacturer/controller limits. ComfyUI never opens ROS, serial, CAN, or robot
+SDK transports.
+
 Install manually:
 
 ```bash

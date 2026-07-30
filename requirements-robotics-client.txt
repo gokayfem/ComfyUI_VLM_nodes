@@ -1,0 +1,5 @@
+# Lightweight native clients only. Heavy VLA policy runtimes stay in a
+# separate LeRobot, openpi, GR00T, OpenVLA/OFT, or Octo environment.
+msgpack>=1.0.8,<2
+pyzmq>=26,<28
+websockets>=14,<17

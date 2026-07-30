@@ -21,6 +21,71 @@ One checkpoint covers sibling sizes that use the same architecture and loader.
 The node does not download every size simply to repeat the same integration
 test.
 
+## Robotics VLA pass
+
+Validated on 2026-07-31 through the included isolated LeRobot HTTP policy
+server, entirely from WSL and D-drive storage:
+
+- Runtime: Python 3.12.12, LeRobot 0.6.1 from current upstream source,
+  PyTorch 2.11.0+cu128, and an NVIDIA RTX 3090.
+- Checkpoint: `lerobot/smolvla_base` (about 2.5 GiB of D-drive cache), backed
+  by `HuggingFaceTB/SmolVLM2-500M-Video-Instruct`.
+- Real input: local `image (23).png`, a 256x256 outdoor photograph, repeated
+  across the checkpoint's three declared camera keys with a six-value state
+  vector and the task “Move the end effector toward the backpack and prepare
+  to grasp it.”
+- Contract: three camera tensors, `observation.state`, the LeRobot
+  preprocessor, `predict_action_chunk`, the checkpoint postprocessor, bounded
+  JSON/JPEG transport, action parsing, and the ComfyUI safety layer all ran.
+  The native checkpoint advertises a 50-step chunk; the server returned four
+  steps of six actions for this test.
+- Five warm requests after one discarded warm-up measured 241.374 ms mean
+  server inference (242.957 ms median, 234.726–249.980 ms range) and
+  270.404 ms mean HTTP client time (271.483 ms median,
+  261.477–282.218 ms range).
+- The final raw action chunk was:
+
+  ```json
+  [
+    [0.06258623, -0.11250310, -0.13713294, -0.06168950, -0.00926633, -0.08506130],
+    [0.15420279, -0.05678255, -0.20159233, 0.06734322, -0.00563951, -0.09575561],
+    [0.16482556, -0.07453565, -0.17410603, 0.02461835, -0.00256573, 0.15842065],
+    [0.27048433, -0.09272483, -0.19934477, 0.05491992, 0.05286619, 0.07594281]
+  ]
+  ```
+
+  Applying the SO-100/SO-101 template limits from an all-zero previous action
+  found five per-step delta violations, no bounds violations, and no
+  non-finite values. `Clamp safely` produced:
+
+  ```json
+  [
+    [0.06258623, -0.1, -0.1, -0.06168950, -0.00926633, -0.08506130],
+    [0.15420279, -0.05678255, -0.2, 0.03831051, -0.00563951, -0.09575561],
+    [0.16482556, -0.07453565, -0.17410603, 0.02461835, -0.00256573, 0.05424440],
+    [0.26482555, -0.09272483, -0.19934477, 0.05491992, 0.05286619, 0.07594281]
+  ]
+  ```
+
+This is an end-to-end loading, preprocessing, inference, transport, parsing,
+and safety-contract pass. It is not evidence that a base SmolVLA checkpoint can
+control an SO-100 from an arbitrary Internet-style photograph. Actual robot
+deployment still requires embodiment-matched fine-tuning, calibrated state and
+camera inputs, hardware-certified limits, a deadman/watchdog, collision
+handling, and an external emergency stop.
+
+The same real checkpoint was then exercised through ComfyUI's actual local
+`POST /prompt` API, not by calling the Python node directly. The graph loaded
+and center-cropped the real image to 256x256, constructed the three-camera
+checkpoint contract, called the isolated GPU policy, applied the SO-100/SO-101
+template safety gate, rendered a 960x480 trajectory preview, and emitted all
+three text reports. Final prompt
+`86b31f5a-5a8c-4abc-abdb-634e46da5c93` completed successfully: the policy
+returned `[4, 6]` actions, the safety gate found three rate violations and
+clamped them, `safe_for_handoff` was true under the declared template, and
+ComfyUI wrote preview `ComfyUI_temp_icynu_00001_.png`. The reusable acceptance
+harness is `tests/manual_robotics_smoke.py`.
+
 ## ComfyUI API pass
 
 ComfyUI started from the D-drive WSL installation with all four repaired custom
