@@ -14,7 +14,14 @@ import json
 import time
 
 import torch
-from ComfyUI_VLM_nodes.nodes.modern_vlm import MODEL_CATALOG, ModernVLMPredictor
+from _bootstrap import bootstrap
+
+bootstrap()
+
+from ComfyUI_VLM_nodes.nodes.modern_vlm import (  # noqa: E402
+    MODEL_CATALOG,
+    ModernVLMPredictor,
+)
 
 
 def test_image() -> torch.Tensor:

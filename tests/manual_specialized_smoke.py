@@ -12,6 +12,9 @@ import json
 import time
 
 import torch
+from _bootstrap import bootstrap
+
+bootstrap()
 
 BACKENDS = (
     "florence-base",

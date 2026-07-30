@@ -11,8 +11,12 @@ from __future__ import annotations
 
 import json
 
-from ComfyUI_VLM_nodes.nodes.modern_vlm import MODEL_CATALOG
-from transformers import AutoConfig, AutoProcessor
+from _bootstrap import bootstrap
+
+bootstrap()
+
+from ComfyUI_VLM_nodes.nodes.modern_vlm import MODEL_CATALOG  # noqa: E402
+from transformers import AutoConfig, AutoProcessor  # noqa: E402
 
 
 def main() -> int:
