@@ -14,8 +14,10 @@ every user-visible fix needs a version bump.
 ### Fixed
 
 - Package metadata declared `license = "MIT"` while the bundled `LICENSE` has
-  been Apache-2.0 since the initial commit. The Registry and any built wheel
-  advertised the wrong license. Metadata now says `Apache-2.0`.
+  been Apache-2.0 since the initial commit. Built wheels therefore contained
+  contradictory MIT metadata and Apache-2.0 license text. The Registry already
+  referenced the license file and was unaffected. Metadata now says
+  `Apache-2.0`.
 - Moondream 2 and Moondream 3.1 local inference (`b8ae298`).
 - SmolVLM setup dependencies (`c13ee23`).
 

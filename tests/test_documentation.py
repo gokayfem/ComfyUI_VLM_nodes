@@ -41,6 +41,35 @@ def test_every_registered_node_appears_in_the_readme():
     )
 
 
+def test_node_reference_matches_registered_output_types():
+    row_pattern = re.compile(
+        r"^\|[^|]+\|\s*`(?P<node_id>[^`]+)`\s*\|(?P<outputs>[^|]*)\|$",
+        re.M,
+    )
+    documented = {
+        match.group("node_id"): tuple(
+            re.findall(r"`([^`]+)`", match.group("outputs"))
+        )
+        for match in row_pattern.finditer(read("README.md"))
+    }
+    mismatches = {}
+    for node_id, node_class in package.NODE_CLASS_MAPPINGS.items():
+        expected = tuple(
+            "*" if output is any else str(output)
+            for output in node_class.RETURN_TYPES
+        )
+        if documented.get(node_id) != expected:
+            mismatches[node_id] = {
+                "documented": documented.get(node_id),
+                "registered": expected,
+            }
+
+    assert not mismatches, (
+        "README.md output schemas do not match the registered RETURN_TYPES: "
+        f"{mismatches}"
+    )
+
+
 def test_declared_license_matches_the_license_file():
     declared = project_field("license")
     license_text = read("LICENSE")
@@ -54,7 +83,7 @@ def test_declared_license_matches_the_license_file():
 
     assert declared == expected, (
         f"pyproject.toml declares {declared!r} but LICENSE is {expected}. "
-        "This metadata is published to the Comfy Registry."
+        "This metadata is embedded in built distribution artifacts."
     )
 
 
