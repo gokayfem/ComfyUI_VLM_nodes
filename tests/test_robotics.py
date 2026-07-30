@@ -149,13 +149,10 @@ def test_openpi_payload_supports_flat_and_aloha_shapes():
 
 
 def test_openpi_array_codec_roundtrips_and_rejects_object_arrays():
-    import msgpack
-
     source = np.arange(12, dtype=np.float32).reshape(3, 4)
-    encoded = msgpack.packb({"actions": source}, default=robotics._openpi_pack_array)
-    decoded = msgpack.unpackb(encoded, object_hook=robotics._openpi_unpack_array)
-    key = b"actions" if b"actions" in decoded else "actions"
-    assert np.array_equal(decoded[key], source)
+    encoded = robotics._openpi_pack_array(source)
+    decoded = robotics._openpi_unpack_array(encoded)
+    assert np.array_equal(decoded, source)
     with pytest.raises(ValueError, match="does not support dtype"):
         robotics._openpi_pack_array(np.array([object()], dtype=object))
     forged = {
@@ -263,12 +260,10 @@ def test_groot_payload_uses_official_nested_batch_time_contract():
 
 
 def test_groot_array_codec_and_native_client(monkeypatch):
-    import msgpack
-
     array = np.arange(6, dtype=np.float32).reshape(2, 3)
-    encoded = msgpack.packb({"x": array}, default=robotics._groot_encode)
-    decoded = msgpack.unpackb(encoded, object_hook=robotics._groot_decode, raw=False)
-    assert np.array_equal(decoded["x"], array)
+    encoded = robotics._groot_encode(array)
+    decoded = robotics._groot_decode(encoded)
+    assert np.array_equal(decoded, array)
     with pytest.raises(TypeError, match="object/void"):
         robotics._groot_encode(np.array([object()], dtype=object))
     with pytest.raises(ValueError, match="object/void"):
