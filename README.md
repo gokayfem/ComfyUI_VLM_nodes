@@ -535,8 +535,18 @@ device, backend, and which optional packages are installed.
 | --- | --- | --- |
 | AudioLDM2 | `AudioLDM2Node` | `*`, `INT`, `AUDIO` |
 | Chat Musician | `ChatMusician` | `STRING`, `*`, `INT`, `AUDIO` |
+| MiniMax Music | `MiniMaxMusicNode` | `*`, `INT`, `AUDIO` |
 | PlayMusic Node | `PlayMusic` | `*` |
 | Save Audio | `SaveAudioNode` | — |
+
+MiniMax Music reads `MINIMAX_API_KEY` only from the ComfyUI server
+environment. It uses fixed `global_en` and `cn_zh` endpoints, supports music
+generation and cover models, decodes URL or hexadecimal responses, and emits
+MP3, WAV, or PCM results through the existing waveform and `AUDIO` sockets.
+The `aigc_watermark` field is sent only for `cn_zh` requests. See the official
+[global](https://platform.minimax.io/docs/api-reference/music-generation) or
+[China](https://platform.minimaxi.com/docs/api-reference/music-generation)
+music API reference for account and content requirements.
 
 ### Legacy model loaders
 

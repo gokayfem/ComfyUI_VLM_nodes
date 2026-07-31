@@ -39,6 +39,7 @@ restart ComfyUI:
 | Mistral | `MISTRAL_API_KEY` |
 | Together AI | `TOGETHER_API_KEY` |
 | OpenRouter | `OPENROUTER_API_KEY` |
+| MiniMax | `MINIMAX_API_KEY` |
 | Custom remote endpoint | `CUSTOM_API_KEY` |
 | Universal VLA policy server | `VLA_POLICY_TOKEN` |
 | openpi WebSocket server | `OPENPI_API_KEY` |
