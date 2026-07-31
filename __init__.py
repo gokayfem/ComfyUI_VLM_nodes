@@ -18,6 +18,7 @@ node_list = [
     "llavaloader",
     "mcllava",
     "minicpm",
+    "minimax_music",
     "modern_vlm",
     "molmo",
     "moondream31",

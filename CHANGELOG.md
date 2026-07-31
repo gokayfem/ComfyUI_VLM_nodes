@@ -9,6 +9,20 @@ Versions are published to the [Comfy Registry](https://registry.comfy.org/)
 from `pyproject.toml`. A release is only published when `version` changes, so
 every user-visible fix needs a version bump.
 
+## [3.5.0] - 2026-07-31
+
+### Added
+
+- A MiniMax music node with fixed global and China endpoints, generation and
+  cover model selection, regional request fields, URL and hexadecimal response
+  decoding, and MP3, WAV, and PCM output through the existing audio contract.
+
+### Security
+
+- MiniMax credentials are read only from `MINIMAX_API_KEY`; workflows cannot
+  supply a key or redirect it to a custom endpoint, and request errors redact
+  the resolved value before reaching ComfyUI.
+
 ## [3.4.0] - 2026-07-31
 
 ### Added
