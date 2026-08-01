@@ -207,7 +207,12 @@ class OpenVocabularyDetector:
         processor = transformers.AutoProcessor.from_pretrained(model_path)
         model_class = transformers.AutoModelForZeroShotObjectDetection
         dtype = torch_dtype(precision)
-        model = model_class.from_pretrained(model_path, dtype=dtype)
+        # Transformers 4.x consumes ``torch_dtype``; 5.x renamed it to
+        # ``dtype``. Passing the 5.x name to 4.x leaks into the model
+        # constructor and crashes Grounding DINO at runtime.
+        major = int(str(transformers.__version__).split(".", 1)[0])
+        dtype_kwargs = {"dtype": dtype} if major >= 5 else {"torch_dtype": dtype}
+        model = model_class.from_pretrained(model_path, **dtype_kwargs)
         model.eval()
         self.spec = spec
         self.dtype = dtype
