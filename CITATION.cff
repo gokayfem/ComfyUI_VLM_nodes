@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use ComfyUI VLM Nodes in your work, please cite it using the metadata below."
+type: software
+title: "ComfyUI VLM Nodes"
+version: "3.5.0"
+date-released: 2026-07-31
+authors:
+  - family-names: "Aydoğan"
+    given-names: "Gökay"
+    orcid: "https://orcid.org/0000-0002-2343-9433"
+abstract: "Production-ready local and API vision-language, structured prompting, audio, and utility nodes for ComfyUI."
+keywords:
+  - ComfyUI
+  - vision-language models
+  - multimodal AI
+  - image understanding
+  - video understanding
+  - generative AI
+license: Apache-2.0
+repository-code: "https://github.com/gokayfem/ComfyUI_VLM_nodes"
+url: "https://github.com/gokayfem/ComfyUI_VLM_nodes"
