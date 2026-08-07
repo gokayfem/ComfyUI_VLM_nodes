@@ -7,6 +7,16 @@ build. It removes startup installers and global accelerator cache flushes,
 adds real image/video batches and live token streaming, and uses ComfyUI model
 residency and offloading.
 
+## VLM Speed Lab
+
+Performance work is tracked as reproducible, quality-gated iterations in the
+[VLM Speed Lab](benchmarks/README.md). The first target is the default
+`Qwen/Qwen3-VL-2B-Instruct`: Transformers baseline, visual-work reduction,
+Flash Attention 2, compiled execution, SGLang/FlashInfer, and TensorRT-LLM.
+Every promoted speedup must attach raw outputs and remain inside the declared
+quality tolerance on the same checkpoint, media, prompts, and decode settings.
+Planned GPU results stay visibly unreported until a run artifact exists.
+
 ## Modern model coverage
 
 The **Modern VLM** node provides one stable interface with a deliberately
