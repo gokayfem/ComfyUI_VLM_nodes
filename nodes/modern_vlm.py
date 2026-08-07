@@ -7,6 +7,7 @@ small and large VLM families while keeping downloads and VRAM allocation lazy.
 
 from __future__ import annotations
 
+import os
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -217,6 +218,20 @@ MEMORY_MODES = (
     "CPU",
 )
 ATTENTION_MODES = ("Auto (SDPA)", "Flash Attention 2", "Eager")
+GENERATION_CACHE_MODES = (
+    "Dynamic (compatible)",
+    "Static compiled (fastest repeated shape)",
+)
+
+
+def _enable_parallel_weight_loading() -> None:
+    """Use Transformers' threaded safetensor loader unless the user opted out."""
+
+    os.environ.setdefault("HF_ENABLE_PARALLEL_LOADING", "true")
+    os.environ.setdefault(
+        "HF_PARALLEL_LOADING_WORKERS",
+        str(min(8, os.cpu_count() or 1)),
+    )
 
 
 def _progress_text_sender(node_id: str | None) -> Callable[[str], None] | None:
@@ -354,6 +369,10 @@ class ModernVLMPredictor:
         elif memory_mode == "CPU":
             kwargs["dtype"] = torch.float32
 
+        # This only affects checkpoint deserialization. It leaves inference,
+        # precision, placement, and model outputs unchanged, and respects any
+        # explicit environment settings supplied by the user.
+        _enable_parallel_weight_loading()
         try:
             model = _model_class(transformers).from_pretrained(
                 model_path, **kwargs
@@ -464,6 +483,7 @@ class ModernVLMPredictor:
         video_frames=None,
         fps: float = 1.0,
         enable_thinking: bool = False,
+        generation_cache: str = "Dynamic (compatible)",
         stream_callback: Callable[[str], None] | None = None,
         video_selection: VideoFrameSelection | None = None,
     ) -> str:
@@ -581,6 +601,17 @@ class ModernVLMPredictor:
                 "max_new_tokens": int(max_new_tokens),
                 "do_sample": float(temperature) > 0,
             }
+            if generation_cache not in GENERATION_CACHE_MODES:
+                raise ValueError(
+                    f"Unknown generation cache mode {generation_cache!r}."
+                )
+            if generation_cache.startswith("Static compiled"):
+                # A fixed-size cache lets maintained Transformers releases
+                # compile the token-decoding stage. The first several calls
+                # pay compilation cost; repeated identical shapes then reuse
+                # the optimized graph. Keep dynamic cache as the compatibility
+                # default for one-shot and frequently changing workloads.
+                generation["cache_implementation"] = "static"
             if generation["do_sample"]:
                 generation.update(
                     temperature=float(temperature), top_p=float(top_p)
@@ -713,6 +744,17 @@ class ModernVLM(CachedModelNode):
                     ATTENTION_MODES,
                     {"default": "Auto (SDPA)"},
                 ),
+                "generation_cache": (
+                    GENERATION_CACHE_MODES,
+                    {
+                        "default": "Dynamic (compatible)",
+                        "tooltip": (
+                            "Static compiled is fastest after several warmups "
+                            "when image and output shapes repeat. Its first "
+                            "run can be much slower while kernels compile."
+                        ),
+                    },
+                ),
                 "enable_thinking": ("BOOLEAN", {"default": False}),
                 "unload_after": ("BOOLEAN", {"default": False}),
                 "stream_output": (
@@ -757,6 +799,7 @@ class ModernVLM(CachedModelNode):
         video_selection=None,
         fps=1.0,
         attention_mode="Auto (SDPA)",
+        generation_cache="Dynamic (compatible)",
         enable_thinking=False,
         unload_after=False,
         stream_output=True,
@@ -792,6 +835,7 @@ class ModernVLM(CachedModelNode):
                     fps=fps,
                     video_selection=video_selection,
                     enable_thinking=enable_thinking,
+                    generation_cache=generation_cache,
                     stream_callback=stream_callback,
                 ),
             )

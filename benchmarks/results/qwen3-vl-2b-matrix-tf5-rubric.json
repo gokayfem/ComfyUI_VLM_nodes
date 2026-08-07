@@ -1,0 +1,917 @@
+{
+  "schema": "comfyui-vlm/optimization-matrix",
+  "version": 1,
+  "created_at": "2026-08-07T22:40:42.770088+00:00",
+  "model": "Qwen/Qwen3-VL-2B-Instruct",
+  "media": {
+    "path": "/home/gokaygokay/ComfyUI_VLM_nodes/benchmarks/media/qwen-demo.jpeg",
+    "source_width": 2048,
+    "source_height": 1365
+  },
+  "prompt": "Describe this image precisely in one sentence.",
+  "model_load_seconds": 6.858,
+  "environment": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.11.14",
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "transformers": "5.12.1"
+  },
+  "runs_per_variant": 10,
+  "variants": [
+    {
+      "id": "00",
+      "label": "BF16 SDPA / dynamic cache / source resolution",
+      "longest_edge": null,
+      "cache": "dynamic",
+      "warmups": 2,
+      "processed_width": 2048,
+      "processed_height": 1365,
+      "quality_gate": {
+        "method": "required visual concepts",
+        "passed": true,
+        "concepts": {
+          "passed": true,
+          "matched": [
+            "woman",
+            "golden retriever",
+            "beach",
+            "high-five"
+          ],
+          "required": [
+            [
+              "woman",
+              "person"
+            ],
+            [
+              "golden retriever",
+              "dog"
+            ],
+            [
+              "beach",
+              "sand"
+            ],
+            [
+              "high-five",
+              "high five"
+            ]
+          ]
+        },
+        "exact_output_reference": null,
+        "exact_output_passed": null,
+        "exact_output_vs_baseline": true
+      },
+      "speedup_vs_baseline": {
+        "ttft": 1.0,
+        "e2e": 1.0,
+        "throughput": 1.0
+      },
+      "summary": {
+        "preprocess_ms_mean": 74.368,
+        "ttft_ms": {
+          "p50": 700.296,
+          "p95": 723.148
+        },
+        "e2e_ms": {
+          "p50": 1395.726,
+          "p95": 1487.708
+        },
+        "output_tokens_per_second_mean": 42.32,
+        "peak_vram_gib": 4.548,
+        "output_tokens_mean": 31.0,
+        "outputs_identical": true
+      },
+      "warmup_samples": [
+        {
+          "preprocess_ms": 119.344,
+          "ttft_ms": 1411.57,
+          "e2e_ms": 2117.774,
+          "output_tokens": 31,
+          "output_tokens_per_second": 42.481,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        },
+        {
+          "preprocess_ms": 74.884,
+          "ttft_ms": 705.019,
+          "e2e_ms": 1410.964,
+          "output_tokens": 31,
+          "output_tokens_per_second": 42.496,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        }
+      ],
+      "samples": [
+        {
+          "preprocess_ms": 72.204,
+          "ttft_ms": 701.128,
+          "e2e_ms": 1389.643,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.572,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        },
+        {
+          "preprocess_ms": 72.348,
+          "ttft_ms": 704.423,
+          "e2e_ms": 1402.979,
+          "output_tokens": 31,
+          "output_tokens_per_second": 42.946,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        },
+        {
+          "preprocess_ms": 72.379,
+          "ttft_ms": 699.464,
+          "e2e_ms": 1390.29,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.426,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        },
+        {
+          "preprocess_ms": 72.929,
+          "ttft_ms": 698.669,
+          "e2e_ms": 1401.161,
+          "output_tokens": 31,
+          "output_tokens_per_second": 42.705,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        },
+        {
+          "preprocess_ms": 76.526,
+          "ttft_ms": 731.448,
+          "e2e_ms": 1537.253,
+          "output_tokens": 31,
+          "output_tokens_per_second": 37.23,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        },
+        {
+          "preprocess_ms": 76.624,
+          "ttft_ms": 713.003,
+          "e2e_ms": 1422.268,
+          "output_tokens": 31,
+          "output_tokens_per_second": 42.297,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        },
+        {
+          "preprocess_ms": 75.459,
+          "ttft_ms": 666.823,
+          "e2e_ms": 1383.653,
+          "output_tokens": 31,
+          "output_tokens_per_second": 41.851,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        },
+        {
+          "preprocess_ms": 76.597,
+          "ttft_ms": 691.338,
+          "e2e_ms": 1375.888,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.824,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        },
+        {
+          "preprocess_ms": 75.082,
+          "ttft_ms": 711.574,
+          "e2e_ms": 1427.153,
+          "output_tokens": 31,
+          "output_tokens_per_second": 41.924,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        },
+        {
+          "preprocess_ms": 73.533,
+          "ttft_ms": 673.702,
+          "e2e_ms": 1364.577,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.423,
+          "peak_vram_gib": 4.548,
+          "input_tokens": 2770,
+          "vision_tokens": 11008,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully giving a high-five to her.",
+          "output_sha256": "7f7b9f725ce3dd1bd0e815bfcff7bf187fa2abe0d53fa7bcd7bfd612db7085da"
+        }
+      ]
+    },
+    {
+      "id": "01a",
+      "label": "BF16 SDPA / dynamic cache / 672px edge",
+      "longest_edge": 672,
+      "cache": "dynamic",
+      "warmups": 2,
+      "processed_width": 672,
+      "processed_height": 448,
+      "quality_gate": {
+        "method": "required visual concepts",
+        "passed": true,
+        "concepts": {
+          "passed": true,
+          "matched": [
+            "woman",
+            "golden retriever",
+            "beach",
+            "high-five"
+          ],
+          "required": [
+            [
+              "woman",
+              "person"
+            ],
+            [
+              "golden retriever",
+              "dog"
+            ],
+            [
+              "beach",
+              "sand"
+            ],
+            [
+              "high-five",
+              "high five"
+            ]
+          ]
+        },
+        "exact_output_reference": null,
+        "exact_output_passed": null,
+        "exact_output_vs_baseline": false
+      },
+      "speedup_vs_baseline": {
+        "ttft": 6.21,
+        "e2e": 1.654,
+        "throughput": 0.998
+      },
+      "summary": {
+        "preprocess_ms_mean": 7.266,
+        "ttft_ms": {
+          "p50": 112.763,
+          "p95": 122.823
+        },
+        "e2e_ms": {
+          "p50": 843.966,
+          "p95": 881.66
+        },
+        "output_tokens_per_second_mean": 42.225,
+        "peak_vram_gib": 4.036,
+        "output_tokens_mean": 32.0,
+        "outputs_identical": true
+      },
+      "warmup_samples": [
+        {
+          "preprocess_ms": 6.031,
+          "ttft_ms": 122.476,
+          "e2e_ms": 844.441,
+          "output_tokens": 32,
+          "output_tokens_per_second": 42.938,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        },
+        {
+          "preprocess_ms": 7.525,
+          "ttft_ms": 113.414,
+          "e2e_ms": 867.517,
+          "output_tokens": 32,
+          "output_tokens_per_second": 41.108,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        }
+      ],
+      "samples": [
+        {
+          "preprocess_ms": 8.086,
+          "ttft_ms": 123.813,
+          "e2e_ms": 872.379,
+          "output_tokens": 32,
+          "output_tokens_per_second": 41.412,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        },
+        {
+          "preprocess_ms": 7.525,
+          "ttft_ms": 114.325,
+          "e2e_ms": 831.252,
+          "output_tokens": 32,
+          "output_tokens_per_second": 43.24,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        },
+        {
+          "preprocess_ms": 7.52,
+          "ttft_ms": 110.647,
+          "e2e_ms": 889.253,
+          "output_tokens": 32,
+          "output_tokens_per_second": 39.815,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        },
+        {
+          "preprocess_ms": 6.243,
+          "ttft_ms": 112.581,
+          "e2e_ms": 835.841,
+          "output_tokens": 32,
+          "output_tokens_per_second": 42.862,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        },
+        {
+          "preprocess_ms": 6.796,
+          "ttft_ms": 113.04,
+          "e2e_ms": 840.013,
+          "output_tokens": 32,
+          "output_tokens_per_second": 42.643,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        },
+        {
+          "preprocess_ms": 7.75,
+          "ttft_ms": 110.994,
+          "e2e_ms": 858.836,
+          "output_tokens": 32,
+          "output_tokens_per_second": 41.453,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        },
+        {
+          "preprocess_ms": 7.667,
+          "ttft_ms": 112.917,
+          "e2e_ms": 847.365,
+          "output_tokens": 32,
+          "output_tokens_per_second": 42.209,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        },
+        {
+          "preprocess_ms": 6.15,
+          "ttft_ms": 110.293,
+          "e2e_ms": 825.91,
+          "output_tokens": 32,
+          "output_tokens_per_second": 43.319,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        },
+        {
+          "preprocess_ms": 7.394,
+          "ttft_ms": 121.612,
+          "e2e_ms": 846.696,
+          "output_tokens": 32,
+          "output_tokens_per_second": 42.754,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        },
+        {
+          "preprocess_ms": 7.532,
+          "ttft_ms": 112.61,
+          "e2e_ms": 841.236,
+          "output_tokens": 32,
+          "output_tokens_per_second": 42.546,
+          "peak_vram_gib": 4.036,
+          "input_tokens": 312,
+          "vision_tokens": 1176,
+          "output": "A woman and her golden retriever share a joyful moment on a sandy beach at sunset, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "96d246f1d52b0845af007cc02f126776b655eda16d09a07f4ac1bfb4be8404f0"
+        }
+      ]
+    },
+    {
+      "id": "01b",
+      "label": "BF16 SDPA / dynamic cache / 448px edge",
+      "longest_edge": 448,
+      "cache": "dynamic",
+      "warmups": 2,
+      "processed_width": 448,
+      "processed_height": 299,
+      "quality_gate": {
+        "method": "required visual concepts",
+        "passed": true,
+        "concepts": {
+          "passed": true,
+          "matched": [
+            "woman",
+            "golden retriever",
+            "beach",
+            "high-five"
+          ],
+          "required": [
+            [
+              "woman",
+              "person"
+            ],
+            [
+              "golden retriever",
+              "dog"
+            ],
+            [
+              "beach",
+              "sand"
+            ],
+            [
+              "high-five",
+              "high five"
+            ]
+          ]
+        },
+        "exact_output_reference": null,
+        "exact_output_passed": null,
+        "exact_output_vs_baseline": false
+      },
+      "speedup_vs_baseline": {
+        "ttft": 7.942,
+        "e2e": 1.803,
+        "throughput": 1.033
+      },
+      "summary": {
+        "preprocess_ms_mean": 4.583,
+        "ttft_ms": {
+          "p50": 88.172,
+          "p95": 90.227
+        },
+        "e2e_ms": {
+          "p50": 774.062,
+          "p95": 780.506
+        },
+        "output_tokens_per_second_mean": 43.707,
+        "peak_vram_gib": 4.001,
+        "output_tokens_mean": 31.0,
+        "outputs_identical": true
+      },
+      "warmup_samples": [
+        {
+          "preprocess_ms": 3.98,
+          "ttft_ms": 88.636,
+          "e2e_ms": 768.672,
+          "output_tokens": 31,
+          "output_tokens_per_second": 44.115,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.299,
+          "ttft_ms": 88.223,
+          "e2e_ms": 773.967,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.748,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        }
+      ],
+      "samples": [
+        {
+          "preprocess_ms": 4.915,
+          "ttft_ms": 89.425,
+          "e2e_ms": 778.012,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.567,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.91,
+          "ttft_ms": 90.767,
+          "e2e_ms": 773.458,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.944,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.475,
+          "ttft_ms": 87.596,
+          "e2e_ms": 780.921,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.27,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 5.156,
+          "ttft_ms": 89.35,
+          "e2e_ms": 772.663,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.904,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.618,
+          "ttft_ms": 87.633,
+          "e2e_ms": 773.253,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.756,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.432,
+          "ttft_ms": 88.058,
+          "e2e_ms": 779.999,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.356,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.676,
+          "ttft_ms": 89.566,
+          "e2e_ms": 768.915,
+          "output_tokens": 31,
+          "output_tokens_per_second": 44.16,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 3.846,
+          "ttft_ms": 87.046,
+          "e2e_ms": 778.431,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.391,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.991,
+          "ttft_ms": 88.103,
+          "e2e_ms": 774.665,
+          "output_tokens": 31,
+          "output_tokens_per_second": 43.696,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 3.815,
+          "ttft_ms": 88.242,
+          "e2e_ms": 769.596,
+          "output_tokens": 31,
+          "output_tokens_per_second": 44.03,
+          "peak_vram_gib": 4.001,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        }
+      ]
+    },
+    {
+      "id": "02",
+      "label": "BF16 SDPA / static compiled cache / 448px edge",
+      "longest_edge": 448,
+      "cache": "static",
+      "warmups": 6,
+      "exact_reference": "01b",
+      "processed_width": 448,
+      "processed_height": 299,
+      "quality_gate": {
+        "method": "required visual concepts plus byte-identical output against variant 01b",
+        "passed": true,
+        "concepts": {
+          "passed": true,
+          "matched": [
+            "woman",
+            "golden retriever",
+            "beach",
+            "high-five"
+          ],
+          "required": [
+            [
+              "woman",
+              "person"
+            ],
+            [
+              "golden retriever",
+              "dog"
+            ],
+            [
+              "beach",
+              "sand"
+            ],
+            [
+              "high-five",
+              "high five"
+            ]
+          ]
+        },
+        "exact_output_reference": "01b",
+        "exact_output_passed": true,
+        "exact_output_vs_baseline": false
+      },
+      "speedup_vs_baseline": {
+        "ttft": 9.142,
+        "e2e": 4.811,
+        "throughput": 3.295
+      },
+      "summary": {
+        "preprocess_ms_mean": 4.24,
+        "ttft_ms": {
+          "p50": 76.6,
+          "p95": 77.349
+        },
+        "e2e_ms": {
+          "p50": 290.124,
+          "p95": 299.671
+        },
+        "output_tokens_per_second_mean": 139.435,
+        "peak_vram_gib": 4.023,
+        "output_tokens_mean": 31.0,
+        "outputs_identical": true
+      },
+      "warmup_samples": [
+        {
+          "preprocess_ms": 4.676,
+          "ttft_ms": 5838.639,
+          "e2e_ms": 6436.632,
+          "output_tokens": 31,
+          "output_tokens_per_second": 50.168,
+          "peak_vram_gib": 4.011,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.922,
+          "ttft_ms": 79.28,
+          "e2e_ms": 294.627,
+          "output_tokens": 31,
+          "output_tokens_per_second": 139.31,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 3.893,
+          "ttft_ms": 76.419,
+          "e2e_ms": 292.685,
+          "output_tokens": 31,
+          "output_tokens_per_second": 138.718,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.068,
+          "ttft_ms": 76.42,
+          "e2e_ms": 287.574,
+          "output_tokens": 31,
+          "output_tokens_per_second": 142.076,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 3.804,
+          "ttft_ms": 73.609,
+          "e2e_ms": 289.638,
+          "output_tokens": 31,
+          "output_tokens_per_second": 138.871,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 3.888,
+          "ttft_ms": 77.168,
+          "e2e_ms": 292.967,
+          "output_tokens": 31,
+          "output_tokens_per_second": 139.018,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        }
+      ],
+      "samples": [
+        {
+          "preprocess_ms": 4.199,
+          "ttft_ms": 73.284,
+          "e2e_ms": 289.897,
+          "output_tokens": 31,
+          "output_tokens_per_second": 138.496,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.649,
+          "ttft_ms": 76.752,
+          "e2e_ms": 288.657,
+          "output_tokens": 31,
+          "output_tokens_per_second": 141.573,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.599,
+          "ttft_ms": 76.872,
+          "e2e_ms": 288.993,
+          "output_tokens": 31,
+          "output_tokens_per_second": 141.429,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 3.903,
+          "ttft_ms": 76.448,
+          "e2e_ms": 287.537,
+          "output_tokens": 31,
+          "output_tokens_per_second": 142.121,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 3.784,
+          "ttft_ms": 76.333,
+          "e2e_ms": 303.535,
+          "output_tokens": 31,
+          "output_tokens_per_second": 132.041,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.625,
+          "ttft_ms": 77.362,
+          "e2e_ms": 294.949,
+          "output_tokens": 31,
+          "output_tokens_per_second": 137.876,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 4.001,
+          "ttft_ms": 75.874,
+          "e2e_ms": 290.573,
+          "output_tokens": 31,
+          "output_tokens_per_second": 139.731,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 3.878,
+          "ttft_ms": 75.599,
+          "e2e_ms": 287.892,
+          "output_tokens": 31,
+          "output_tokens_per_second": 141.315,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 3.702,
+          "ttft_ms": 77.109,
+          "e2e_ms": 290.35,
+          "output_tokens": 31,
+          "output_tokens_per_second": 140.686,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        },
+        {
+          "preprocess_ms": 5.057,
+          "ttft_ms": 77.332,
+          "e2e_ms": 293.032,
+          "output_tokens": 31,
+          "output_tokens_per_second": 139.082,
+          "peak_vram_gib": 4.023,
+          "input_tokens": 144,
+          "vision_tokens": 504,
+          "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+          "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+        }
+      ]
+    }
+  ]
+}

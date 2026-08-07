@@ -24,6 +24,45 @@ misses the quality gate is recorded as a regression.
 Change one performance variable at a time. Run single-request latency first,
 then concurrency sweeps. Never mix cold-start and steady-state samples.
 
+## Reproduce the first RTX 3090 matrix in WSL
+
+The committed `qwen3-vl-2b-matrix-tf5-rubric.json` artifact was generated on
+Ubuntu 22.04 under WSL2 with an RTX 3090, PyTorch 2.8.0+cu128, and Transformers
+5.12.1. Model files, the virtual environment, media, and results all lived on
+the WSL ext4 disk rather than a `/mnt/c` or `/mnt/d` mount.
+
+```bash
+HF_ENABLE_PARALLEL_LOADING=true \
+HF_PARALLEL_LOADING_WORKERS=8 \
+./.venv-bench/bin/python benchmarks/qwen3_vl_matrix.py \
+  --image benchmarks/media/qwen-demo.jpeg \
+  --runs 10 \
+  --max-new-tokens 96 \
+  --output benchmarks/results/qwen3-vl-2b-matrix-tf5-rubric.json
+```
+
+Ten measured runs follow two warmups for dynamic-cache variants and six for
+the compiled static-cache variant. The one-time compilation sample remains in
+`warmup_samples`; it is never mixed into steady-state percentiles.
+
+| Iteration | Input | TTFT p50 | E2E p50 | Output tok/s | Peak VRAM | Quality |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 00 SDPA + dynamic | 2048x1365 | 700.3 ms | 1395.7 ms | 42.3 | 4.55 GiB | rubric pass |
+| 01a SDPA + dynamic | 672x448 | 112.8 ms | 844.0 ms | 42.2 | 4.04 GiB | rubric pass |
+| 01b SDPA + dynamic | 448x299 | 88.2 ms | 774.1 ms | 43.7 | 4.00 GiB | rubric pass |
+| 02 SDPA + static compiled | 448x299 | 76.6 ms | 290.1 ms | 139.4 | 4.02 GiB | rubric + exact-output pass vs 01b |
+
+Iteration 02 is 9.14x faster to first token, 4.81x faster end to end, and
+3.30x higher output throughput than iteration 00. Resizing preserves the task
+rubric but is not byte-identical to source-resolution output; the artifact
+records both facts. The cache/compiler change is byte-identical to iteration
+01b. These are single-image, batch-one latency results—not yet a general VLM
+quality claim.
+
+Parallel safetensor loading reduced warm-filesystem model/processor setup from
+88.351 seconds to 6.858 seconds. Treat this as a warm-cache startup result;
+network download time is outside the measurement.
+
 ## Run the OpenAI-compatible benchmark
 
 SGLang and TensorRT-LLM both expose OpenAI-compatible chat endpoints. Start
@@ -63,4 +102,3 @@ The comparison site lives in `benchmarks/site`. It intentionally shows planned
 iterations as planned and never substitutes estimates for missing GPU runs.
 The existing `11.38×` figure is explicitly labeled as frame-by-pixel input-work
 reduction, not end-to-end model acceleration.
-

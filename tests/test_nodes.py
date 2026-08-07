@@ -69,6 +69,20 @@ def test_source_has_no_runtime_installer_or_direct_cuda_cache():
     assert "pip install" not in source
 
 
+def test_parallel_weight_loading_respects_user_environment(monkeypatch):
+    monkeypatch.delenv("HF_ENABLE_PARALLEL_LOADING", raising=False)
+    monkeypatch.delenv("HF_PARALLEL_LOADING_WORKERS", raising=False)
+    modern_vlm._enable_parallel_weight_loading()
+    assert modern_vlm.os.environ["HF_ENABLE_PARALLEL_LOADING"] == "true"
+    assert int(modern_vlm.os.environ["HF_PARALLEL_LOADING_WORKERS"]) in range(1, 9)
+
+    monkeypatch.setenv("HF_ENABLE_PARALLEL_LOADING", "false")
+    monkeypatch.setenv("HF_PARALLEL_LOADING_WORKERS", "2")
+    modern_vlm._enable_parallel_weight_loading()
+    assert modern_vlm.os.environ["HF_ENABLE_PARALLEL_LOADING"] == "false"
+    assert modern_vlm.os.environ["HF_PARALLEL_LOADING_WORKERS"] == "2"
+
+
 def test_portable_device_dtype_and_backend_contracts(monkeypatch):
     assert torch_dtype("float16", torch.device("cpu")) == torch.float32
     assert torch_dtype("float16", torch.device("mps")) == torch.float16
@@ -500,6 +514,7 @@ def test_modern_vlm_streams_cumulative_text_without_changing_final_output(
     class FakeModel:
         def generate(self, **kwargs):
             assert isinstance(kwargs["streamer"], FakeStreamer)
+            assert kwargs["cache_implementation"] == "static"
             return torch.tensor([[10, 11, 12]], dtype=torch.long)
 
     class FakeProcessor:
@@ -535,6 +550,7 @@ def test_modern_vlm_streams_cumulative_text_without_changing_final_output(
         16,
         0.0,
         0.9,
+        generation_cache="Static compiled (fastest repeated shape)",
         stream_callback=partials.append,
     )
 

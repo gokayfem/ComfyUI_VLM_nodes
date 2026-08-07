@@ -9,89 +9,123 @@ export const metadata: Metadata = {
 const iterations = [
   {
     id: "00",
-    name: "Transformers baseline",
-    stack: "BF16 / SDPA / B1",
-    status: "ready",
-    change: "Control",
-    ttft: null,
-    throughput: null,
-    e2e: null,
-    vram: null,
-    quality: "Baseline",
-    result: "GPU run pending",
+    name: "Source-resolution control",
+    stack: "BF16 · SDPA · dynamic",
+    input: "2048×1365",
+    tokens: "11,008 vision · 2,770 input",
+    status: "measured",
+    change: "Frozen control",
+    ttft: ["700.3", "723.1"],
+    e2e: ["1395.7", "1487.7"],
+    throughput: "42.3",
+    vram: "4.55",
+    speedup: "1.00× / 1.00× / 1.00×",
+    quality: "4/4 concepts",
+    exact: "10/10",
   },
   {
-    id: "01",
-    name: "Visual work budget",
-    stack: "10 frames / 938x518",
+    id: "01a",
+    name: "Medium visual budget",
+    stack: "BF16 · SDPA · dynamic",
+    input: "672×448",
+    tokens: "1,176 vision · 312 input",
     status: "measured",
-    change: "Sampler + resize",
-    ttft: null,
-    throughput: null,
-    e2e: "0.44s prep",
-    vram: null,
-    quality: "Input intact",
-    result: "11.38x work cut",
+    change: "Resize only",
+    ttft: ["112.8", "122.8"],
+    e2e: ["844.0", "881.7"],
+    throughput: "42.2",
+    vram: "4.04",
+    speedup: "6.21× / 1.65× / 1.00×",
+    quality: "4/4 concepts",
+    exact: "Semantic",
+  },
+  {
+    id: "01b",
+    name: "Aggressive visual budget",
+    stack: "BF16 · SDPA · dynamic",
+    input: "448×299",
+    tokens: "504 vision · 144 input",
+    status: "measured",
+    change: "Resize only",
+    ttft: ["88.2", "90.2"],
+    e2e: ["774.1", "780.5"],
+    throughput: "43.7",
+    vram: "4.00",
+    speedup: "7.94× / 1.80× / 1.03×",
+    quality: "4/4 concepts",
+    exact: "Semantic",
   },
   {
     id: "02",
-    name: "Flash Attention 2",
-    stack: "BF16 / FA2 / B1",
-    status: "queued",
-    change: "Attention kernel",
-    ttft: null,
-    throughput: null,
-    e2e: null,
-    vram: null,
-    quality: "Gate pending",
-    result: "Next run",
+    name: "Compiled execution",
+    stack: "BF16 · SDPA · static cache",
+    input: "448×299",
+    tokens: "504 vision · 144 input",
+    status: "measured",
+    change: "Cache + compile",
+    ttft: ["76.6", "77.3"],
+    e2e: ["290.1", "299.7"],
+    throughput: "139.4",
+    vram: "4.02",
+    speedup: "9.14× / 4.81× / 3.30×",
+    quality: "4/4 concepts",
+    exact: "Exact vs 01b",
   },
   {
     id: "03",
-    name: "Compiled execution",
-    stack: "compile / CUDA graph",
-    status: "planned",
-    change: "Graph capture",
+    name: "Flash Attention 2",
+    stack: "BF16 · FA2 · static cache",
+    input: "448×299",
+    tokens: "same frozen input",
+    status: "queued",
+    change: "Attention kernel",
     ttft: null,
-    throughput: null,
     e2e: null,
+    throughput: null,
     vram: null,
+    speedup: "Not measured",
     quality: "Gate pending",
-    result: "Planned",
+    exact: "Pending",
   },
   {
     id: "04",
     name: "SGLang + FlashInfer",
-    stack: "Radix / continuous batch",
+    stack: "Radix · continuous batch",
+    input: "Frozen suite",
+    tokens: "concurrency sweep",
     status: "planned",
     change: "Serving runtime",
     ttft: null,
-    throughput: null,
     e2e: null,
+    throughput: null,
     vram: null,
+    speedup: "Not measured",
     quality: "Gate pending",
-    result: "Planned",
+    exact: "Pending",
   },
   {
     id: "05",
     name: "TensorRT-LLM",
-    stack: "IFB / CUDA graph",
+    stack: "IFB · CUDA graph",
+    input: "Frozen suite",
+    tokens: "concurrency sweep",
     status: "planned",
     change: "NVIDIA runtime",
     ttft: null,
-    throughput: null,
     e2e: null,
+    throughput: null,
     vram: null,
+    speedup: "Not measured",
     quality: "Gate pending",
-    result: "Planned",
+    exact: "Pending",
   },
 ];
 
 const qualityTasks = [
-  ["Caption", "semantic F1", "≥ 98% of baseline"],
-  ["OCR", "normalized edit score", "≥ 99% of baseline"],
-  ["Detection", "box mAP / label F1", "≤ 0.5 pt drop"],
-  ["Tracking", "IDF1 / HOTA", "≤ 0.5 pt drop"],
+  ["Caption facts", "required concepts", "4 / 4 in every run"],
+  ["Resize fidelity", "task rubric", "pass · wording changed"],
+  ["Compiler fidelity", "SHA-256 output", "exact vs iteration 01b"],
+  ["Repeatability", "within variant", "10 / 10 identical"],
 ];
 
 export default function Home() {
@@ -125,16 +159,16 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="hero-metric" aria-label="Measured visual work reduction">
+        <div className="hero-metric" aria-label="Measured end-to-end speedup">
           <div className="metric-topline"><span>Measured now</span><span className="verified">● VERIFIED</span></div>
-          <div className="big-number">11.38<span>×</span></div>
-          <div className="metric-label">less frame × pixel work</div>
+          <div className="big-number">4.81<span>×</span></div>
+          <div className="metric-label">faster end to end</div>
           <div className="work-bars" aria-hidden="true">
-            <div className="work-row"><span>Before</span><i className="bar before" /><b>55.3M</b></div>
-            <div className="work-row"><span>After</span><i className="bar after" /><b>4.86M</b></div>
+            <div className="work-row"><span>Before</span><i className="bar before" /><b>1395.7</b></div>
+            <div className="work-row"><span>After</span><i className="bar after" /><b>290.1</b></div>
           </div>
-          <p>60 × 1280×720 frames → 10 × 938×518 frames in 0.44s</p>
-          <div className="honesty-strip">Preprocessing measurement · end-to-end run pending</div>
+          <p>Milliseconds p50 · 10 measured runs · output throughput 42.3 → 139.4 tok/s</p>
+          <div className="honesty-strip">RTX 3090 · batch 1 · task rubric passed · raw samples attached</div>
         </div>
       </section>
 
@@ -152,14 +186,15 @@ export default function Home() {
             <div className="eyebrow">THE OPTIMIZATION LOG</div>
             <h2>Every millisecond has a paper trail.</h2>
           </div>
-          <p>Green means measured. Amber means the experiment is wired and next in the queue. Empty cells are never replaced with projections.</p>
+          <p>Primary numbers are p50; the smaller number is p95. Every row keeps input work, memory, speedup, and quality evidence in view.</p>
         </div>
 
         <div className="run-context" aria-label="Benchmark run context">
           <span><b>Model</b> Qwen3-VL 2B Instruct</span>
           <span><b>Mode</b> Single request</span>
-          <span><b>Sample</b> 3 warmups / 30 runs</span>
-          <span><b>Decode</b> Temperature 0</span>
+          <span><b>Sample</b> 10 measured / variant</span>
+          <span><b>Warmup</b> 2 dynamic / 6 compiled</span>
+          <span><b>Runtime</b> Torch 2.8 · TF 5.12.1</span>
         </div>
 
         <div className="comparison-table-wrap">
@@ -168,13 +203,15 @@ export default function Home() {
               <tr>
                 <th scope="col">#</th>
                 <th scope="col">Variant</th>
+                <th scope="col">Input work</th>
                 <th scope="col">One change</th>
-                <th scope="col">TTFT<br /><span>p50</span></th>
+                <th scope="col">TTFT<br /><span>p50 / p95 ms</span></th>
+                <th scope="col">E2E<br /><span>p50 / p95 ms</span></th>
                 <th scope="col">Output<br /><span>tok/s</span></th>
-                <th scope="col">End-to-end<br /><span>p50</span></th>
-                <th scope="col">Peak<br /><span>VRAM</span></th>
+                <th scope="col">Peak<br /><span>VRAM GiB</span></th>
+                <th scope="col">Speedup<br /><span>TTFT / E2E / tok/s</span></th>
                 <th scope="col">Quality</th>
-                <th scope="col">Result</th>
+                <th scope="col">Output fidelity</th>
                 <th scope="col">Status</th>
               </tr>
             </thead>
@@ -183,13 +220,15 @@ export default function Home() {
                 <tr className={item.status} key={item.id}>
                   <td className="row-id">{item.id}</td>
                   <th scope="row" className="variant-cell"><strong>{item.name}</strong><span>{item.stack}</span></th>
+                  <td className="input-cell"><strong>{item.input}</strong><span>{item.tokens}</span></td>
                   <td>{item.change}</td>
-                  <td className="metric-cell">{item.ttft ?? "—"}</td>
+                  <td className="metric-cell">{item.ttft ? <><strong>{item.ttft[0]}</strong><span>{item.ttft[1]}</span></> : "—"}</td>
+                  <td className="metric-cell">{item.e2e ? <><strong>{item.e2e[0]}</strong><span>{item.e2e[1]}</span></> : "—"}</td>
                   <td className="metric-cell">{item.throughput ?? "—"}</td>
-                  <td className="metric-cell">{item.e2e ?? "—"}</td>
                   <td className="metric-cell">{item.vram ?? "—"}</td>
+                  <td className={item.status === "measured" ? "speedup-cell" : "muted-cell"}>{item.speedup}</td>
                   <td className={item.status === "measured" ? "quality-ok" : "muted-cell"}>{item.quality}</td>
-                  <td className={item.status === "measured" ? "result-strong" : "muted-cell"}>{item.result}</td>
+                  <td className={item.status === "measured" ? "fidelity-cell" : "muted-cell"}>{item.exact}</td>
                   <td><span className={`status status-${item.status}`}>{item.status}</span></td>
                 </tr>
               ))}
@@ -198,8 +237,9 @@ export default function Home() {
         </div>
         <div className="table-notes">
           <span><b>—</b> Not measured; never estimated</span>
-          <span><b>01</b> Preprocessing result only, not model inference</span>
-          <span><b>Pass</b> Quality must remain within the declared tolerance</span>
+          <span><b>Semantic</b> Required facts pass; wording changed</span>
+          <span><b>Exact</b> SHA-256-identical generated text</span>
+          <span><b>Load</b> 88.351s → 6.858s warm cache</span>
         </div>
       </section>
 
@@ -207,7 +247,7 @@ export default function Home() {
         <div className="quality-intro">
           <div className="eyebrow light">QUALITY IS A HARD CONSTRAINT</div>
           <h2>Fast and wrong<br />doesn’t ship.</h2>
-          <p>A speedup is promoted only after it clears every applicable task gate against the frozen baseline.</p>
+          <p>A speedup is promoted only after it clears its declared task gate. Semantic preservation and exact bytes are reported separately.</p>
           <div className="gate-formula"><span>promotion rule</span><code>speed ↑ &amp;&amp; quality ≥ tolerance</code></div>
         </div>
         <div className="quality-table" role="table" aria-label="Quality thresholds">
@@ -225,7 +265,7 @@ export default function Home() {
       <section className="section protocol-section" id="protocol">
         <div className="section-heading protocol-heading">
           <div><div className="eyebrow">REPRODUCIBLE BY DEFAULT</div><h2>The benchmark contract.</h2></div>
-          <div className="commit-chip">commit <code>3f96127</code></div>
+          <div className="commit-chip">artifact <code>TF5 · RTX3090 · B1</code></div>
         </div>
         <div className="protocol-grid">
           <article><span>1</span><h3>Freeze</h3><p>Checkpoint revision, media hashes, prompts, seed, precision, and generation parameters.</p></article>
@@ -243,8 +283,8 @@ export default function Home() {
       </section>
 
       <section className="next-run">
-        <div><span className="eyebrow light">NEXT ON THE RIG</span><h2>Establish the Qwen3-VL 2B control.</h2></div>
-        <div className="next-run-copy"><p>BF16, SDPA, batch 1. Three warmups, thirty measured runs, image caption + OCR + count + structured extraction.</p><a href="https://github.com/gokayfem/ComfyUI_VLM_nodes/tree/main/benchmarks">Open benchmark kit ↗</a></div>
+        <div><span className="eyebrow light">NEXT ON THE RIG</span><h2>Beat 290 ms with Flash Attention 2.</h2></div>
+        <div className="next-run-copy"><p>Same checkpoint, 448×299 input, static cache, decode settings, raw output, and quality gates. Then expand caption, OCR, count, and extraction coverage.</p><a href="https://github.com/gokayfem/ComfyUI_VLM_nodes/tree/codex/vlm-benchmark-lab/benchmarks">Open benchmark kit ↗</a></div>
       </section>
 
       <footer><div className="brand"><span className="brand-mark">VL</span><span>VLM Speed Lab</span></div><p>Built in public. Measured, not marketed.</p><span>ComfyUI VLM Nodes · 2026</span></footer>

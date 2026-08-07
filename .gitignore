@@ -152,6 +152,10 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Sites needs this small source plugin; it is not a generated build output.
+!benchmarks/site/build/
+!benchmarks/site/build/sites-vite-plugin.ts
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
