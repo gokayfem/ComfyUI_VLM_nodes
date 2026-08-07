@@ -1,0 +1,34 @@
+{
+  "name": "qwen3-vl-2b-control-v1",
+  "model": "Qwen/Qwen3-VL-2B-Instruct",
+  "max_tokens": 128,
+  "temperature": 0.0,
+  "quality_tolerance": 0.98,
+  "cases": [
+    {
+      "id": "caption-001",
+      "task": "caption",
+      "image": "media/caption-001.jpg",
+      "prompt": "Describe the image in one precise sentence.",
+      "evaluator": "keywords",
+      "expected": ["replace", "with", "ground-truth", "keywords"]
+    },
+    {
+      "id": "ocr-001",
+      "task": "ocr",
+      "image": "media/ocr-001.png",
+      "prompt": "Return only the text visible in the image.",
+      "evaluator": "exact",
+      "expected": "REPLACE WITH GROUND TRUTH"
+    },
+    {
+      "id": "count-001",
+      "task": "count",
+      "image": "media/count-001.png",
+      "prompt": "How many red objects are visible? Return only the integer.",
+      "evaluator": "number",
+      "expected": 0
+    }
+  ]
+}
+
