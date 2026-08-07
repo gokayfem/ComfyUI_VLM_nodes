@@ -1,3 +1,4 @@
 *.log
 qwen3-vl-2b-sdpa-*.json
+!qwen3-vl-2b-sdpa-static-edge448-tf32.json
 qwen3-vl-2b-matrix-tf5.json

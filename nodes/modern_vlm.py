@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import threading
 from collections.abc import Callable
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -222,6 +223,11 @@ GENERATION_CACHE_MODES = (
     "Dynamic (compatible)",
     "Static compiled (fastest repeated shape)",
 )
+MATMUL_PRECISION_MODES = (
+    "Highest (strict)",
+    "High / TF32 (fast on NVIDIA)",
+)
+_MATMUL_PRECISION_LOCK = threading.RLock()
 
 
 def _enable_parallel_weight_loading() -> None:
@@ -232,6 +238,20 @@ def _enable_parallel_weight_loading() -> None:
         "HF_PARALLEL_LOADING_WORKERS",
         str(min(8, os.cpu_count() or 1)),
     )
+
+
+@contextmanager
+def _float32_matmul_precision(mode: str):
+    if mode not in MATMUL_PRECISION_MODES:
+        raise ValueError(f"Unknown float32 matmul precision mode {mode!r}.")
+    requested = "high" if mode.startswith("High / TF32") else "highest"
+    with _MATMUL_PRECISION_LOCK:
+        previous = torch.get_float32_matmul_precision()
+        torch.set_float32_matmul_precision(requested)
+        try:
+            yield
+        finally:
+            torch.set_float32_matmul_precision(previous)
 
 
 def _progress_text_sender(node_id: str | None) -> Callable[[str], None] | None:
@@ -484,6 +504,7 @@ class ModernVLMPredictor:
         fps: float = 1.0,
         enable_thinking: bool = False,
         generation_cache: str = "Dynamic (compatible)",
+        matmul_precision: str = "Highest (strict)",
         stream_callback: Callable[[str], None] | None = None,
         video_selection: VideoFrameSelection | None = None,
     ) -> str:
@@ -631,6 +652,7 @@ class ModernVLMPredictor:
                 def generate_in_background() -> None:
                     try:
                         with (
+                            _float32_matmul_precision(matmul_precision),
                             torch.inference_mode(),
                             inference_context(device, self.dtype),
                         ):
@@ -676,6 +698,7 @@ class ModernVLMPredictor:
                 results.append(decoded)
             else:
                 with (
+                    _float32_matmul_precision(matmul_precision),
                     torch.inference_mode(),
                     inference_context(device, self.dtype),
                 ):
@@ -755,6 +778,17 @@ class ModernVLM(CachedModelNode):
                         ),
                     },
                 ),
+                "matmul_precision": (
+                    MATMUL_PRECISION_MODES,
+                    {
+                        "default": "Highest (strict)",
+                        "tooltip": (
+                            "High / TF32 can accelerate Ampere-or-newer NVIDIA "
+                            "GPUs. It is scoped to this generation and restored "
+                            "afterward. Validate output quality for each model."
+                        ),
+                    },
+                ),
                 "enable_thinking": ("BOOLEAN", {"default": False}),
                 "unload_after": ("BOOLEAN", {"default": False}),
                 "stream_output": (
@@ -800,6 +834,7 @@ class ModernVLM(CachedModelNode):
         fps=1.0,
         attention_mode="Auto (SDPA)",
         generation_cache="Dynamic (compatible)",
+        matmul_precision="Highest (strict)",
         enable_thinking=False,
         unload_after=False,
         stream_output=True,
@@ -836,6 +871,7 @@ class ModernVLM(CachedModelNode):
                     video_selection=video_selection,
                     enable_thinking=enable_thinking,
                     generation_cache=generation_cache,
+                    matmul_precision=matmul_precision,
                     stream_callback=stream_callback,
                 ),
             )

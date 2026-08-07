@@ -51,13 +51,18 @@ the compiled static-cache variant. The one-time compilation sample remains in
 | 01a SDPA + dynamic | 672x448 | 112.8 ms | 844.0 ms | 42.2 | 4.04 GiB | rubric pass |
 | 01b SDPA + dynamic | 448x299 | 88.2 ms | 774.1 ms | 43.7 | 4.00 GiB | rubric pass |
 | 02 SDPA + static compiled | 448x299 | 76.6 ms | 290.1 ms | 139.4 | 4.02 GiB | rubric + exact-output pass vs 01b |
+| 03a FA2 + dynamic | 448x299 | 106.6 ms | 1033.3 ms | 32.3 | 4.00 GiB | exact pass; performance regression |
+| 03b FA2 + static compiled | 448x299 | 265.0 ms | 3028.0 ms | 34.4 | 4.02 GiB | **fail; corrupted repetitive output** |
+| 04 SDPA + static + scoped TF32 | 448x299 | 74.3 ms | 274.5 ms | 149.2 | 4.03 GiB | rubric + exact-output pass vs 01b |
 
-Iteration 02 is 9.14x faster to first token, 4.81x faster end to end, and
-3.30x higher output throughput than iteration 00. Resizing preserves the task
+Iteration 04 is 9.43x faster to first token, 5.08x faster end to end, and
+3.53x higher output throughput than iteration 00. Resizing preserves the task
 rubric but is not byte-identical to source-resolution output; the artifact
 records both facts. The cache/compiler change is byte-identical to iteration
-01b. These are single-image, batch-one latency results—not yet a general VLM
-quality claim.
+01b, as is scoped TF32. Flash Attention 2 is retained as negative evidence:
+its dynamic-cache run was correct but slower, while its static-cache pairing
+failed the exact-output gate. These are single-image, batch-one latency
+results—not yet a general VLM quality claim.
 
 Parallel safetensor loading reduced warm-filesystem model/processor setup from
 88.351 seconds to 6.858 seconds. Treat this as a warm-cache startup result;

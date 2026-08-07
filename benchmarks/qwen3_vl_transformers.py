@@ -220,7 +220,11 @@ def main() -> None:
     parser.add_argument("--prompt", default="Describe this image precisely in one sentence.")
     parser.add_argument("--model", default="Qwen/Qwen3-VL-2B-Instruct")
     parser.add_argument("--label", required=True)
-    parser.add_argument("--attention", choices=("sdpa", "eager"), default="sdpa")
+    parser.add_argument(
+        "--attention",
+        choices=("sdpa", "flash_attention_2", "eager"),
+        default="sdpa",
+    )
     parser.add_argument("--cache", choices=("dynamic", "static"), default="dynamic")
     parser.add_argument("--disable-compile", action="store_true")
     parser.add_argument("--min-pixels", type=int)
@@ -229,12 +233,19 @@ def main() -> None:
     parser.add_argument("--max-new-tokens", type=int, default=96)
     parser.add_argument("--warmups", type=int, default=2)
     parser.add_argument("--runs", type=int, default=5)
+    parser.add_argument("--expected-output-sha256")
+    parser.add_argument(
+        "--float32-matmul-precision",
+        choices=("highest", "high", "medium"),
+        default="highest",
+    )
     parser.add_argument("--output-dir", type=Path, default=Path("benchmarks/results"))
     args = parser.parse_args()
     if not torch.cuda.is_available():
         raise RuntimeError("This benchmark requires a CUDA GPU.")
     if args.runs < 1 or args.warmups < 0:
         parser.error("--runs must be positive and --warmups non-negative")
+    torch.set_float32_matmul_precision(args.float32_matmul_precision)
     image_path = args.image.resolve()
     source_image = Image.open(image_path).convert("RGB")
     image = resize_to_longest_edge(source_image, args.longest_edge)
@@ -295,6 +306,11 @@ def main() -> None:
             "cuda": torch.version.cuda,
             "gpu": torch.cuda.get_device_name(),
             "transformers": __import__("transformers").__version__,
+            "flash_attn": (
+                __import__("flash_attn").__version__
+                if args.attention == "flash_attention_2"
+                else None
+            ),
         },
         "settings": {
             "attention": args.attention,
@@ -306,8 +322,21 @@ def main() -> None:
             "max_new_tokens": args.max_new_tokens,
             "warmups": args.warmups,
             "runs": args.runs,
+            "float32_matmul_precision": args.float32_matmul_precision,
         },
         "model_load_seconds": round(load_seconds, 3),
+        "quality_gate": {
+            "method": "byte-identical output SHA-256",
+            "reference_sha256": args.expected_output_sha256,
+            "passed": (
+                all(
+                    sample["output_sha256"] == args.expected_output_sha256
+                    for sample in samples
+                )
+                if args.expected_output_sha256
+                else None
+            ),
+        },
         "summary": aggregate(samples),
         "samples": samples,
     }

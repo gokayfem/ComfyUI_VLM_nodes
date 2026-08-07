@@ -515,6 +515,7 @@ def test_modern_vlm_streams_cumulative_text_without_changing_final_output(
         def generate(self, **kwargs):
             assert isinstance(kwargs["streamer"], FakeStreamer)
             assert kwargs["cache_implementation"] == "static"
+            assert torch.get_float32_matmul_precision() == "high"
             return torch.tensor([[10, 11, 12]], dtype=torch.long)
 
     class FakeProcessor:
@@ -543,6 +544,7 @@ def test_modern_vlm_streams_cumulative_text_without_changing_final_output(
         lambda *_args: nullcontext(),
     )
     partials = []
+    original_precision = torch.get_float32_matmul_precision()
     result = predictor.generate(
         torch.zeros((1, 8, 8, 3), dtype=torch.float32),
         "Describe it.",
@@ -551,11 +553,13 @@ def test_modern_vlm_streams_cumulative_text_without_changing_final_output(
         0.0,
         0.9,
         generation_cache="Static compiled (fastest repeated shape)",
+        matmul_precision="High / TF32 (fast on NVIDIA)",
         stream_callback=partials.append,
     )
 
     assert result == "Hello from the VLM."
     assert partials == ["Hello", "Hello from", "Hello from the VLM."]
+    assert torch.get_float32_matmul_precision() == original_precision
 
 
 def test_view_text_frontend_rehydrates_and_uses_native_progress_channel():

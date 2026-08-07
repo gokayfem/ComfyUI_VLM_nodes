@@ -23,11 +23,12 @@ test("server-renders the measured optimization matrix", async () => {
 
   const html = await response.text();
   assert.match(html, /VLM Speed Lab/);
-  assert.match(html, /4\.81/);
-  assert.match(html, /139\.4/);
+  assert.match(html, /5\.08/);
+  assert.match(html, /149\.2/);
   assert.match(html, /Source-resolution control/);
   assert.match(html, /Compiled execution/);
   assert.match(html, /Exact vs 01b/);
+  assert.match(html, /Corrupt repeat/);
   assert.match(html, /88\.351s → 6\.858s/);
   assert.doesNotMatch(html, /GPU run pending|end-to-end run pending/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
@@ -41,11 +42,13 @@ test("keeps measured and planned work visually honest", async () => {
 
   assert.match(page, /p50 \/ p95 ms/);
   assert.match(page, /Not measured/);
-  assert.match(page, /status: "queued"/);
+  assert.match(page, /status: "regression"/);
+  assert.match(page, /status: "rejected"/);
   assert.match(page, /status: "planned"/);
   assert.match(page, /4\/4 concepts/);
   assert.match(page, /Semantic preservation and exact bytes/);
   assert.match(css, /\.comparison-table-wrap \{ overflow-x:auto/);
   assert.match(css, /\.status-measured/);
+  assert.match(css, /\.status-rejected/);
   assert.match(css, /\.status-planned/);
 });

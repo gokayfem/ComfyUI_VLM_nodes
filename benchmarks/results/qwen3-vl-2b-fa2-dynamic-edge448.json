@@ -1,0 +1,120 @@
+{
+  "schema": "comfyui-vlm/transformers-benchmark",
+  "version": 1,
+  "created_at": "2026-08-07T23:01:55.323925+00:00",
+  "label": "qwen3-vl-2b-fa2-dynamic-edge448",
+  "model": "Qwen/Qwen3-VL-2B-Instruct",
+  "git_commit": "858a4a4998e68bd99b26a12831e861be49904564",
+  "git_dirty": true,
+  "media": {
+    "path": "/home/gokaygokay/ComfyUI_VLM_nodes/benchmarks/media/qwen-demo.jpeg",
+    "sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+    "source_width": 2048,
+    "source_height": 1365,
+    "processed_width": 448,
+    "processed_height": 299
+  },
+  "environment": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.11.14",
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "transformers": "5.12.1",
+    "flash_attn": "2.8.3"
+  },
+  "settings": {
+    "attention": "flash_attention_2",
+    "cache": "dynamic",
+    "disable_compile": false,
+    "min_pixels": null,
+    "max_pixels": null,
+    "longest_edge": 448,
+    "max_new_tokens": 96,
+    "warmups": 2,
+    "runs": 5
+  },
+  "model_load_seconds": 6.845,
+  "quality_gate": {
+    "method": "byte-identical output SHA-256",
+    "reference_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1",
+    "passed": true
+  },
+  "summary": {
+    "preprocess_ms_mean": 4.445,
+    "ttft_ms": {
+      "p50": 106.553,
+      "p95": 114.012
+    },
+    "e2e_ms": {
+      "p50": 1033.269,
+      "p95": 1054.373
+    },
+    "output_tokens_per_second_mean": 32.297,
+    "peak_vram_gib": 4.002,
+    "output_tokens_mean": 31.0,
+    "outputs_identical": true
+  },
+  "samples": [
+    {
+      "preprocess_ms": 4.993,
+      "ttft_ms": 106.308,
+      "e2e_ms": 1029.213,
+      "output_tokens": 31,
+      "output_tokens_per_second": 32.506,
+      "peak_vram_gib": 4.002,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+    },
+    {
+      "preprocess_ms": 3.881,
+      "ttft_ms": 114.994,
+      "e2e_ms": 1059.265,
+      "output_tokens": 31,
+      "output_tokens_per_second": 31.771,
+      "peak_vram_gib": 4.002,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+    },
+    {
+      "preprocess_ms": 3.982,
+      "ttft_ms": 110.083,
+      "e2e_ms": 1034.803,
+      "output_tokens": 31,
+      "output_tokens_per_second": 32.442,
+      "peak_vram_gib": 4.002,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+    },
+    {
+      "preprocess_ms": 4.823,
+      "ttft_ms": 106.553,
+      "e2e_ms": 1033.269,
+      "output_tokens": 31,
+      "output_tokens_per_second": 32.372,
+      "peak_vram_gib": 4.002,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+    },
+    {
+      "preprocess_ms": 4.547,
+      "ttft_ms": 103.872,
+      "e2e_ms": 1030.035,
+      "output_tokens": 31,
+      "output_tokens_per_second": 32.392,
+      "peak_vram_gib": 4.002,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+    }
+  ]
+}

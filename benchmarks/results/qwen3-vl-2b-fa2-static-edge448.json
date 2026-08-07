@@ -1,0 +1,180 @@
+{
+  "schema": "comfyui-vlm/transformers-benchmark",
+  "version": 1,
+  "created_at": "2026-08-07T23:01:20.543267+00:00",
+  "label": "qwen3-vl-2b-fa2-static-edge448",
+  "model": "Qwen/Qwen3-VL-2B-Instruct",
+  "git_commit": "858a4a4998e68bd99b26a12831e861be49904564",
+  "git_dirty": true,
+  "media": {
+    "path": "/home/gokaygokay/ComfyUI_VLM_nodes/benchmarks/media/qwen-demo.jpeg",
+    "sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+    "source_width": 2048,
+    "source_height": 1365,
+    "processed_width": 448,
+    "processed_height": 299
+  },
+  "environment": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.11.14",
+    "torch": "2.8.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "transformers": "5.12.1",
+    "flash_attn": "2.8.3"
+  },
+  "settings": {
+    "attention": "flash_attention_2",
+    "cache": "static",
+    "disable_compile": false,
+    "min_pixels": null,
+    "max_pixels": null,
+    "longest_edge": 448,
+    "max_new_tokens": 96,
+    "warmups": 6,
+    "runs": 10
+  },
+  "model_load_seconds": 84.208,
+  "quality_gate": {
+    "method": "byte-identical output SHA-256",
+    "reference_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1",
+    "passed": false
+  },
+  "summary": {
+    "preprocess_ms_mean": 4.404,
+    "ttft_ms": {
+      "p50": 265.004,
+      "p95": 273.819
+    },
+    "e2e_ms": {
+      "p50": 3027.985,
+      "p95": 3042.934
+    },
+    "output_tokens_per_second_mean": 34.427,
+    "peak_vram_gib": 4.023,
+    "output_tokens_mean": 96.0,
+    "outputs_identical": true
+  },
+  "samples": [
+    {
+      "preprocess_ms": 5.119,
+      "ttft_ms": 262.459,
+      "e2e_ms": 3016.629,
+      "output_tokens": 96,
+      "output_tokens_per_second": 34.493,
+      "peak_vram_gib": 4.023,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "s:V:col, 1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1",
+      "output_sha256": "ab0d23104f87597bcea8948a30df54a967214df93df48121fb73729585a29026"
+    },
+    {
+      "preprocess_ms": 4.519,
+      "ttft_ms": 265.289,
+      "e2e_ms": 3014.475,
+      "output_tokens": 96,
+      "output_tokens_per_second": 34.556,
+      "peak_vram_gib": 4.023,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "s:V:col, 1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1",
+      "output_sha256": "ab0d23104f87597bcea8948a30df54a967214df93df48121fb73729585a29026"
+    },
+    {
+      "preprocess_ms": 4.943,
+      "ttft_ms": 273.965,
+      "e2e_ms": 3044.849,
+      "output_tokens": 96,
+      "output_tokens_per_second": 34.285,
+      "peak_vram_gib": 4.023,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "s:V:col, 1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1",
+      "output_sha256": "ab0d23104f87597bcea8948a30df54a967214df93df48121fb73729585a29026"
+    },
+    {
+      "preprocess_ms": 3.913,
+      "ttft_ms": 262.719,
+      "e2e_ms": 3039.894,
+      "output_tokens": 96,
+      "output_tokens_per_second": 34.207,
+      "peak_vram_gib": 4.023,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "s:V:col, 1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1",
+      "output_sha256": "ab0d23104f87597bcea8948a30df54a967214df93df48121fb73729585a29026"
+    },
+    {
+      "preprocess_ms": 4.66,
+      "ttft_ms": 261.946,
+      "e2e_ms": 3040.593,
+      "output_tokens": 96,
+      "output_tokens_per_second": 34.189,
+      "peak_vram_gib": 4.023,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "s:V:col, 1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1",
+      "output_sha256": "ab0d23104f87597bcea8948a30df54a967214df93df48121fb73729585a29026"
+    },
+    {
+      "preprocess_ms": 3.929,
+      "ttft_ms": 273.64,
+      "e2e_ms": 2997.449,
+      "output_tokens": 96,
+      "output_tokens_per_second": 34.878,
+      "peak_vram_gib": 4.023,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "s:V:col, 1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1",
+      "output_sha256": "ab0d23104f87597bcea8948a30df54a967214df93df48121fb73729585a29026"
+    },
+    {
+      "preprocess_ms": 3.926,
+      "ttft_ms": 264.987,
+      "e2e_ms": 3028.232,
+      "output_tokens": 96,
+      "output_tokens_per_second": 34.38,
+      "peak_vram_gib": 4.023,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "s:V:col, 1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1",
+      "output_sha256": "ab0d23104f87597bcea8948a30df54a967214df93df48121fb73729585a29026"
+    },
+    {
+      "preprocess_ms": 4.683,
+      "ttft_ms": 267.937,
+      "e2e_ms": 3027.738,
+      "output_tokens": 96,
+      "output_tokens_per_second": 34.423,
+      "peak_vram_gib": 4.023,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "s:V:col, 1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1",
+      "output_sha256": "ab0d23104f87597bcea8948a30df54a967214df93df48121fb73729585a29026"
+    },
+    {
+      "preprocess_ms": 4.571,
+      "ttft_ms": 262.483,
+      "e2e_ms": 3016.256,
+      "output_tokens": 96,
+      "output_tokens_per_second": 34.498,
+      "peak_vram_gib": 4.023,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "s:V:col, 1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1",
+      "output_sha256": "ab0d23104f87597bcea8948a30df54a967214df93df48121fb73729585a29026"
+    },
+    {
+      "preprocess_ms": 3.78,
+      "ttft_ms": 265.021,
+      "e2e_ms": 3029.975,
+      "output_tokens": 96,
+      "output_tokens_per_second": 34.359,
+      "peak_vram_gib": 4.023,
+      "input_tokens": 144,
+      "vision_tokens": 504,
+      "output": "s:V:col, 1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1",
+      "output_sha256": "ab0d23104f87597bcea8948a30df54a967214df93df48121fb73729585a29026"
+    }
+  ]
+}

@@ -72,23 +72,55 @@ const iterations = [
     exact: "Exact vs 01b",
   },
   {
-    id: "03",
-    name: "Flash Attention 2",
+    id: "03a",
+    name: "Flash Attention 2 isolated",
+    stack: "BF16 · FA2 · dynamic",
+    input: "448×299",
+    tokens: "504 vision · 144 input",
+    status: "regression",
+    change: "Attention kernel",
+    ttft: ["106.6", "114.0"],
+    e2e: ["1033.3", "1054.4"],
+    throughput: "32.3",
+    vram: "4.00",
+    speedup: "6.57× / 1.35× / 0.76×",
+    quality: "PASS",
+    exact: "Exact vs 01b",
+  },
+  {
+    id: "03b",
+    name: "FA2 + compiled decode",
     stack: "BF16 · FA2 · static cache",
     input: "448×299",
-    tokens: "same frozen input",
-    status: "queued",
-    change: "Attention kernel",
-    ttft: null,
-    e2e: null,
-    throughput: null,
-    vram: null,
-    speedup: "Not measured",
-    quality: "Gate pending",
-    exact: "Pending",
+    tokens: "hit 96-token cap",
+    status: "rejected",
+    change: "Cache + compile",
+    ttft: ["265.0", "273.8"],
+    e2e: ["3028.0", "3042.9"],
+    throughput: "34.4",
+    vram: "4.02",
+    speedup: "2.64× / 0.46× / 0.81×",
+    quality: "FAIL",
+    exact: "Corrupt repeat",
   },
   {
     id: "04",
+    name: "Scoped TF32",
+    stack: "BF16 · SDPA · static · TF32",
+    input: "448×299",
+    tokens: "504 vision · 144 input",
+    status: "measured",
+    change: "FP32 matmul policy",
+    ttft: ["74.3", "79.5"],
+    e2e: ["274.5", "289.6"],
+    throughput: "149.2",
+    vram: "4.03",
+    speedup: "9.43× / 5.08× / 3.53×",
+    quality: "4/4 concepts",
+    exact: "Exact vs 01b",
+  },
+  {
+    id: "05",
     name: "SGLang + FlashInfer",
     stack: "Radix · continuous batch",
     input: "Frozen suite",
@@ -104,7 +136,7 @@ const iterations = [
     exact: "Pending",
   },
   {
-    id: "05",
+    id: "06",
     name: "TensorRT-LLM",
     stack: "IFB · CUDA graph",
     input: "Frozen suite",
@@ -161,13 +193,13 @@ export default function Home() {
 
         <div className="hero-metric" aria-label="Measured end-to-end speedup">
           <div className="metric-topline"><span>Measured now</span><span className="verified">● VERIFIED</span></div>
-          <div className="big-number">4.81<span>×</span></div>
+          <div className="big-number">5.08<span>×</span></div>
           <div className="metric-label">faster end to end</div>
           <div className="work-bars" aria-hidden="true">
             <div className="work-row"><span>Before</span><i className="bar before" /><b>1395.7</b></div>
-            <div className="work-row"><span>After</span><i className="bar after" /><b>290.1</b></div>
+            <div className="work-row"><span>After</span><i className="bar after" /><b>274.5</b></div>
           </div>
-          <p>Milliseconds p50 · 10 measured runs · output throughput 42.3 → 139.4 tok/s</p>
+          <p>Milliseconds p50 · 10 measured runs · output throughput 42.3 → 149.2 tok/s</p>
           <div className="honesty-strip">RTX 3090 · batch 1 · task rubric passed · raw samples attached</div>
         </div>
       </section>
@@ -226,9 +258,9 @@ export default function Home() {
                   <td className="metric-cell">{item.e2e ? <><strong>{item.e2e[0]}</strong><span>{item.e2e[1]}</span></> : "—"}</td>
                   <td className="metric-cell">{item.throughput ?? "—"}</td>
                   <td className="metric-cell">{item.vram ?? "—"}</td>
-                  <td className={item.status === "measured" ? "speedup-cell" : "muted-cell"}>{item.speedup}</td>
-                  <td className={item.status === "measured" ? "quality-ok" : "muted-cell"}>{item.quality}</td>
-                  <td className={item.status === "measured" ? "fidelity-cell" : "muted-cell"}>{item.exact}</td>
+                  <td className={item.status === "measured" ? "speedup-cell" : item.status === "planned" ? "muted-cell" : "regression-cell"}>{item.speedup}</td>
+                  <td className={item.status === "rejected" ? "quality-fail" : item.status === "planned" ? "muted-cell" : "quality-ok"}>{item.quality}</td>
+                  <td className={item.status === "rejected" ? "quality-fail" : item.status === "planned" ? "muted-cell" : "fidelity-cell"}>{item.exact}</td>
                   <td><span className={`status status-${item.status}`}>{item.status}</span></td>
                 </tr>
               ))}
@@ -283,8 +315,8 @@ export default function Home() {
       </section>
 
       <section className="next-run">
-        <div><span className="eyebrow light">NEXT ON THE RIG</span><h2>Beat 290 ms with Flash Attention 2.</h2></div>
-        <div className="next-run-copy"><p>Same checkpoint, 448×299 input, static cache, decode settings, raw output, and quality gates. Then expand caption, OCR, count, and extraction coverage.</p><a href="https://github.com/gokayfem/ComfyUI_VLM_nodes/tree/codex/vlm-benchmark-lab/benchmarks">Open benchmark kit ↗</a></div>
+        <div><span className="eyebrow light">NEXT ON THE RIG</span><h2>Take 274 ms into SGLang.</h2></div>
+        <div className="next-run-copy"><p>Flash Attention was measured and rejected. Next: the same frozen input through SGLang and FlashInfer, followed by concurrency sweeps and broader OCR, count, and extraction coverage.</p><a href="https://github.com/gokayfem/ComfyUI_VLM_nodes/tree/codex/vlm-benchmark-lab/benchmarks">Open benchmark kit ↗</a></div>
       </section>
 
       <footer><div className="brand"><span className="brand-mark">VL</span><span>VLM Speed Lab</span></div><p>Built in public. Measured, not marketed.</p><span>ComfyUI VLM Nodes · 2026</span></footer>

@@ -65,6 +65,8 @@ h2 { font-size:clamp(43px,5vw,75px); line-height:.97; letter-spacing:-.058em; ma
 .comparison-table tbody tr:hover { background:#eae7de; }
 .comparison-table tbody tr.measured { background:rgba(200,255,54,.11); }
 .comparison-table tbody tr.measured:hover { background:rgba(200,255,54,.2); }
+.comparison-table tbody tr.regression { background:rgba(255,180,53,.09); }
+.comparison-table tbody tr.rejected { background:rgba(255,107,53,.1); }
 .row-id { color:var(--muted); font:600 10px var(--font-geist-mono); }
 .variant-cell strong { display:block; font-size:12px; letter-spacing:-.015em; }
 .variant-cell span { display:block; margin-top:4px; color:var(--muted); font:500 8px var(--font-geist-mono); text-transform:uppercase; }
@@ -76,9 +78,13 @@ h2 { font-size:clamp(43px,5vw,75px); line-height:.97; letter-spacing:-.058em; ma
 .muted-cell { color:var(--muted); }
 .quality-ok { color:#557900; font-weight:700; }
 .speedup-cell { color:#456700; font:700 9px/1.45 var(--font-geist-mono); }
+.regression-cell { color:#a5421a; font:700 9px/1.45 var(--font-geist-mono); }
 .fidelity-cell { font-weight:750; color:#456700; }
+.quality-fail { color:#bd351f; font-weight:750; }
 .status { height:23px; padding:5px 9px; border:1px solid; border-radius:99px; font:700 8px var(--font-geist-mono); letter-spacing:.08em; text-transform:uppercase; }
 .status-measured { background:var(--lime); border-color:var(--lime); }
+.status-regression { color:#8a4710; background:#ffe0a3; border-color:#f2bd58; }
+.status-rejected { color:#9e2d1c; background:#ffd3c4; border-color:#ff9e7b; }
 .status-ready,.status-queued { color:#ad451c; background:#ffe1d5; border-color:#ffc1a9; }
 .status-planned { color:var(--muted); border-color:var(--line); }
 .table-notes { display:flex; gap:26px; padding:13px 2px 0; color:var(--muted); font:500 9px var(--font-geist-mono); }
