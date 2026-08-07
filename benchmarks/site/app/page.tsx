@@ -10,56 +10,80 @@ const iterations = [
   {
     id: "00",
     name: "Transformers baseline",
-    stack: "BF16 · SDPA · batch 1",
+    stack: "BF16 / SDPA / B1",
     status: "ready",
-    change: "Lock the control run",
-    result: "Awaiting GPU run",
-    note: "The same model, prompts, media, seed, and decoding settings become the control for every later run.",
+    change: "Control",
+    ttft: null,
+    throughput: null,
+    e2e: null,
+    vram: null,
+    quality: "Baseline",
+    result: "GPU run pending",
   },
   {
     id: "01",
     name: "Visual work budget",
-    stack: "Adaptive sampling · 938×518",
+    stack: "10 frames / 938x518",
     status: "measured",
-    change: "60 frames → 10 selected frames",
-    result: "11.38× less visual work",
-    note: "Measured on the repository’s people-and-birds video. This is input-work reduction, not an end-to-end speed claim.",
+    change: "Sampler + resize",
+    ttft: null,
+    throughput: null,
+    e2e: "0.44s prep",
+    vram: null,
+    quality: "Input intact",
+    result: "11.38x work cut",
   },
   {
     id: "02",
     name: "Flash Attention 2",
-    stack: "BF16 · FA2 · same inputs",
+    stack: "BF16 / FA2 / B1",
     status: "queued",
-    change: "Attention kernel only",
-    result: "Next experiment",
-    note: "Passes only if task quality remains inside the baseline tolerance and memory stays stable.",
+    change: "Attention kernel",
+    ttft: null,
+    throughput: null,
+    e2e: null,
+    vram: null,
+    quality: "Gate pending",
+    result: "Next run",
   },
   {
     id: "03",
     name: "Compiled execution",
-    stack: "torch.compile · CUDA graphs",
+    stack: "compile / CUDA graph",
     status: "planned",
-    change: "Graph capture only",
+    change: "Graph capture",
+    ttft: null,
+    throughput: null,
+    e2e: null,
+    vram: null,
+    quality: "Gate pending",
     result: "Planned",
-    note: "Warm and cold runs are reported separately so compilation cost cannot disappear into the average.",
   },
   {
     id: "04",
     name: "SGLang + FlashInfer",
-    stack: "Radix cache · continuous batching",
+    stack: "Radix / continuous batch",
     status: "planned",
     change: "Serving runtime",
+    ttft: null,
+    throughput: null,
+    e2e: null,
+    vram: null,
+    quality: "Gate pending",
     result: "Planned",
-    note: "Adds concurrency sweeps while preserving the single-request latency control.",
   },
   {
     id: "05",
     name: "TensorRT-LLM",
-    stack: "In-flight batching · CUDA graphs",
+    stack: "IFB / CUDA graph",
     status: "planned",
     change: "NVIDIA runtime",
+    ttft: null,
+    throughput: null,
+    e2e: null,
+    vram: null,
+    quality: "Gate pending",
     result: "Planned",
-    note: "Tracked as a separate backend, with engine build time and precision declared in the artifact.",
   },
 ];
 
@@ -131,25 +155,51 @@ export default function Home() {
           <p>Green means measured. Amber means the experiment is wired and next in the queue. Empty cells are never replaced with projections.</p>
         </div>
 
-        <div className="iteration-list">
-          {iterations.map((item, index) => (
-            <article className={`iteration-card ${item.status}`} key={item.id}>
-              <div className="iteration-index">{item.id}</div>
-              <div className="iteration-main">
-                <div className="iteration-title-row">
-                  <div><h3>{item.name}</h3><p>{item.stack}</p></div>
-                  <span className={`status status-${item.status}`}>{item.status}</span>
-                </div>
-                <div className="iteration-change"><span>Changed</span>{item.change}</div>
-                <p className="iteration-note">{item.note}</p>
-              </div>
-              <div className="iteration-result">
-                <small>{index === 1 ? "Result" : "State"}</small>
-                <strong>{item.result}</strong>
-                {index === 1 && <span className="quality-pass">Input contract preserved</span>}
-              </div>
-            </article>
-          ))}
+        <div className="run-context" aria-label="Benchmark run context">
+          <span><b>Model</b> Qwen3-VL 2B Instruct</span>
+          <span><b>Mode</b> Single request</span>
+          <span><b>Sample</b> 3 warmups / 30 runs</span>
+          <span><b>Decode</b> Temperature 0</span>
+        </div>
+
+        <div className="comparison-table-wrap">
+          <table className="comparison-table">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Variant</th>
+                <th scope="col">One change</th>
+                <th scope="col">TTFT<br /><span>p50</span></th>
+                <th scope="col">Output<br /><span>tok/s</span></th>
+                <th scope="col">End-to-end<br /><span>p50</span></th>
+                <th scope="col">Peak<br /><span>VRAM</span></th>
+                <th scope="col">Quality</th>
+                <th scope="col">Result</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {iterations.map((item) => (
+                <tr className={item.status} key={item.id}>
+                  <td className="row-id">{item.id}</td>
+                  <th scope="row" className="variant-cell"><strong>{item.name}</strong><span>{item.stack}</span></th>
+                  <td>{item.change}</td>
+                  <td className="metric-cell">{item.ttft ?? "—"}</td>
+                  <td className="metric-cell">{item.throughput ?? "—"}</td>
+                  <td className="metric-cell">{item.e2e ?? "—"}</td>
+                  <td className="metric-cell">{item.vram ?? "—"}</td>
+                  <td className={item.status === "measured" ? "quality-ok" : "muted-cell"}>{item.quality}</td>
+                  <td className={item.status === "measured" ? "result-strong" : "muted-cell"}>{item.result}</td>
+                  <td><span className={`status status-${item.status}`}>{item.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="table-notes">
+          <span><b>—</b> Not measured; never estimated</span>
+          <span><b>01</b> Preprocessing result only, not model inference</span>
+          <span><b>Pass</b> Quality must remain within the declared tolerance</span>
         </div>
       </section>
 
