@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "checkpoint": "Qwen/Qwen3-VL-2B-Instruct",
+  "safetensors_bytes": 4255140312,
+  "environment": {
+    "gpu": "NVIDIA GeForce RTX 3090 24GB",
+    "filesystem": "WSL2 ext4",
+    "flashpack_revision": "a923a6c",
+    "cache_eviction": "POSIX_FADV_DONTNEED on the measured file only"
+  },
+  "flashpack_reader": {
+    "direct_io": true,
+    "threads": 4,
+    "buffers_per_thread": 2,
+    "chunk_bytes": 33554432,
+    "pinned_staging_bytes": 268435456,
+    "cache_pinned": false
+  },
+  "preparation": {
+    "conversion_seconds": 0.0,
+    "flashpack_bytes": 4255133230,
+    "tensor_count": 625,
+    "sample_exact": {
+      "model.language_model.embed_tokens.weight": true,
+      "model.visual.blocks.17.mlp.linear_fc1.bias": true,
+      "model.language_model.layers.9.self_attn.q_norm.weight": true
+    }
+  },
+  "methods": {
+    "safetensors": {
+      "cold": {
+        "seconds": [
+          58.55027909799992,
+          59.30713190999995,
+          60.17983154800004
+        ],
+        "p50_seconds": 59.30713190999995,
+        "p95_seconds": 60.17983154800004,
+        "p50_throughput_gbps": 0.5739802516105188,
+        "peak_gpu_bytes": 4256651264
+      },
+      "warm": {
+        "seconds": [
+          1.033367304999956,
+          1.0584651120000217,
+          1.1987151169998924
+        ],
+        "p50_seconds": 1.0584651120000217,
+        "p95_seconds": 1.1987151169998924,
+        "p50_throughput_gbps": 32.16083563838739,
+        "peak_gpu_bytes": 4256651264
+      }
+    },
+    "safetensors_fast_gpu": {
+      "cold": {
+        "seconds": [
+          62.305181905999916,
+          58.50693893500011,
+          60.62746760899995
+        ],
+        "p50_seconds": 60.62746760899995,
+        "p95_seconds": 62.305181905999916,
+        "p50_throughput_gbps": 0.5614801976480164,
+        "peak_gpu_bytes": 4256651264
+      },
+      "warm": {
+        "seconds": [
+          1.137218976999975,
+          1.0898004420000689,
+          1.1920738910000637
+        ],
+        "p50_seconds": 1.137218976999975,
+        "p95_seconds": 1.1920738910000637,
+        "p50_throughput_gbps": 29.933656740236362,
+        "peak_gpu_bytes": 4256651264
+      }
+    },
+    "flashpack_bounded_direct_io": {
+      "cold": {
+        "seconds": [
+          44.775754307999705,
+          38.81784143599998,
+          43.73773216100017
+        ],
+        "p50_seconds": 43.73773216100017,
+        "p95_seconds": 44.775754307999705,
+        "p50_throughput_gbps": 0.7782997461938267,
+        "peak_gpu_bytes": 4255121408
+      },
+      "warm": null,
+      "sample_exact": true
+    }
+  },
+  "probes": {
+    "flashpack_8x16mib_cold_seconds": 45.7384941790001,
+    "flashpack_buffered_cold_seconds": 87.244453406,
+    "flashpack_buffered_warm_seconds": 0.997375596,
+    "upstream_default": "failed: 2 GiB pinned staging allocation exceeded this host's available pinned-memory budget"
+  }
+}

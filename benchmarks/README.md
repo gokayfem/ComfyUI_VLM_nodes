@@ -69,6 +69,13 @@ Parallel safetensor loading reduced warm-filesystem model/processor setup from
 88.351 seconds to 6.858 seconds. Treat this as a warm-cache startup result;
 network download time is outside the measurement.
 
+The separate [cold-start study](COLD_START_RESEARCH.md) profiles the same
+checkpoint from disk to GPU and combines a bounded FlashPack reader with
+ComfyUI's file-slice, pinned-memory, residency, and prefetch ideas. On the local
+WSL host, the validated bounded FlashPack configuration reduced cold weight
+loading from 59.31 seconds to 43.74 seconds p50 (26.3%). This is explicitly a
+local storage result; fal `/data` remains to be measured independently.
+
 ## SGLang and FlashInfer matrix
 
 The same 448x299 image, prompt, greedy decode, 96-token cap, RTX 3090, three
