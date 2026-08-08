@@ -129,8 +129,23 @@ sample. Its isolated 262.8x vision speedup is real relative to the Torch 2.9
 eager control but is not the cross-stack headline: the established Torch 2.8
 Transformers path already runs end to end in 274.5 ms, and SGLang iteration
 05e remains the overall winner at 190.5 ms. The useful result is a verified
-9.1 ms vision engine and a new 61.4 ms Transformers TTFT; the next experiment
-is to feed those embeddings into the faster SGLang decoder.
+9.1 ms vision engine and a new 61.4 ms Transformers TTFT.
+
+Iteration 07 serializes that engine and injects its packed pooler plus three
+deep-stack tensors into SGLang's native decoder. The static bridge only accepts
+the compiled `(1, 18, 28)` grid; other image shapes fall back to SGLang's
+unchanged vision path.
+
+| Path | TTFT p50 / p95 | E2E p50 / p95 | Output tok/s | Semantic gate | Exact gate |
+| --- | ---: | ---: | ---: | --- | --- |
+| 05e SGLang control | 37.5 / 41.0 ms | **190.5 / 194.7 ms** | **202.6** | pass | pass; 31 tokens |
+| 07 TensorRT + SGLang | **34.9 / 37.8 ms** | 250.7 / 366.1 ms | 176.1 | pass | **fail; 40 tokens** |
+
+The bridge reduced TTFT by 7.0%, but numerical differences in the Transformers
+vision engine changed greedy decoding to a longer, semantically correct
+caption. That makes iteration 07 a measured regression rather than a promoted
+speedup. The next experiment is to compile SGLang-native vision weights and
+preserve the exact 31-token output.
 
 ## Run the OpenAI-compatible benchmark
 
@@ -168,7 +183,7 @@ and add box, mask, or track data rather than creating a separate leaderboard.
 
 ## Result review
 
-The comparison site lives in `benchmarks/site`. It intentionally shows planned
-iterations as planned and never substitutes estimates for missing GPU runs.
+The comparison site lives in `benchmarks/site`. It shows regressions alongside
+winners and never substitutes estimates for missing GPU runs.
 The existing `11.38×` figure is explicitly labeled as frame-by-pixel input-work
 reduction, not end-to-end model acceleration.

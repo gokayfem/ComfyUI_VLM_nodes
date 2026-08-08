@@ -210,6 +210,11 @@ def main() -> None:
     parser.add_argument("--optimization-level", type=int, default=3)
     parser.add_argument("--require-full-compilation", action="store_true")
     parser.add_argument(
+        "--save-engine",
+        type=Path,
+        help="Serialize the compiled vision graph as a portable ExportedProgram.",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path("benchmarks/results/qwen3-vl-2b-tensorrt-vision.json"),
@@ -287,6 +292,14 @@ def main() -> None:
         warmups=args.warmups,
         runs=args.runs,
     )
+    if args.save_engine is not None:
+        args.save_engine.parent.mkdir(parents=True, exist_ok=True)
+        torch_tensorrt.save(
+            compiled,
+            str(args.save_engine),
+            output_format="exported_program",
+            pickle_protocol=4,
+        )
     original_visual = model.model.visual
     model.model.visual = CompiledVisionAdapter(
         compiled,

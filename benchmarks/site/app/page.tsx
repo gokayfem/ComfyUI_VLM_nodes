@@ -220,16 +220,16 @@ const iterations = [
     name: "TensorRT + SGLang bridge",
     stack: "TRT vision · SGLang decode",
     input: "448×299",
-    tokens: "precomputed vision embeddings",
-    status: "planned",
+    tokens: "144 input · 40 output",
+    status: "regression",
     change: "Runtime composition",
-    ttft: null,
-    e2e: null,
-    throughput: null,
+    ttft: ["34.9", "37.8"],
+    e2e: ["250.7", "366.1"],
+    throughput: "176.1",
     vram: null,
-    speedup: "Not measured",
-    quality: "Gate pending",
-    exact: "Pending",
+    speedup: "20.09× / 5.57× / 4.16×",
+    quality: "4/4 concepts",
+    exact: "Semantic · exact fail",
   },
 ];
 
@@ -397,8 +397,8 @@ export default function Home() {
       </section>
 
       <section className="next-run">
-        <div><span className="eyebrow light">NEXT ON THE RIG</span><h2>Fuse the two winners.</h2></div>
-        <div className="next-run-copy"><p>TensorRT now owns the 9.1 ms vision graph; SGLang still owns the 190.5 ms end-to-end record. Next: bridge the TensorRT embeddings into the SGLang decoder, then sweep concurrency.</p><a href="https://github.com/gokayfem/ComfyUI_VLM_nodes/tree/codex/vlm-benchmark-lab/benchmarks">Open benchmark kit ↗</a></div>
+        <div><span className="eyebrow light">NEXT ON THE RIG</span><h2>Recover exact output.</h2></div>
+        <div className="next-run-copy"><p>The bridge cut TTFT to 34.9 ms, but changed the exact caption and generated 40 tokens, raising end-to-end latency to 250.7 ms. Next: compile SGLang-native vision weights so TensorRT preserves the 31-token output.</p><a href="https://github.com/gokayfem/ComfyUI_VLM_nodes/tree/codex/vlm-benchmark-lab/benchmarks">Open benchmark kit ↗</a></div>
       </section>
 
       <footer><div className="brand"><span className="brand-mark">VL</span><span>VLM Speed Lab</span></div><p>Built in public. Measured, not marketed.</p><span>ComfyUI VLM Nodes · 2026</span></footer>

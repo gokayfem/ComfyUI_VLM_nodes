@@ -156,6 +156,9 @@ cython_debug/
 !benchmarks/site/build/
 !benchmarks/site/build/sites-vite-plugin.ts
 
+# Rebuildable TensorRT engine archives are too large for Git.
+benchmarks/results/*.ep
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore

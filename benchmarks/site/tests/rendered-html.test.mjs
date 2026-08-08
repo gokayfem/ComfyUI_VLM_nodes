@@ -31,13 +31,15 @@ test("server-renders the measured optimization matrix", async () => {
   assert.match(html, /Corrupt repeat/);
   assert.match(html, /SGLang 0\.5\.9 native/);
   assert.match(html, /Triton vision attention/);
+  assert.match(html, /TensorRT \+ SGLang bridge/);
+  assert.match(html, /Semantic · exact fail/);
   assert.match(html, /Invalid — gate failed/);
   assert.match(html, /88\.351s → 6\.858s/);
   assert.doesNotMatch(html, /GPU run pending|end-to-end run pending/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
 });
 
-test("keeps measured and planned work visually honest", async () => {
+test("keeps measured regressions visually honest", async () => {
   const [page, css] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -47,7 +49,7 @@ test("keeps measured and planned work visually honest", async () => {
   assert.match(page, /Not measured/);
   assert.match(page, /status: "regression"/);
   assert.match(page, /status: "rejected"/);
-  assert.match(page, /status: "planned"/);
+  assert.match(page, /ttft: \["34\.9", "37\.8"\]/);
   assert.match(page, /4\/4 concepts/);
   assert.match(page, /Semantic preservation and exact bytes/);
   assert.match(css, /\.comparison-table-wrap \{ overflow-x:auto/);
