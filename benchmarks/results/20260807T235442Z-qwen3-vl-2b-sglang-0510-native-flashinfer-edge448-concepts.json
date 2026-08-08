@@ -1,0 +1,304 @@
+{
+  "schema": "comfyui-vlm/benchmark-run",
+  "version": 1,
+  "created_at": "2026-08-07T23:54:42.051771+00:00",
+  "label": "qwen3-vl-2b-sglang-0510-native-flashinfer-edge448-concepts",
+  "backend": "sglang",
+  "suite": "qwen3-vl-2b-demo-448-v1",
+  "model": "Qwen/Qwen3-VL-2B-Instruct",
+  "git_commit": "d9584e1e35c4373ef99ac07d7c4a866852363c99",
+  "git_dirty": true,
+  "environment": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.11.14",
+    "server_base_url": "http://127.0.0.1:30000/v1"
+  },
+  "settings": {
+    "warmups": 3,
+    "runs": 10,
+    "max_tokens": 96,
+    "temperature": 0.0,
+    "quality_tolerance": 1.0
+  },
+  "summary": {
+    "requests": 10,
+    "latency_ms": {
+      "p50": 240.643,
+      "p95": 243.55,
+      "p99": 243.925
+    },
+    "ttft_ms": {
+      "p50": 35.228,
+      "p95": 38.264,
+      "p99": 38.455
+    },
+    "output_tokens_per_second_mean": 194.675,
+    "quality_mean": 1.0
+  },
+  "quality_gate": {
+    "threshold": 1.0,
+    "passed": true
+  },
+  "samples": [
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, playfully high-fiving each other as the golden hour light bathes the scene in warm, soft light.",
+      "latency_ms": 240.312,
+      "ttft_ms": 34.498,
+      "completion_tokens": 40,
+      "output_tokens_per_second": 194.35,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 184,
+        "completion_tokens": 40,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 0,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, playfully high-fiving each other as the golden hour light bathes the scene in warm, soft light.",
+      "latency_ms": 240.597,
+      "ttft_ms": 35.33,
+      "completion_tokens": 40,
+      "output_tokens_per_second": 194.868,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 184,
+        "completion_tokens": 40,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 1,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, playfully high-fiving each other as the golden hour light bathes the scene in warm, soft light.",
+      "latency_ms": 240.689,
+      "ttft_ms": 35.043,
+      "completion_tokens": 40,
+      "output_tokens_per_second": 194.509,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 184,
+        "completion_tokens": 40,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 2,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, playfully high-fiving each other as the golden hour light bathes the scene in warm, soft light.",
+      "latency_ms": 241.979,
+      "ttft_ms": 36.655,
+      "completion_tokens": 40,
+      "output_tokens_per_second": 194.815,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 184,
+        "completion_tokens": 40,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 3,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, playfully high-fiving each other as the golden hour light bathes the scene in warm, soft light.",
+      "latency_ms": 241.043,
+      "ttft_ms": 35.436,
+      "completion_tokens": 40,
+      "output_tokens_per_second": 194.546,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 184,
+        "completion_tokens": 40,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 4,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, playfully high-fiving each other as the golden hour light bathes the scene in warm, soft light.",
+      "latency_ms": 240.182,
+      "ttft_ms": 34.754,
+      "completion_tokens": 40,
+      "output_tokens_per_second": 194.716,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 184,
+        "completion_tokens": 40,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 5,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, playfully high-fiving each other as the golden hour light bathes the scene in warm, soft light.",
+      "latency_ms": 240.477,
+      "ttft_ms": 35.127,
+      "completion_tokens": 40,
+      "output_tokens_per_second": 194.789,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 184,
+        "completion_tokens": 40,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 6,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, playfully high-fiving each other as the golden hour light bathes the scene in warm, soft light.",
+      "latency_ms": 240.458,
+      "ttft_ms": 34.706,
+      "completion_tokens": 40,
+      "output_tokens_per_second": 194.409,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 184,
+        "completion_tokens": 40,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 7,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, playfully high-fiving each other as the golden hour light bathes the scene in warm, soft light.",
+      "latency_ms": 244.019,
+      "ttft_ms": 38.503,
+      "completion_tokens": 40,
+      "output_tokens_per_second": 194.631,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 184,
+        "completion_tokens": 40,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 8,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, playfully high-fiving each other as the golden hour light bathes the scene in warm, soft light.",
+      "latency_ms": 242.976,
+      "ttft_ms": 37.973,
+      "completion_tokens": 40,
+      "output_tokens_per_second": 195.119,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 184,
+        "completion_tokens": 40,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 9,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    }
+  ]
+}

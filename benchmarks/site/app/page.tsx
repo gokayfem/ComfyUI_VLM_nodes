@@ -120,20 +120,84 @@ const iterations = [
     exact: "Exact vs 01b",
   },
   {
-    id: "05",
-    name: "SGLang + FlashInfer",
-    stack: "Radix · continuous batch",
-    input: "Frozen suite",
-    tokens: "concurrency sweep",
-    status: "planned",
+    id: "05a",
+    name: "SGLang 0.5.9 native",
+    stack: "FlashInfer · SDPA vision",
+    input: "448×299",
+    tokens: "2 output tokens",
+    status: "rejected",
     change: "Serving runtime",
-    ttft: null,
-    e2e: null,
-    throughput: null,
+    ttft: ["38.3", "42.9"],
+    e2e: ["43.3", "48.0"],
+    throughput: "393.9",
     vram: null,
-    speedup: "Not measured",
-    quality: "Gate pending",
-    exact: "Pending",
+    speedup: "Invalid — gate failed",
+    quality: "0/4 concepts",
+    exact: "Output was ```",
+  },
+  {
+    id: "05b",
+    name: "SGLang 0.5.10 TF backend",
+    stack: "FlashInfer · Transformers VLM",
+    input: "448×299",
+    tokens: "144 input · 31 output",
+    status: "measured",
+    change: "Version + model impl",
+    ttft: ["75.6", "79.2"],
+    e2e: ["254.2", "257.5"],
+    throughput: "173.5",
+    vram: null,
+    speedup: "9.26× / 5.49× / 4.10×",
+    quality: "4/4 concepts",
+    exact: "Exact vs 01b",
+  },
+  {
+    id: "05c",
+    name: "SGLang 0.5.10 native",
+    stack: "FlashInfer · SDPA vision",
+    input: "448×299",
+    tokens: "144 input · 40 output",
+    status: "measured",
+    change: "Native model impl",
+    ttft: ["35.2", "38.3"],
+    e2e: ["240.6", "243.6"],
+    throughput: "194.7",
+    vram: null,
+    speedup: "19.88× / 5.80× / 4.60×",
+    quality: "4/4 concepts",
+    exact: "Semantic",
+  },
+  {
+    id: "05d",
+    name: "Triton vision attention",
+    stack: "FlashInfer · Triton vision",
+    input: "448×299",
+    tokens: "144 input · 31 output",
+    status: "measured",
+    change: "Vision attention only",
+    ttft: ["35.5", "37.9"],
+    e2e: ["193.6", "195.3"],
+    throughput: "196.4",
+    vram: null,
+    speedup: "19.74× / 7.21× / 4.64×",
+    quality: "4/4 concepts",
+    exact: "Exact vs 01b",
+  },
+  {
+    id: "05e",
+    name: "Compiled SGLang decode",
+    stack: "FlashInfer · Triton · compile",
+    input: "448×299",
+    tokens: "144 input · 31 output",
+    status: "measured",
+    change: "Torch compile only",
+    ttft: ["37.5", "41.0"],
+    e2e: ["190.5", "194.7"],
+    throughput: "202.6",
+    vram: null,
+    speedup: "18.69× / 7.33× / 4.79×",
+    quality: "4/4 concepts",
+    exact: "Exact vs 01b",
   },
   {
     id: "06",
@@ -154,7 +218,7 @@ const iterations = [
 ];
 
 const qualityTasks = [
-  ["Caption facts", "required concepts", "4 / 4 in every run"],
+  ["Caption facts", "concept groups + aliases", "4 / 4 in every run"],
   ["Resize fidelity", "task rubric", "pass · wording changed"],
   ["Compiler fidelity", "SHA-256 output", "exact vs iteration 01b"],
   ["Repeatability", "within variant", "10 / 10 identical"],
@@ -193,13 +257,13 @@ export default function Home() {
 
         <div className="hero-metric" aria-label="Measured end-to-end speedup">
           <div className="metric-topline"><span>Measured now</span><span className="verified">● VERIFIED</span></div>
-          <div className="big-number">5.08<span>×</span></div>
+          <div className="big-number">7.33<span>×</span></div>
           <div className="metric-label">faster end to end</div>
           <div className="work-bars" aria-hidden="true">
             <div className="work-row"><span>Before</span><i className="bar before" /><b>1395.7</b></div>
-            <div className="work-row"><span>After</span><i className="bar after" /><b>274.5</b></div>
+            <div className="work-row"><span>After</span><i className="bar after" /><b>190.5</b></div>
           </div>
-          <p>Milliseconds p50 · 10 measured runs · output throughput 42.3 → 149.2 tok/s</p>
+          <p>Milliseconds p50 · 10 measured runs · output throughput 42.3 → 202.6 tok/s</p>
           <div className="honesty-strip">RTX 3090 · batch 1 · task rubric passed · raw samples attached</div>
         </div>
       </section>
@@ -225,8 +289,8 @@ export default function Home() {
           <span><b>Model</b> Qwen3-VL 2B Instruct</span>
           <span><b>Mode</b> Single request</span>
           <span><b>Sample</b> 10 measured / variant</span>
-          <span><b>Warmup</b> 2 dynamic / 6 compiled</span>
-          <span><b>Runtime</b> Torch 2.8 · TF 5.12.1</span>
+          <span><b>Warmup</b> 2–6 local / 3 server</span>
+          <span><b>Runtime</b> Torch 2.8/2.9 · SGLang 0.5.10</span>
         </div>
 
         <div className="comparison-table-wrap">
@@ -271,6 +335,7 @@ export default function Home() {
           <span><b>—</b> Not measured; never estimated</span>
           <span><b>Semantic</b> Required facts pass; wording changed</span>
           <span><b>Exact</b> SHA-256-identical generated text</span>
+          <span><b>VRAM —</b> Server peak not yet instrumented</span>
           <span><b>Load</b> 88.351s → 6.858s warm cache</span>
         </div>
       </section>
@@ -315,8 +380,8 @@ export default function Home() {
       </section>
 
       <section className="next-run">
-        <div><span className="eyebrow light">NEXT ON THE RIG</span><h2>Take 274 ms into SGLang.</h2></div>
-        <div className="next-run-copy"><p>Flash Attention was measured and rejected. Next: the same frozen input through SGLang and FlashInfer, followed by concurrency sweeps and broader OCR, count, and extraction coverage.</p><a href="https://github.com/gokayfem/ComfyUI_VLM_nodes/tree/codex/vlm-benchmark-lab/benchmarks">Open benchmark kit ↗</a></div>
+        <div><span className="eyebrow light">NEXT ON THE RIG</span><h2>Take 190 ms into TensorRT.</h2></div>
+        <div className="next-run-copy"><p>SGLang is now measured and promoted. Next: TensorRT-LLM on the frozen case, then concurrency sweeps and broader OCR, count, segmentation, and tracking coverage.</p><a href="https://github.com/gokayfem/ComfyUI_VLM_nodes/tree/codex/vlm-benchmark-lab/benchmarks">Open benchmark kit ↗</a></div>
       </section>
 
       <footer><div className="brand"><span className="brand-mark">VL</span><span>VLM Speed Lab</span></div><p>Built in public. Measured, not marketed.</p><span>ComfyUI VLM Nodes · 2026</span></footer>

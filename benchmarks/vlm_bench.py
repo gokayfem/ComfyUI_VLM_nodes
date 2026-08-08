@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import io
 import json
 import math
 import mimetypes
@@ -23,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from PIL import Image
 
 
 def normalize_text(value: str) -> str:
@@ -37,6 +39,20 @@ def score_output(output: str, evaluator: str, expected: Any) -> float:
         terms = [normalize_text(str(term)) for term in expected]
         terms = [term for term in terms if term]
         return sum(term in normalized for term in terms) / len(terms) if terms else 0.0
+    if evaluator == "concepts":
+        concepts = []
+        for concept in expected:
+            aliases = concept if isinstance(concept, list) else [concept]
+            aliases = [normalize_text(str(alias)) for alias in aliases]
+            aliases = [alias for alias in aliases if alias]
+            if aliases:
+                concepts.append(aliases)
+        return (
+            sum(any(alias in normalized for alias in aliases) for aliases in concepts)
+            / len(concepts)
+            if concepts
+            else 0.0
+        )
     if evaluator == "number":
         match = re.search(r"-?\d+", output.replace(",", ""))
         return float(match is not None and int(match.group()) == int(expected))
@@ -55,11 +71,35 @@ def percentile(values: list[float], quantile: float) -> float:
     return ordered[lower] * (upper - position) + ordered[upper] * (position - lower)
 
 
-def file_data_url(path: Path) -> tuple[str, str]:
+def file_data_url(path: Path, longest_edge: int | None) -> tuple[str, str, dict]:
     content = path.read_bytes()
-    mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    source_digest = hashlib.sha256(content).hexdigest()
+    image = Image.open(io.BytesIO(content)).convert("RGB")
+    source_size = image.size
+    if longest_edge is not None and max(image.size) > longest_edge:
+        scale = longest_edge / max(image.size)
+        image = image.resize(
+            (round(image.width * scale), round(image.height * scale)),
+            Image.Resampling.BOX,
+        )
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        content = buffer.getvalue()
+        mime = "image/png"
+    else:
+        mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
     encoded = base64.b64encode(content).decode("ascii")
-    return f"data:{mime};base64,{encoded}", hashlib.sha256(content).hexdigest()
+    return (
+        f"data:{mime};base64,{encoded}",
+        hashlib.sha256(content).hexdigest(),
+        {
+            "source_sha256": source_digest,
+            "source_width": source_size[0],
+            "source_height": source_size[1],
+            "processed_width": image.width,
+            "processed_height": image.height,
+        },
+    )
 
 
 def git_value(*args: str) -> str | None:
@@ -193,13 +233,16 @@ def main() -> None:
         media_path = (suite_path.parent / case["image"]).resolve()
         if not media_path.is_file():
             raise FileNotFoundError(f"Missing benchmark media: {media_path}")
-        data_url, digest = file_data_url(media_path)
-        prepared.append((case, data_url, digest))
+        data_url, digest, media = file_data_url(
+            media_path,
+            int(case["longest_edge"]) if case.get("longest_edge") else None,
+        )
+        prepared.append((case, data_url, digest, media))
 
     samples: list[dict[str, Any]] = []
     with httpx.Client(timeout=args.timeout) as client:
         for index in range(args.warmups + args.runs):
-            case, data_url, digest = prepared[index % len(prepared)]
+            case, data_url, digest, media = prepared[index % len(prepared)]
             result = run_request(
                 client,
                 base_url=args.base_url,
@@ -217,6 +260,7 @@ def main() -> None:
                     "case_id": case["id"],
                     "task": case["task"],
                     "media_sha256": digest,
+                    "media": media,
                     "quality": score_output(
                         result["output"], case["evaluator"], case["expected"]
                     ),
@@ -264,4 +308,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

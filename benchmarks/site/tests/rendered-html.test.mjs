@@ -23,12 +23,15 @@ test("server-renders the measured optimization matrix", async () => {
 
   const html = await response.text();
   assert.match(html, /VLM Speed Lab/);
-  assert.match(html, /5\.08/);
-  assert.match(html, /149\.2/);
+  assert.match(html, /7\.33/);
+  assert.match(html, /202\.6/);
   assert.match(html, /Source-resolution control/);
   assert.match(html, /Compiled execution/);
   assert.match(html, /Exact vs 01b/);
   assert.match(html, /Corrupt repeat/);
+  assert.match(html, /SGLang 0\.5\.9 native/);
+  assert.match(html, /Triton vision attention/);
+  assert.match(html, /Invalid — gate failed/);
   assert.match(html, /88\.351s → 6\.858s/);
   assert.doesNotMatch(html, /GPU run pending|end-to-end run pending/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);

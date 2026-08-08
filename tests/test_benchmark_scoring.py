@@ -3,6 +3,22 @@ from benchmarks.vlm_bench import aggregate, percentile, score_output
 
 def test_task_specific_quality_scores_are_deterministic():
     assert score_output("A red bird on a branch.", "keywords", ["red", "bird", "branch"]) == 1.0
+    assert (
+        score_output(
+            "A woman and dog are high-fiving on a beach.",
+            "concepts",
+            [["woman"], ["dog", "retriever"], ["beach"], ["high-five", "high-fiving"]],
+        )
+        == 1.0
+    )
+    assert (
+        score_output(
+            "A woman and dog on a beach.",
+            "concepts",
+            [["woman"], ["dog"], ["beach"], ["high-fiving"]],
+        )
+        == 0.75
+    )
     assert score_output("Hello, WORLD!", "exact", "hello world") == 1.0
     assert score_output("There are 12 objects.", "number", 12) == 1.0
     assert score_output("There are 11 objects.", "number", 12) == 0.0
@@ -22,4 +38,3 @@ def test_aggregate_keeps_latency_ttft_throughput_and_quality_separate():
     assert result["ttft_ms"]["p50"] == 50.0
     assert result["output_tokens_per_second_mean"] == 25.0
     assert result["quality_mean"] == 0.75
-

@@ -1,0 +1,304 @@
+{
+  "schema": "comfyui-vlm/benchmark-run",
+  "version": 1,
+  "created_at": "2026-08-07T23:51:14.661282+00:00",
+  "label": "qwen3-vl-2b-sglang-0510-transformers-flashinfer-edge448",
+  "backend": "sglang",
+  "suite": "qwen3-vl-2b-demo-448-v1",
+  "model": "Qwen/Qwen3-VL-2B-Instruct",
+  "git_commit": "d9584e1e35c4373ef99ac07d7c4a866852363c99",
+  "git_dirty": true,
+  "environment": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.11.14",
+    "server_base_url": "http://127.0.0.1:30000/v1"
+  },
+  "settings": {
+    "warmups": 3,
+    "runs": 10,
+    "max_tokens": 96,
+    "temperature": 0.0,
+    "quality_tolerance": 1.0
+  },
+  "summary": {
+    "requests": 10,
+    "latency_ms": {
+      "p50": 254.247,
+      "p95": 257.515,
+      "p99": 258.626
+    },
+    "ttft_ms": {
+      "p50": 75.627,
+      "p95": 79.154,
+      "p99": 80.361
+    },
+    "output_tokens_per_second_mean": 173.546,
+    "quality_mean": 1.0
+  },
+  "quality_gate": {
+    "threshold": 1.0,
+    "passed": true
+  },
+  "samples": [
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "latency_ms": 254.057,
+      "ttft_ms": 74.753,
+      "completion_tokens": 31,
+      "output_tokens_per_second": 172.891,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 175,
+        "completion_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 0,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "latency_ms": 258.904,
+      "ttft_ms": 80.663,
+      "completion_tokens": 31,
+      "output_tokens_per_second": 173.922,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 175,
+        "completion_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 1,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "latency_ms": 254.891,
+      "ttft_ms": 76.593,
+      "completion_tokens": 31,
+      "output_tokens_per_second": 173.866,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 175,
+        "completion_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 2,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "latency_ms": 252.898,
+      "ttft_ms": 74.213,
+      "completion_tokens": 31,
+      "output_tokens_per_second": 173.489,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 175,
+        "completion_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 3,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "latency_ms": 253.15,
+      "ttft_ms": 74.329,
+      "completion_tokens": 31,
+      "output_tokens_per_second": 173.358,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 175,
+        "completion_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 4,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "latency_ms": 254.437,
+      "ttft_ms": 75.904,
+      "completion_tokens": 31,
+      "output_tokens_per_second": 173.638,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 175,
+        "completion_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 5,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "latency_ms": 253.923,
+      "ttft_ms": 75.351,
+      "completion_tokens": 31,
+      "output_tokens_per_second": 173.599,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 175,
+        "completion_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 6,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "latency_ms": 255.317,
+      "ttft_ms": 76.96,
+      "completion_tokens": 31,
+      "output_tokens_per_second": 173.808,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 175,
+        "completion_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 7,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "latency_ms": 253.695,
+      "ttft_ms": 74.735,
+      "completion_tokens": 31,
+      "output_tokens_per_second": 173.222,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 175,
+        "completion_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 8,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    },
+    {
+      "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+      "latency_ms": 255.817,
+      "ttft_ms": 77.31,
+      "completion_tokens": 31,
+      "output_tokens_per_second": 173.662,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 175,
+        "completion_tokens": 31,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 9,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 1.0
+    }
+  ]
+}

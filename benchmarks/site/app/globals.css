@@ -41,8 +41,8 @@ h1 em { font-family:Georgia,serif; font-weight:400; color:var(--orange); }
 .section-heading { display:grid; grid-template-columns:1fr minmax(280px,440px); align-items:end; gap:40px; margin-bottom:58px; }
 h2 { font-size:clamp(43px,5vw,75px); line-height:.97; letter-spacing:-.058em; margin:18px 0 0; }
 .section-heading>p { color:var(--muted); line-height:1.6; font-size:14px; margin:0; }
-.run-context { display:grid; grid-template-columns:repeat(5,1fr); border:1px solid var(--ink); border-bottom:0; background:#e8e5db; }
-.run-context span { padding:12px 14px; border-right:1px solid var(--line); font:500 9px var(--font-geist-mono); color:var(--muted); text-transform:uppercase; white-space:nowrap; }
+.run-context { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); border:1px solid var(--ink); border-bottom:0; background:#e8e5db; }
+.run-context span { min-width:0; padding:12px 14px; border-right:1px solid var(--line); font:500 9px/1.45 var(--font-geist-mono); color:var(--muted); text-transform:uppercase; }
 .run-context span:last-child { border-right:0; }
 .run-context b { color:var(--ink); margin-right:7px; }
 .comparison-table-wrap { overflow-x:auto; border:1px solid var(--ink); }

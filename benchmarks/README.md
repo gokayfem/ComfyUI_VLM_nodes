@@ -68,6 +68,36 @@ Parallel safetensor loading reduced warm-filesystem model/processor setup from
 88.351 seconds to 6.858 seconds. Treat this as a warm-cache startup result;
 network download time is outside the measurement.
 
+## SGLang and FlashInfer matrix
+
+The same 448x299 image, prompt, greedy decode, 96-token cap, RTX 3090, three
+warmups, and ten measured requests were used for the serving-runtime matrix.
+SGLang 0.5.10.post1 ran with PyTorch 2.9.1+cu128, Transformers 5.3.0, and
+FlashInfer 0.6.7.post3. The concept gate requires the woman, golden retriever,
+beach, and high-five action; inflection aliases such as `high-fiving` are
+accepted within that action concept.
+
+| Iteration | Runtime change | TTFT p50 / p95 | E2E p50 / p95 | Output tok/s | Quality |
+| --- | --- | ---: | ---: | ---: | --- |
+| 05a SGLang 0.5.9 native | FlashInfer + SDPA vision | 38.3 / 42.9 ms | 43.3 / 48.0 ms | 393.9 | **fail; output was only a code fence** |
+| 05b SGLang 0.5.10 Transformers backend | Version + model implementation | 75.6 / 79.2 ms | 254.2 / 257.5 ms | 173.5 | pass; exact vs 01b |
+| 05c SGLang 0.5.10 native | Native model implementation | 35.2 / 38.3 ms | 240.6 / 243.6 ms | 194.7 | concept pass |
+| 05d Triton multimodal attention | SDPA vision -> Triton vision | 35.5 / 37.9 ms | 193.6 / 195.3 ms | 196.4 | pass; exact vs 01b |
+| 05e compiled decode | `torch.compile`, max batch 4 | 37.5 / 41.0 ms | 190.5 / 194.7 ms | 202.6 | pass; exact vs 01b |
+
+Iteration 05e is 7.33x faster end to end and delivers 4.79x higher output
+throughput than iteration 00. Iteration 05c retains the best TTFT at 19.88x
+faster than iteration 00, while 05e trades 2.2 ms of TTFT for the best E2E and
+decode throughput. The one-request 0.5.10 cold probe took 17.6 seconds because
+of one-time compilation and is kept separate from steady-state percentiles.
+
+The 0.5.9 result demonstrates why latency cannot be promoted without output
+evidence: its apparently extraordinary timing came from terminating after two
+invalid tokens. The 0.5.10 release fixed the native vision path for this case.
+The current 0.5.15.post1 release was also installed and audited, but its CUDA
+13 / PyTorch 2.11 build cannot initialize CUDA on the machine's NVIDIA 560.94
+driver, so it is recorded as incompatible rather than benchmarked.
+
 ## Run the OpenAI-compatible benchmark
 
 SGLang and TensorRT-LLM both expose OpenAI-compatible chat endpoints. Start
@@ -94,6 +124,7 @@ local Git commit. Do not hand-edit result artifacts.
 Each case declares a task and an evaluator:
 
 - `keywords`: case-insensitive keyword recall for captions.
+- `concepts`: required semantic concepts, each with one or more accepted aliases.
 - `exact`: normalized exact match for OCR and constrained answers.
 - `number`: extracts the first integer for counting tasks.
 

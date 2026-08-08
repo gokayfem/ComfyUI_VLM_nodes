@@ -1,0 +1,23 @@
+{
+  "name": "qwen3-vl-2b-demo-448-v1",
+  "model": "Qwen/Qwen3-VL-2B-Instruct",
+  "max_tokens": 96,
+  "temperature": 0.0,
+  "quality_tolerance": 1.0,
+  "cases": [
+    {
+      "id": "caption-qwen-demo-001",
+      "task": "caption",
+      "image": "media/qwen-demo.jpeg",
+      "longest_edge": 448,
+      "prompt": "Describe this image precisely in one sentence.",
+      "evaluator": "concepts",
+      "expected": [
+        ["woman"],
+        ["golden retriever"],
+        ["beach"],
+        ["high-five", "high-fiving", "high five", "high fiving"]
+      ]
+    }
+  ]
+}

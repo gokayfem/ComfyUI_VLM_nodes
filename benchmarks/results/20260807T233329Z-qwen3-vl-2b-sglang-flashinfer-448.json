@@ -1,0 +1,304 @@
+{
+  "schema": "comfyui-vlm/benchmark-run",
+  "version": 1,
+  "created_at": "2026-08-07T23:33:29.188812+00:00",
+  "label": "qwen3-vl-2b-sglang-flashinfer-448",
+  "backend": "sglang",
+  "suite": "qwen3-vl-2b-demo-448-v1",
+  "model": "Qwen/Qwen3-VL-2B-Instruct",
+  "git_commit": "d9584e1e35c4373ef99ac07d7c4a866852363c99",
+  "git_dirty": true,
+  "environment": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.11.14",
+    "server_base_url": "http://127.0.0.1:30000/v1"
+  },
+  "settings": {
+    "warmups": 3,
+    "runs": 10,
+    "max_tokens": 96,
+    "temperature": 0.0,
+    "quality_tolerance": 1.0
+  },
+  "summary": {
+    "requests": 10,
+    "latency_ms": {
+      "p50": 43.271,
+      "p95": 47.958,
+      "p99": 50.233
+    },
+    "ttft_ms": {
+      "p50": 38.276,
+      "p95": 42.913,
+      "p99": 45.215
+    },
+    "output_tokens_per_second_mean": 393.882,
+    "quality_mean": 0.0
+  },
+  "quality_gate": {
+    "threshold": 1.0,
+    "passed": false
+  },
+  "samples": [
+    {
+      "output": "```",
+      "latency_ms": 43.967,
+      "ttft_ms": 38.911,
+      "completion_tokens": 2,
+      "output_tokens_per_second": 395.577,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 146,
+        "completion_tokens": 2,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 0,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 0.0
+    },
+    {
+      "output": "```",
+      "latency_ms": 44.482,
+      "ttft_ms": 39.396,
+      "completion_tokens": 2,
+      "output_tokens_per_second": 393.213,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 146,
+        "completion_tokens": 2,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 1,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 0.0
+    },
+    {
+      "output": "```",
+      "latency_ms": 44.431,
+      "ttft_ms": 39.33,
+      "completion_tokens": 2,
+      "output_tokens_per_second": 392.065,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 146,
+        "completion_tokens": 2,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 2,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 0.0
+    },
+    {
+      "output": "```",
+      "latency_ms": 50.802,
+      "ttft_ms": 45.791,
+      "completion_tokens": 2,
+      "output_tokens_per_second": 399.098,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 146,
+        "completion_tokens": 2,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 3,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 0.0
+    },
+    {
+      "output": "```",
+      "latency_ms": 41.64,
+      "ttft_ms": 36.399,
+      "completion_tokens": 2,
+      "output_tokens_per_second": 381.592,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 146,
+        "completion_tokens": 2,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 4,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 0.0
+    },
+    {
+      "output": "```",
+      "latency_ms": 42.047,
+      "ttft_ms": 37.063,
+      "completion_tokens": 2,
+      "output_tokens_per_second": 401.332,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 146,
+        "completion_tokens": 2,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 5,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 0.0
+    },
+    {
+      "output": "```",
+      "latency_ms": 42.536,
+      "ttft_ms": 37.641,
+      "completion_tokens": 2,
+      "output_tokens_per_second": 408.589,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 146,
+        "completion_tokens": 2,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 6,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 0.0
+    },
+    {
+      "output": "```",
+      "latency_ms": 43.94,
+      "ttft_ms": 38.958,
+      "completion_tokens": 2,
+      "output_tokens_per_second": 401.461,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 146,
+        "completion_tokens": 2,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 7,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 0.0
+    },
+    {
+      "output": "```",
+      "latency_ms": 42.602,
+      "ttft_ms": 37.429,
+      "completion_tokens": 2,
+      "output_tokens_per_second": 386.593,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 146,
+        "completion_tokens": 2,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 8,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 0.0
+    },
+    {
+      "output": "```",
+      "latency_ms": 42.116,
+      "ttft_ms": 36.844,
+      "completion_tokens": 2,
+      "output_tokens_per_second": 379.305,
+      "usage": {
+        "prompt_tokens": 144,
+        "total_tokens": 146,
+        "completion_tokens": 2,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 0
+      },
+      "sample": 9,
+      "case_id": "caption-qwen-demo-001",
+      "task": "caption",
+      "media_sha256": "188eb59f12f8da458d6cb77ce19fb471519a94cd43f6701364593cc5843dce23",
+      "media": {
+        "source_sha256": "9eeaa87013b4e800930e8a411b58ff9e2fd5383906b1a022f4a712720af34cc2",
+        "source_width": 2048,
+        "source_height": 1365,
+        "processed_width": 448,
+        "processed_height": 299
+      },
+      "quality": 0.0
+    }
+  ]
+}
