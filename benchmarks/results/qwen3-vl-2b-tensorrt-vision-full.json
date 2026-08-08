@@ -1,0 +1,247 @@
+{
+  "schema": "comfyui-vlm/tensorrt-vision-probe",
+  "version": 1,
+  "created_at": "2026-08-08T00:49:06.960727+00:00",
+  "model": "Qwen/Qwen3-VL-2B-Instruct",
+  "media": {
+    "path": "/home/gokaygokay/ComfyUI_VLM_nodes/benchmarks/media/qwen-demo.jpeg",
+    "processed_size": [
+      448,
+      299
+    ],
+    "pixel_values_shape": [
+      504,
+      1536
+    ],
+    "image_grid_thw": [
+      [
+        1,
+        18,
+        28
+      ]
+    ]
+  },
+  "environment": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.11.14",
+    "torch": "2.9.0+cu128",
+    "cuda": "12.8",
+    "torch_tensorrt": "2.9.0+cu128",
+    "tensorrt": "10.13.3.9.post1",
+    "transformers": "5.12.1",
+    "gpu": "NVIDIA GeForce RTX 3090"
+  },
+  "configuration": {
+    "precision": "bfloat16",
+    "min_block_size": 5,
+    "optimization_level": 3,
+    "require_full_compilation": false,
+    "warmups": 3,
+    "runs": 10,
+    "generation_warmups": 1,
+    "generation_runs": 3
+  },
+  "model_load_seconds": 78.171,
+  "compile_seconds": 98.07,
+  "coverage": {
+    "available": true,
+    "graph_nodes": 8,
+    "call_modules": [
+      "_run_on_acc_0"
+    ],
+    "tensorrt_engine_partitions": 1,
+    "pytorch_fallback_partitions": 0
+  },
+  "fidelity": [
+    {
+      "output_index": 0,
+      "shape": [
+        504,
+        1024
+      ],
+      "max_absolute_error": 1380.0,
+      "mean_absolute_error": 0.563834547996521,
+      "cosine_similarity": 0.9949914216995239
+    },
+    {
+      "output_index": 1,
+      "shape": [
+        126,
+        2048
+      ],
+      "max_absolute_error": 2.375,
+      "mean_absolute_error": 0.025903113186359406,
+      "cosine_similarity": 0.9966588020324707
+    },
+    {
+      "output_index": 2,
+      "shape": [
+        126,
+        2048
+      ],
+      "max_absolute_error": 0.09375,
+      "mean_absolute_error": 0.004035853315144777,
+      "cosine_similarity": 0.9999096393585205
+    },
+    {
+      "output_index": 3,
+      "shape": [
+        126,
+        2048
+      ],
+      "max_absolute_error": 0.978515625,
+      "mean_absolute_error": 0.009971227496862411,
+      "cosine_similarity": 0.9982407093048096
+    },
+    {
+      "output_index": 4,
+      "shape": [
+        126,
+        2048
+      ],
+      "max_absolute_error": 3.34375,
+      "mean_absolute_error": 0.018642043694853783,
+      "cosine_similarity": 0.998470664024353
+    }
+  ],
+  "latency_ms": {
+    "eager_samples": [
+      2391.378,
+      2382.472,
+      2386.845,
+      2408.021,
+      2382.034,
+      2381.989,
+      2431.839,
+      2419.309,
+      2382.089,
+      2383.834
+    ],
+    "tensorrt_samples": [
+      9.526,
+      8.409,
+      8.817,
+      9.337,
+      8.556,
+      9.596,
+      8.549,
+      9.892,
+      8.632,
+      9.572
+    ],
+    "eager_median": 2385.339,
+    "tensorrt_median": 9.077,
+    "speedup": 262.779
+  },
+  "generation": {
+    "eager": {
+      "preprocess_ms_mean": 4.546,
+      "ttft_ms": {
+        "p50": 2452.88,
+        "p95": 2464.33
+      },
+      "e2e_ms": {
+        "p50": 2660.594,
+        "p95": 2674.669
+      },
+      "output_tokens_per_second_mean": 143.283,
+      "peak_vram_gib": 4.028,
+      "output_tokens_mean": 31.0,
+      "outputs_identical": true
+    },
+    "tensorrt": {
+      "preprocess_ms_mean": 6.582,
+      "ttft_ms": {
+        "p50": 61.388,
+        "p95": 62.364
+      },
+      "e2e_ms": {
+        "p50": 273.449,
+        "p95": 274.016
+      },
+      "output_tokens_per_second_mean": 142.09,
+      "peak_vram_gib": 4.024,
+      "output_tokens_mean": 31.0,
+      "outputs_identical": true
+    },
+    "exact_output_match": true,
+    "eager_output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+    "tensorrt_output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+    "eager_samples": [
+      {
+        "preprocess_ms": 4.702,
+        "ttft_ms": 2465.602,
+        "e2e_ms": 2676.233,
+        "output_tokens": 31,
+        "output_tokens_per_second": 142.429,
+        "peak_vram_gib": 4.028,
+        "input_tokens": 144,
+        "vision_tokens": 504,
+        "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+        "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+      },
+      {
+        "preprocess_ms": 4.443,
+        "ttft_ms": 2452.88,
+        "e2e_ms": 2660.594,
+        "output_tokens": 31,
+        "output_tokens_per_second": 144.429,
+        "peak_vram_gib": 4.028,
+        "input_tokens": 144,
+        "vision_tokens": 504,
+        "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+        "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+      },
+      {
+        "preprocess_ms": 4.493,
+        "ttft_ms": 2446.741,
+        "e2e_ms": 2656.543,
+        "output_tokens": 31,
+        "output_tokens_per_second": 142.992,
+        "peak_vram_gib": 4.028,
+        "input_tokens": 144,
+        "vision_tokens": 504,
+        "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+        "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+      }
+    ],
+    "tensorrt_samples": [
+      {
+        "preprocess_ms": 6.038,
+        "ttft_ms": 60.673,
+        "e2e_ms": 270.425,
+        "output_tokens": 31,
+        "output_tokens_per_second": 143.026,
+        "peak_vram_gib": 4.024,
+        "input_tokens": 144,
+        "vision_tokens": 504,
+        "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+        "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+      },
+      {
+        "preprocess_ms": 6.937,
+        "ttft_ms": 62.472,
+        "e2e_ms": 273.449,
+        "output_tokens": 31,
+        "output_tokens_per_second": 142.196,
+        "peak_vram_gib": 4.024,
+        "input_tokens": 144,
+        "vision_tokens": 504,
+        "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+        "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+      },
+      {
+        "preprocess_ms": 6.772,
+        "ttft_ms": 61.388,
+        "e2e_ms": 274.079,
+        "output_tokens": 31,
+        "output_tokens_per_second": 141.049,
+        "peak_vram_gib": 4.024,
+        "input_tokens": 144,
+        "vision_tokens": 504,
+        "output": "A woman and her golden retriever share a joyful moment on a sunlit beach, with the dog playfully reaching out to give a high-five.",
+        "output_sha256": "7b1c4202212d7ecbb5c90cb79ac7d6395cf487e97fdd7980f0c43687104184c1"
+      }
+    ]
+  }
+}

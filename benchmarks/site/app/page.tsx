@@ -201,12 +201,28 @@ const iterations = [
   },
   {
     id: "06",
-    name: "TensorRT-LLM",
-    stack: "IFB · CUDA graph",
-    input: "Frozen suite",
-    tokens: "concurrency sweep",
+    name: "TensorRT vision engine",
+    stack: "TRT 10.13 · BF16 · static",
+    input: "448×299",
+    tokens: "504 vision · 144 input · 31 output",
+    status: "measured",
+    change: "Vision tower only",
+    ttft: ["61.4", "62.4"],
+    e2e: ["273.4", "274.0"],
+    throughput: "142.1",
+    vram: "4.02",
+    speedup: "11.41× / 5.10× / 3.36×",
+    quality: "4/4 concepts",
+    exact: "Exact vs Torch 2.9",
+  },
+  {
+    id: "07",
+    name: "TensorRT + SGLang bridge",
+    stack: "TRT vision · SGLang decode",
+    input: "448×299",
+    tokens: "precomputed vision embeddings",
     status: "planned",
-    change: "NVIDIA runtime",
+    change: "Runtime composition",
     ttft: null,
     e2e: null,
     throughput: null,
@@ -290,7 +306,7 @@ export default function Home() {
           <span><b>Mode</b> Single request</span>
           <span><b>Sample</b> 10 measured / variant</span>
           <span><b>Warmup</b> 2–6 local / 3 server</span>
-          <span><b>Runtime</b> Torch 2.8/2.9 · SGLang 0.5.10</span>
+          <span><b>Runtime</b> Torch 2.8/2.9 · SGLang 0.5.10 · TRT 10.13</span>
         </div>
 
         <div className="comparison-table-wrap">
@@ -337,6 +353,7 @@ export default function Home() {
           <span><b>Exact</b> SHA-256-identical generated text</span>
           <span><b>VRAM —</b> Server peak not yet instrumented</span>
           <span><b>Load</b> 88.351s → 6.858s warm cache</span>
+          <span><b>TRT</b> 1 engine · 0 fallback · 98.070s compile</span>
         </div>
       </section>
 
@@ -380,8 +397,8 @@ export default function Home() {
       </section>
 
       <section className="next-run">
-        <div><span className="eyebrow light">NEXT ON THE RIG</span><h2>Take 190 ms into TensorRT.</h2></div>
-        <div className="next-run-copy"><p>SGLang is now measured and promoted. Next: TensorRT-LLM on the frozen case, then concurrency sweeps and broader OCR, count, segmentation, and tracking coverage.</p><a href="https://github.com/gokayfem/ComfyUI_VLM_nodes/tree/codex/vlm-benchmark-lab/benchmarks">Open benchmark kit ↗</a></div>
+        <div><span className="eyebrow light">NEXT ON THE RIG</span><h2>Fuse the two winners.</h2></div>
+        <div className="next-run-copy"><p>TensorRT now owns the 9.1 ms vision graph; SGLang still owns the 190.5 ms end-to-end record. Next: bridge the TensorRT embeddings into the SGLang decoder, then sweep concurrency.</p><a href="https://github.com/gokayfem/ComfyUI_VLM_nodes/tree/codex/vlm-benchmark-lab/benchmarks">Open benchmark kit ↗</a></div>
       </section>
 
       <footer><div className="brand"><span className="brand-mark">VL</span><span>VLM Speed Lab</span></div><p>Built in public. Measured, not marketed.</p><span>ComfyUI VLM Nodes · 2026</span></footer>

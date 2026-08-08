@@ -19,7 +19,8 @@ misses the quality gate is recorded as a regression.
 4. `torch.compile` / CUDA graph experiments.
 5. SGLang with its declared attention backend (including FlashInfer where
    selected by the runtime).
-6. TensorRT-LLM.
+6. TensorRT component engines where the model is exportable; TensorRT-LLM only
+   where the upstream runtime supports the complete architecture.
 
 Change one performance variable at a time. Run single-request latency first,
 then concurrency sweeps. Never mix cold-start and steady-state samples.
@@ -97,6 +98,39 @@ invalid tokens. The 0.5.10 release fixed the native vision path for this case.
 The current 0.5.15.post1 release was also installed and audited, but its CUDA
 13 / PyTorch 2.11 build cannot initialize CUDA on the machine's NVIDIA 560.94
 driver, so it is recorded as incompatible rather than benchmarked.
+
+## TensorRT vision engine
+
+Current TensorRT-LLM does not list Qwen3-VL as a supported multimodal serving
+architecture, so iteration 06 does not mislabel its PyTorch backend as a
+TensorRT engine. Instead, Torch-TensorRT 2.9.0 and TensorRT 10.13.3 compile the
+fixed-shape Qwen3-VL vision tower into one real BF16 engine on the RTX 3090.
+The graph has zero PyTorch fallback partitions.
+
+```bash
+./.venv-tensorrt/bin/python benchmarks/qwen3_vl_tensorrt.py \
+  --image benchmarks/media/qwen-demo.jpeg \
+  --longest-edge 448 \
+  --warmups 3 \
+  --runs 10 \
+  --generation-warmups 1 \
+  --generation-runs 3 \
+  --output benchmarks/results/qwen3-vl-2b-tensorrt-vision-full.json
+```
+
+| Path | Vision p50 | TTFT p50 / p95 | E2E p50 / p95 | Output tok/s | Quality |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Torch 2.9 eager control | 2385.3 ms | 2452.9 / 2464.3 ms | 2660.6 / 2674.7 ms | 143.3 | 3/3 identical |
+| TensorRT vision + unchanged decoder | 9.1 ms | 61.4 / 62.4 ms | 273.4 / 274.0 ms | 142.1 | exact output vs eager |
+
+Engine construction took 98.070 seconds and is reported separately from
+inference. TensorRT produced the same 31-token sentence in every full-model
+sample. Its isolated 262.8x vision speedup is real relative to the Torch 2.9
+eager control but is not the cross-stack headline: the established Torch 2.8
+Transformers path already runs end to end in 274.5 ms, and SGLang iteration
+05e remains the overall winner at 190.5 ms. The useful result is a verified
+9.1 ms vision engine and a new 61.4 ms Transformers TTFT; the next experiment
+is to feed those embeddings into the faster SGLang decoder.
 
 ## Run the OpenAI-compatible benchmark
 
